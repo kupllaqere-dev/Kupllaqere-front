@@ -122,17 +122,33 @@ const Input = styled.input`
 `;
 
 const NAME_COLORS = [
-  "#8bb4ff", "#ff8b8b", "#8bffc3", "#ffd88b", "#d88bff",
-  "#8bfff5", "#ff8bd8", "#b8ff8b", "#ffb88b", "#8b9eff",
+  "#8bb4ff",
+  "#ff8b8b",
+  "#8bffc3",
+  "#ffd88b",
+  "#d88bff",
+  "#8bfff5",
+  "#ff8bd8",
+  "#b8ff8b",
+  "#ffb88b",
+  "#8b9eff",
 ];
 
 function colorForName(name) {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < name.length; i++)
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return NAME_COLORS[Math.abs(hash) % NAME_COLORS.length];
 }
 
-export default function ChatBox({ messages, whispers, players, myId, onSend, onWhisper }) {
+export default function ChatBox({
+  messages,
+  whispers,
+  players,
+  myId,
+  onSend,
+  onWhisper,
+}) {
   const [tab, setTab] = useState("general");
   const [text, setText] = useState("");
   const [whisperTo, setWhisperTo] = useState("");

@@ -6,7 +6,7 @@ import PlayerManager, { FRAME } from "../game/PlayerManager";
 import SocketManager from "../network/SocketManager";
 import ChatBox from "./ChatBox";
 
-const MAP_WIDTH = 3000;
+const MAP_WIDTH = 5000;
 const MAP_HEIGHT = 1000;
 
 function pointInPolygon(px, py, points) {
@@ -54,7 +54,9 @@ export default function Game({ user }) {
       this.load.on("loaderror", (file) => {
         if (file.key !== "colliders") console.error("Load error:", file.key);
       });
-      this.load.image("bg", "/assets/maps/old-town/background.jpg");
+      this.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
+      this.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
+      this.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
       this.load.spritesheet(
         "player",
         "/assets/character-bases/kupllaqere-female.png",
@@ -67,7 +69,28 @@ export default function Game({ user }) {
     }
 
     function create() {
-      this.add.image(MAP_WIDTH / 2, MAP_HEIGHT / 2, "bg");
+      // Parallax background layers (layer3 = farthest, layer1 = closest)
+      const LAYER_W = 1578;
+      const LAYER_H = 714;
+      const scaleY = MAP_HEIGHT / LAYER_H;
+      const scaledW = LAYER_W * scaleY;
+      const tilesNeeded = Math.ceil(MAP_WIDTH / scaledW) + 1;
+
+      const layers = [
+        { key: "parallax3", scroll: 0.2 },
+        { key: "parallax2", scroll: 0.5 },
+        { key: "parallax1", scroll: 1 },
+      ];
+
+      layers.forEach(({ key, scroll }, layerIdx) => {
+        for (let i = 0; i < tilesNeeded; i++) {
+          this.add
+            .image(scaledW * i + scaledW / 2, MAP_HEIGHT / 2, key)
+            .setScale(scaleY)
+            .setScrollFactor(scroll)
+            .setDepth(-10 + layerIdx);
+        }
+      });
 
       const collidersData = this.cache.json.get("colliders");
       if (collidersData?.walkableZones) {
