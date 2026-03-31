@@ -1,7 +1,5 @@
-const API_URL = "http://localhost:3000/api/auth";
-
 export async function loginWithEmail(email, password) {
-  const res = await fetch(`${API_URL}/login`, {
+  const res = await fetch(`${import.meta.env.API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -14,7 +12,7 @@ export async function loginWithEmail(email, password) {
 }
 
 export async function register(email, password) {
-  const res = await fetch(`${API_URL}/register`, {
+  const res = await fetch(`${import.meta.env.API_URL}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -28,7 +26,7 @@ export async function register(email, password) {
 
 export async function setupCharacter(name, gender) {
   const token = localStorage.getItem("fv_token");
-  const res = await fetch(`${API_URL}/setup`, {
+  const res = await fetch(`${import.meta.env.API_URL}/setup`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -44,7 +42,7 @@ export async function setupCharacter(name, gender) {
 }
 
 export async function loginAsGuest() {
-  const res = await fetch(`${API_URL}/guest`, {
+  const res = await fetch(`${import.meta.env.API_URL}/guest`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -55,7 +53,7 @@ export async function loginAsGuest() {
 }
 
 export async function loginWithGoogle(credential) {
-  const res = await fetch(`${API_URL}/google`, {
+  const res = await fetch(`${import.meta.env.API_URL}/google`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ credential }),
