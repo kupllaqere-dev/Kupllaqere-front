@@ -8,8 +8,16 @@ export default class SocketManager {
     this.lastSentFrame = 0;
   }
 
-  join(name, x, y) {
-    this.socket.emit("player:join", { name, x, y });
+  join(name, x, y, map) {
+    this.socket.emit("player:join", { name, x, y, map });
+  }
+
+  teleport(x, y, map) {
+    this.socket.emit("player:teleport", { x, y, map });
+  }
+
+  onPlayerTeleported(callback) {
+    this.socket.on("player:teleported", callback);
   }
 
   sendUpdate(x, y, frame) {

@@ -23,10 +23,10 @@ export default class PlayerManager {
     });
     const nameText = scene.add
       .text(data.x, data.y + 8, data.name || "???", {
-        fontSize: "12px",
+        fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
+        fontSize: "13px",
         color: "#ffffff",
-        backgroundColor: "#00000088",
-        padding: { x: 4, y: 2 },
+        shadow: { offsetX: 0, offsetY: 1, color: "#000000", blur: 4, fill: true },
       })
       .setOrigin(0.5, 0)
       .setDepth(data.y + 1);

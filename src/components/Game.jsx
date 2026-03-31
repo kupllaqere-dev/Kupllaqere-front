@@ -1,8 +1,16 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import Phaser from "phaser";
 import * as S from "./GameStyles";
-import { MAP_WIDTH, MAP_HEIGHT, preloadMap, createMap } from "../game/MapManager";
-import { preloadInteractables, createInteractables } from "../game/InteractableManager";
+import {
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  preloadMap,
+  createMap,
+} from "../game/MapManager";
+import {
+  preloadInteractables,
+  createInteractables,
+} from "../game/InteractableManager";
 import MovementManager from "../game/MovementManager";
 import ChatBubbleManager from "../game/ChatBubbleManager";
 import EditorManager from "../game/EditorManager";
@@ -19,6 +27,7 @@ export default function Game({ user }) {
   const onlinePlayersRef = useRef([]);
   const [playerMenu, setPlayerMenu] = useState(null);
   const [objectMenu, setObjectMenu] = useState(null);
+  const teleportRef = useRef(null);
 
   useEffect(() => {
     const socketManager = new SocketManager();
@@ -65,10 +74,16 @@ export default function Game({ user }) {
 
       nameText = this.add
         .text(player.x, player.y + 8, user?.name || "Player", {
-          fontSize: "12px",
+          fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
+          fontSize: "13px",
           color: "#ffffff",
-          backgroundColor: "#00000088",
-          padding: { x: 4, y: 2 },
+          shadow: {
+            offsetX: 0,
+            offsetY: 1,
+            color: "#000000",
+            blur: 4,
+            fill: true,
+          },
         })
         .setOrigin(0.5, 0)
         .setDepth(51);
@@ -134,7 +149,8 @@ export default function Game({ user }) {
       socketManager.onWhisper((whisper) => {
         const targetName =
           whisper.from.id === socketManager.id
-            ? onlinePlayersRef.current.find((p) => p.id === whisper.to)?.name || "?"
+            ? onlinePlayersRef.current.find((p) => p.id === whisper.to)?.name ||
+              "?"
             : whisper.from.name;
         setWhisperMessages((prev) => [
           ...prev.slice(-99),
@@ -143,6 +159,41 @@ export default function Game({ user }) {
       });
 
       socketManager.requestChatHistory();
+
+      // --- Teleport handling ---
+      const scene = this;
+      teleportRef.current = (mapName, x, y) => {
+        socketManager.teleport(x, y, mapName);
+      };
+
+      socketManager.onPlayerTeleported((data) => {
+        // We teleported — switch map and reposition
+        walkableZones = createMap(scene, data.to.map);
+        createInteractables(
+          scene,
+          (pos) => {
+            setObjectMenu((prev) => (prev ? null : pos));
+          },
+          data.to.map,
+        );
+        player.setPosition(data.to.x, data.to.y);
+        nameText.setPosition(data.to.x, data.to.y + 8);
+
+        // Clear all other players and re-add the ones on the new map
+        playerManager.otherPlayers.forEach((_, id) =>
+          playerManager.removePlayer(id),
+        );
+        if (data.players) {
+          const others = [];
+          for (const p of data.players) {
+            if (p.id === socketManager.id) continue;
+            playerManager.addPlayer(scene, p);
+            others.push({ id: p.id, name: p.name });
+          }
+          onlinePlayersRef.current = others;
+          setOnlinePlayers(others);
+        }
+      });
     }
 
     function update(_time, delta) {
@@ -218,7 +269,12 @@ export default function Game({ user }) {
           style={{ left: objectMenu.x, top: objectMenu.y }}
         >
           <S.PlayerMenuName>Butterfly</S.PlayerMenuName>
-          <S.PlayerMenuButton onClick={() => setObjectMenu(null)}>
+          <S.PlayerMenuButton
+            onClick={() => {
+              teleportRef.current?.("old-town", 700, 900);
+              setObjectMenu(null);
+            }}
+          >
             Interact
           </S.PlayerMenuButton>
         </S.PlayerMenu>
