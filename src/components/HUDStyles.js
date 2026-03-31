@@ -148,3 +148,27 @@ export const Bubble = styled.div`
     filter: brightness(2);
   }
 `;
+
+export const LogoutButton = styled.button`
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  border: 1px solid #ffffff22;
+  color: #ff6b6b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: linear-gradient(145deg, #3a2a2a, #2a1a1a);
+    color: #ff8888;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;

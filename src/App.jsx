@@ -41,7 +41,11 @@ function App() {
 
   return (
     <>
-      <HUD />
+      <HUD onLogout={() => {
+        localStorage.removeItem("fv_user");
+        localStorage.removeItem("fv_token");
+        setUser(null);
+      }} />
       <Game user={user} />
     </>
   );

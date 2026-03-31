@@ -1,8 +1,9 @@
 import * as S from "./HUDStyles";
 import { useState } from "react";
 
-function HUD() {
+function HUD({ onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <S.Container>
@@ -40,9 +41,17 @@ function HUD() {
           <S.Bubble>
             <img src="/icons/search.png"></img>
           </S.Bubble>
-          <S.Bubble>
-            <img src="/icons/settings.png"></img>
-          </S.Bubble>
+          <S.ProfileWrapper>
+            <S.Bubble onClick={() => setSettingsOpen((prev) => !prev)}>
+              <img src="/icons/settings.png"></img>
+            </S.Bubble>
+
+            {settingsOpen && (
+              <S.Dropdown>
+                <S.LogoutButton onClick={onLogout}>Logout</S.LogoutButton>
+              </S.Dropdown>
+            )}
+          </S.ProfileWrapper>
         </S.ButtonGroup>
       </S.Bar>
     </S.Container>
