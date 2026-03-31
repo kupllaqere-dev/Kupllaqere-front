@@ -33,6 +33,7 @@ export default function Game({ user }) {
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const onlinePlayersRef = useRef([]);
   const [playerMenu, setPlayerMenu] = useState(null);
+  const [objectMenu, setObjectMenu] = useState(null);
 
   useEffect(() => {
     const socketManager = new SocketManager();
@@ -65,6 +66,7 @@ export default function Game({ user }) {
           frameHeight: 850,
         },
       );
+      this.load.image("butterfly", "/butterfly.png");
       this.load.json("colliders", "/assets/maps/old-town/colliders.json");
     }
 
@@ -121,6 +123,18 @@ export default function Game({ user }) {
       this.cameras.main.startFollow(player, true, 1, 1);
 
       editor = new EditorManager(this, player, walkableZones);
+
+      // Interactive world object
+      const butterfly = this.add.image(1200, 800, "butterfly");
+      butterfly.setDisplaySize(100, 100);
+      butterfly.setInteractive({ pixelPerfect: true });
+      butterfly.on("pointerover", () => butterfly.postFX.addGlow(0xffffff, 4, 0));
+      butterfly.on("pointerout", () => butterfly.postFX.clear());
+      butterfly.on("pointerdown", (pointer) => {
+        setObjectMenu((prev) =>
+          prev ? null : { x: pointer.event.clientX, y: pointer.event.clientY },
+        );
+      });
 
       // --- Multiplayer setup ---
       socketManager.join(user?.name || "Player", player.x, player.y);
@@ -302,14 +316,18 @@ export default function Game({ user }) {
   }, []);
 
   useEffect(() => {
-    if (!playerMenu) return;
+    if (!playerMenu && !objectMenu) return;
     const handleClick = (e) => {
-      if (e.target.closest("[data-player-menu]")) return;
-      setPlayerMenu(null);
+      if (playerMenu && !e.target.closest("[data-player-menu]")) {
+        setPlayerMenu(null);
+      }
+      if (objectMenu && !e.target.closest("[data-object-menu]")) {
+        setObjectMenu(null);
+      }
     };
     window.addEventListener("pointerdown", handleClick);
     return () => window.removeEventListener("pointerdown", handleClick);
-  }, [playerMenu]);
+  }, [playerMenu, objectMenu]);
 
   return (
     <S.Container>
@@ -323,6 +341,17 @@ export default function Game({ user }) {
           <S.PlayerMenuButton>View Info</S.PlayerMenuButton>
           <S.PlayerMenuButton>Add Friend</S.PlayerMenuButton>
           <S.PlayerMenuButton $danger>Block</S.PlayerMenuButton>
+        </S.PlayerMenu>
+      )}
+      {objectMenu && (
+        <S.PlayerMenu
+          data-object-menu
+          style={{ left: objectMenu.x, top: objectMenu.y }}
+        >
+          <S.PlayerMenuName>Butterfly</S.PlayerMenuName>
+          <S.PlayerMenuButton onClick={() => setObjectMenu(null)}>
+            Interact
+          </S.PlayerMenuButton>
         </S.PlayerMenu>
       )}
       <ChatBox
