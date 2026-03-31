@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 export default class SocketManager {
-  constructor(url = "http://localhost:3000") {
+  constructor(url = `${import.meta.env.VITE_API_URL}`) {
     this.socket = io(url);
     this.lastSentX = 0;
     this.lastSentY = 0;
@@ -15,7 +15,11 @@ export default class SocketManager {
   sendUpdate(x, y, frame) {
     const px = Math.round(x);
     const py = Math.round(y);
-    if (px !== this.lastSentX || py !== this.lastSentY || frame !== this.lastSentFrame) {
+    if (
+      px !== this.lastSentX ||
+      py !== this.lastSentY ||
+      frame !== this.lastSentFrame
+    ) {
       this.socket.emit("player:update", { x: px, y: py, frame });
       this.lastSentX = px;
       this.lastSentY = py;
