@@ -4,7 +4,7 @@ export const Container = styled.div`
   position: absolute;
   top: 0;
   left: 0;
-  width: 70%;
+  width: 100%;
   pointer-events: none;
 `;
 
@@ -146,6 +146,83 @@ export const Bubble = styled.div`
     width: 32px;
     height: 32px;
     filter: brightness(2);
+  }
+`;
+
+export const Spacer = styled.div`
+  flex: 1;
+`;
+
+export const StatsGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  pointer-events: all;
+`;
+
+export const LevelBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const LevelLabel = styled.span`
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+`;
+
+export const LevelTrack = styled.div`
+  width: 100px;
+  height: 10px;
+  background: #111;
+  border-radius: 5px;
+  border: 1px solid #ffffff22;
+  overflow: hidden;
+`;
+
+export const LevelFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #f0c040, #f5a623);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+`;
+
+export const Currency = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+
+  img {
+    width: 20px;
+    height: 20px;
+  }
+`;
+
+export const AngelButton = styled.button`
+  background: linear-gradient(135deg, #7b2ff7, #c471ed);
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(123, 47, 247, 0.4);
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(123, 47, 247, 0.6);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 `;
 

@@ -53,6 +53,29 @@ function HUD({ onLogout }) {
             )}
           </S.ProfileWrapper>
         </S.ButtonGroup>
+
+        <S.Spacer />
+
+        <S.StatsGroup>
+          <S.LevelBar>
+            <S.LevelLabel>Lv 1</S.LevelLabel>
+            <S.LevelTrack>
+              <S.LevelFill style={{ width: "35%" }} />
+            </S.LevelTrack>
+          </S.LevelBar>
+
+          <S.Currency>
+            <img src="/icons/coin.png" alt="coins" />
+            <span>1,250</span>
+          </S.Currency>
+
+          <S.Currency>
+            <img src="/icons/gem.png" alt="gems" />
+            <span>30</span>
+          </S.Currency>
+
+          <S.AngelButton>Become an Angel</S.AngelButton>
+        </S.StatsGroup>
       </S.Bar>
     </S.Container>
   );

@@ -1,33 +1,18 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import Phaser from "phaser";
 import * as S from "./GameStyles";
+import { MAP_WIDTH, MAP_HEIGHT, preloadMap, createMap } from "../game/MapManager";
+import { preloadInteractables, createInteractables } from "../game/InteractableManager";
+import MovementManager from "../game/MovementManager";
+import ChatBubbleManager from "../game/ChatBubbleManager";
 import EditorManager from "../game/EditorManager";
 import PlayerManager, { FRAME } from "../game/PlayerManager";
 import SocketManager from "../network/SocketManager";
 import ChatBox from "./ChatBox";
 
-const MAP_WIDTH = 5000;
-const MAP_HEIGHT = 1000;
-
-function pointInPolygon(px, py, points) {
-  let inside = false;
-  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-    const [xi, yi] = points[i];
-    const [xj, yj] = points[j];
-    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
 export default function Game({ user }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
-  const sceneRef = useRef(null);
-  const playerRef = useRef(null);
-  const chatBubbleRef = useRef(null);
-  const chatTimerRef = useRef(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [whisperMessages, setWhisperMessages] = useState([]);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
@@ -38,12 +23,16 @@ export default function Game({ user }) {
   useEffect(() => {
     const socketManager = new SocketManager();
     socketRef.current = socketManager;
+
     const playerManager = new PlayerManager();
     playerManager.onPlayerClick = (id, name, clientX, clientY) => {
       setPlayerMenu((prev) =>
         prev && prev.id === id ? null : { id, name, x: clientX, y: clientY },
       );
     };
+
+    const movement = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
+    const chatBubbles = new ChatBubbleManager();
 
     let player;
     let nameText;
@@ -55,49 +44,17 @@ export default function Game({ user }) {
       this.load.on("loaderror", (file) => {
         if (file.key !== "colliders") console.error("Load error:", file.key);
       });
-      this.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
-      this.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
-      this.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
+      preloadMap(this);
+      preloadInteractables(this);
       this.load.spritesheet(
         "player",
         "/assets/character-bases/kupllaqere-female.png",
-        {
-          frameWidth: 425,
-          frameHeight: 850,
-        },
+        { frameWidth: 425, frameHeight: 850 },
       );
-      this.load.image("butterfly", "/butterfly.png");
-      this.load.json("colliders", "/assets/maps/old-town/colliders.json");
     }
 
     function create() {
-      // Parallax background layers (layer3 = farthest, layer1 = closest)
-      const LAYER_W = 1578;
-      const LAYER_H = 714;
-      const scaleY = MAP_HEIGHT / LAYER_H;
-      const scaledW = LAYER_W * scaleY;
-      const tilesNeeded = Math.ceil(MAP_WIDTH / scaledW) + 1;
-
-      const layers = [
-        { key: "parallax3", scroll: 0.2 },
-        { key: "parallax2", scroll: 0.5 },
-        { key: "parallax1", scroll: 1 },
-      ];
-
-      layers.forEach(({ key, scroll }, layerIdx) => {
-        for (let i = 0; i < tilesNeeded; i++) {
-          this.add
-            .image(scaledW * i + scaledW / 2, MAP_HEIGHT / 2, key)
-            .setScale(scaleY)
-            .setScrollFactor(scroll)
-            .setDepth(-10 + layerIdx);
-        }
-      });
-
-      const collidersData = this.cache.json.get("colliders");
-      if (collidersData?.walkableZones) {
-        walkableZones = collidersData.walkableZones.map((z) => z.points);
-      }
+      walkableZones = createMap(this);
 
       player = this.add.sprite(700, 900, "player", FRAME.FRONT);
       player.setOrigin(0.5, 1);
@@ -106,9 +63,8 @@ export default function Game({ user }) {
       player.on("pointerover", () => player.postFX.addGlow(0xffffff, 3, 0));
       player.on("pointerout", () => player.postFX.clear());
 
-      const playerName = user?.name || "Player";
       nameText = this.add
-        .text(player.x, player.y + 8, playerName, {
+        .text(player.x, player.y + 8, user?.name || "Player", {
           fontSize: "12px",
           color: "#ffffff",
           backgroundColor: "#00000088",
@@ -124,16 +80,12 @@ export default function Game({ user }) {
 
       editor = new EditorManager(this, player, walkableZones);
 
-      // Interactive world object
-      const butterfly = this.add.image(1200, 800, "butterfly");
-      butterfly.setDisplaySize(100, 100);
-      butterfly.setInteractive({ pixelPerfect: true });
-      butterfly.on("pointerover", () => butterfly.postFX.addGlow(0xffffff, 4, 0));
-      butterfly.on("pointerout", () => butterfly.postFX.clear());
-      butterfly.on("pointerdown", (pointer) => {
-        setObjectMenu((prev) =>
-          prev ? null : { x: pointer.event.clientX, y: pointer.event.clientY },
-        );
+      createInteractables(this, (pos) => {
+        setObjectMenu((prev) => (prev ? null : pos));
+      });
+
+      this.input.on("pointerdown", (pointer) => {
+        movement.handleClick(this, pointer, walkableZones);
       });
 
       // --- Multiplayer setup ---
@@ -168,49 +120,21 @@ export default function Game({ user }) {
         });
       });
 
-      sceneRef.current = this;
-      playerRef.current = player;
-
-      const showLocalBubble = (scene, text) => {
-        if (chatBubbleRef.current) chatBubbleRef.current.destroy();
-        if (chatTimerRef.current) clearTimeout(chatTimerRef.current);
-
-        const bubble = scene.add
-          .text(player.x, player.y - player.displayHeight - 10, text, {
-            fontSize: "11px",
-            color: "#ffffff",
-            backgroundColor: "#222222dd",
-            padding: { x: 8, y: 5 },
-            wordWrap: { width: 180 },
-            align: "center",
-          })
-          .setOrigin(0.5, 1)
-          .setDepth(100);
-        chatBubbleRef.current = bubble;
-        chatTimerRef.current = setTimeout(() => {
-          bubble.destroy();
-          chatBubbleRef.current = null;
-        }, 5000);
-      };
-
       socketManager.onChatMessage((msg) => {
         setChatMessages((prev) => [...prev.slice(-99), msg]);
         if (msg.from.id === socketManager.id) {
-          showLocalBubble(this, msg.text);
+          chatBubbles.show(this, player, msg.text);
         } else {
           playerManager.showChatBubble(this, msg.from.id, msg.text);
         }
       });
 
-      socketManager.onChatHistory((history) => {
-        setChatMessages(history);
-      });
+      socketManager.onChatHistory((history) => setChatMessages(history));
 
       socketManager.onWhisper((whisper) => {
         const targetName =
           whisper.from.id === socketManager.id
-            ? onlinePlayersRef.current.find((p) => p.id === whisper.to)?.name ||
-              "?"
+            ? onlinePlayersRef.current.find((p) => p.id === whisper.to)?.name || "?"
             : whisper.from.name;
         setWhisperMessages((prev) => [
           ...prev.slice(-99),
@@ -224,70 +148,16 @@ export default function Game({ user }) {
     function update(_time, delta) {
       if (editor.panCamera(cursors)) return;
 
-      const speed = 300;
-      const dt = delta / 1000;
-      const left = cursors.left.isDown;
-      const right = cursors.right.isDown;
-      const up = cursors.up.isDown;
-      const down = cursors.down.isDown;
-
-      let dx = left ? -speed * dt : right ? speed * dt : 0;
-      let dy = up ? -speed * dt : down ? speed * dt : 0;
-
-      if (dx !== 0 && dy !== 0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
-      }
-
-      const curX = player.x;
-      const curY = player.y;
-      let newX = Phaser.Math.Clamp(curX + dx, 0, MAP_WIDTH);
-      let newY = Phaser.Math.Clamp(curY + dy, 0, MAP_HEIGHT);
-
-      if (walkableZones.length > 0 && (dx !== 0 || dy !== 0)) {
-        const fullOk = walkableZones.some((z) => pointInPolygon(newX, newY, z));
-        if (fullOk) {
-          player.setPosition(newX, newY);
-        } else {
-          const xOk =
-            dx !== 0 &&
-            walkableZones.some((z) => pointInPolygon(newX, curY, z));
-          const yOk =
-            dy !== 0 &&
-            walkableZones.some((z) => pointInPolygon(curX, newY, z));
-          if (xOk) player.setPosition(newX, curY);
-          else if (yOk) player.setPosition(curX, newY);
-        }
-      } else {
-        player.setPosition(newX, newY);
-      }
-
-      let frame = Number(player.frame.name);
-      if (left && down) frame = FRAME.FRONT_LEFT;
-      else if (right && down) frame = FRAME.FRONT_RIGHT;
-      else if (left && up) frame = FRAME.BACK;
-      else if (right && up) frame = FRAME.BACK;
-      else if (left) frame = FRAME.LEFT;
-      else if (right) frame = FRAME.RIGHT;
-      else if (down) frame = FRAME.FRONT;
-      else if (up) frame = FRAME.BACK;
-      player.setFrame(frame);
-
-      socketManager.sendUpdate(player.x, player.y, frame);
+      movement.update(player, cursors, walkableZones, delta);
+      socketManager.sendUpdate(player.x, player.y, Number(player.frame.name));
 
       player.setDepth(player.y);
       nameText.setPosition(player.x, player.y + 8);
       nameText.setDepth(player.y + 1);
-
-      if (chatBubbleRef.current) {
-        chatBubbleRef.current.setPosition(
-          player.x,
-          player.y - player.displayHeight - 10,
-        );
-      }
+      chatBubbles.updatePosition(player);
     }
 
-    const config = {
+    const game = new Phaser.Game({
       type: Phaser.AUTO,
       width: window.innerWidth,
       height: window.innerHeight,
@@ -297,11 +167,10 @@ export default function Game({ user }) {
         arcade: { gravity: { y: 0 }, debug: false },
       },
       scene: { preload, create, update },
-    };
-
-    const game = new Phaser.Game(config);
+    });
 
     return () => {
+      chatBubbles.destroy();
       socketManager.disconnect();
       game.destroy(true);
     };
