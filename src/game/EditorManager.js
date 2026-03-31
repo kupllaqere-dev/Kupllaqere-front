@@ -82,7 +82,7 @@ export default class EditorManager {
 
     for (const zone of zones) {
       if (zone.length < 3) continue;
-      const color = this.editorMode ? 0x00ff88 : 0x00ff00;
+      const color = this.editorMode && 0x00ff88;
       const fillAlpha = this.editorMode ? 0.2 : 0.12;
       const strokeAlpha = this.editorMode ? 0.9 : 0.35;
       const strokeWidth = this.editorMode ? 2 : 1;
@@ -90,7 +90,8 @@ export default class EditorManager {
       this.graphics.lineStyle(strokeWidth, color, strokeAlpha);
       this.graphics.beginPath();
       this.graphics.moveTo(zone[0][0], zone[0][1]);
-      for (let i = 1; i < zone.length; i++) this.graphics.lineTo(zone[i][0], zone[i][1]);
+      for (let i = 1; i < zone.length; i++)
+        this.graphics.lineTo(zone[i][0], zone[i][1]);
       this.graphics.closePath();
       this.graphics.fillPath();
       this.graphics.strokePath();
@@ -101,17 +102,21 @@ export default class EditorManager {
       this.graphics.beginPath();
       this.graphics.moveTo(this.currentPoints[0][0], this.currentPoints[0][1]);
       for (let i = 1; i < this.currentPoints.length; i++) {
-        this.graphics.lineTo(this.currentPoints[i][0], this.currentPoints[i][1]);
+        this.graphics.lineTo(
+          this.currentPoints[i][0],
+          this.currentPoints[i][1],
+        );
       }
       this.graphics.strokePath();
       this.graphics.fillStyle(0xffff00, 1);
-      for (const [x, y] of this.currentPoints) this.graphics.fillCircle(x, y, 5);
+      for (const [x, y] of this.currentPoints)
+        this.graphics.fillCircle(x, y, 5);
     }
 
     this.label.setText(
       this.editorMode
         ? "EDITOR  |  Click: add point  |  Enter: close polygon  |  Z: undo  |  Esc: cancel  |  D: delete last zone  |  S: save  |  E: exit  |  Arrows: pan"
-        : ""
+        : "",
     );
   }
 
@@ -119,7 +124,7 @@ export default class EditorManager {
     const data = JSON.stringify(
       { walkableZones: this.editorPolygons.map((points) => ({ points })) },
       null,
-      2
+      2,
     );
     try {
       const res = await fetch("/api/save-colliders", {
@@ -131,12 +136,17 @@ export default class EditorManager {
         this.walkableZones.length = 0;
         this.editorPolygons.forEach((p) => this.walkableZones.push([...p]));
         const msg = this.scene.add
-          .text(this.scene.cameras.main.width / 2, 60, "Saved to colliders.json", {
-            fontSize: "18px",
-            color: "#00ff88",
-            backgroundColor: "#000000cc",
-            padding: { x: 10, y: 6 },
-          })
+          .text(
+            this.scene.cameras.main.width / 2,
+            60,
+            "Saved to colliders.json",
+            {
+              fontSize: "18px",
+              color: "#00ff88",
+              backgroundColor: "#000000cc",
+              padding: { x: 10, y: 6 },
+            },
+          )
           .setScrollFactor(0)
           .setDepth(200)
           .setOrigin(0.5, 0);
