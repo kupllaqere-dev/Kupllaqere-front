@@ -62,14 +62,16 @@ export default function Game({ user }) {
       );
       this.load.spritesheet(
         "walk-right",
-        "/assets/character-bases/female-walk-right-end.png",
-        { frameWidth: 510, frameHeight: 850 },
+        "/assets/character-bases/rightt.png",
+        {
+          frameWidth: 510,
+          frameHeight: 850,
+        },
       );
-      this.load.spritesheet(
-        "walk-left",
-        "/assets/character-bases/female-walk-left.png",
-        { frameWidth: 510, frameHeight: 850 },
-      );
+      this.load.spritesheet("walk-left", "/assets/character-bases/leftt.png", {
+        frameWidth: 510,
+        frameHeight: 850,
+      });
     }
 
     function create() {
@@ -102,18 +104,18 @@ export default function Game({ user }) {
         key: "walk-right",
         frames: this.anims.generateFrameNumbers("walk-right", {
           start: 0,
-          end: 4,
+          end: 5,
         }),
-        frameRate: 8,
+        frameRate: 4,
         repeat: -1,
       });
       this.anims.create({
         key: "walk-left",
         frames: this.anims.generateFrameNumbers("walk-left", {
           start: 0,
-          end: 4,
+          end: 5,
         }),
-        frameRate: 8,
+        frameRate: 4,
         repeat: -1,
       });
 
@@ -229,7 +231,12 @@ export default function Game({ user }) {
       if (editor.panCamera(cursors)) return;
 
       movement.update(player, cursors, walkableZones, delta);
-      socketManager.sendUpdate(player.x, player.y, Number(player.frame.name), movement.currentAnim);
+      socketManager.sendUpdate(
+        player.x,
+        player.y,
+        Number(player.frame.name),
+        movement.currentAnim,
+      );
 
       player.setDepth(player.y);
       nameText.setPosition(player.x, player.y + 8);
