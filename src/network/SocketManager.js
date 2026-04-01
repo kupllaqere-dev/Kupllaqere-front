@@ -20,18 +20,20 @@ export default class SocketManager {
     this.socket.on("player:teleported", callback);
   }
 
-  sendUpdate(x, y, frame) {
+  sendUpdate(x, y, frame, anim) {
     const px = Math.round(x);
     const py = Math.round(y);
     if (
       px !== this.lastSentX ||
       py !== this.lastSentY ||
-      frame !== this.lastSentFrame
+      frame !== this.lastSentFrame ||
+      anim !== this.lastSentAnim
     ) {
-      this.socket.emit("player:update", { x: px, y: py, frame });
+      this.socket.emit("player:update", { x: px, y: py, frame, anim: anim || null });
       this.lastSentX = px;
       this.lastSentY = py;
       this.lastSentFrame = frame;
+      this.lastSentAnim = anim || null;
     }
   }
 

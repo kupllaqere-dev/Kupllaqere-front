@@ -38,7 +38,24 @@ export default class PlayerManager {
     if (!other) return;
     other.sprite.setPosition(data.x, data.y);
     other.sprite.setDepth(data.y);
-    if (data.frame !== undefined) other.sprite.setFrame(data.frame);
+
+    if (data.anim) {
+      // Play walk animation if not already playing this one
+      if (other.sprite.anims.currentAnim?.key !== data.anim || !other.sprite.anims.isPlaying) {
+        other.sprite.play(data.anim);
+      }
+    } else {
+      // Stop animation and restore static idle texture
+      if (other.sprite.anims.isPlaying) {
+        other.sprite.stop();
+      }
+      if (other.sprite.texture.key !== "player") {
+        other.sprite.setTexture("player", data.frame);
+      } else if (data.frame !== undefined) {
+        other.sprite.setFrame(data.frame);
+      }
+    }
+
     other.nameText.setPosition(data.x, data.y + 8);
     other.nameText.setDepth(data.y + 1);
     if (other.chatBubble) {

@@ -60,6 +60,16 @@ export default function Game({ user }) {
         "/assets/character-bases/kupllaqere-female.png",
         { frameWidth: 425, frameHeight: 850 },
       );
+      this.load.spritesheet(
+        "walk-right",
+        "/assets/character-bases/female-walk-right-end.png",
+        { frameWidth: 510, frameHeight: 850 },
+      );
+      this.load.spritesheet(
+        "walk-left",
+        "/assets/character-bases/female-walk-left.png",
+        { frameWidth: 510, frameHeight: 850 },
+      );
     }
 
     function create() {
@@ -87,6 +97,25 @@ export default function Game({ user }) {
         })
         .setOrigin(0.5, 0)
         .setDepth(51);
+
+      this.anims.create({
+        key: "walk-right",
+        frames: this.anims.generateFrameNumbers("walk-right", {
+          start: 0,
+          end: 4,
+        }),
+        frameRate: 8,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "walk-left",
+        frames: this.anims.generateFrameNumbers("walk-left", {
+          start: 0,
+          end: 4,
+        }),
+        frameRate: 8,
+        repeat: -1,
+      });
 
       cursors = this.input.keyboard.createCursorKeys();
       this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
@@ -200,7 +229,7 @@ export default function Game({ user }) {
       if (editor.panCamera(cursors)) return;
 
       movement.update(player, cursors, walkableZones, delta);
-      socketManager.sendUpdate(player.x, player.y, Number(player.frame.name));
+      socketManager.sendUpdate(player.x, player.y, Number(player.frame.name), movement.currentAnim);
 
       player.setDepth(player.y);
       nameText.setPosition(player.x, player.y + 8);
