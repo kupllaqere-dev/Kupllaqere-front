@@ -9,6 +9,12 @@ export default class PlayerManager {
 
   addPlayer(scene, data) {
     if (this.otherPlayers.has(data.id)) return;
+    const shadowImg = scene.add.image(data.x, data.y, "shadow");
+    shadowImg.setOrigin(0.5, 0.5);
+    shadowImg.setScale(0.15);
+    shadowImg.setAlpha(0.5);
+    shadowImg.setDepth(data.y - 1);
+
     const sprite = scene.add.sprite(data.x, data.y, "player", FRAME.FRONT);
     sprite.setOrigin(0.5, 1);
     sprite.setScale(0.4);
@@ -30,7 +36,7 @@ export default class PlayerManager {
       })
       .setOrigin(0.5, 0)
       .setDepth(data.y + 1);
-    this.otherPlayers.set(data.id, { sprite, nameText });
+    this.otherPlayers.set(data.id, { sprite, shadowImg, nameText });
   }
 
   updatePlayer(data) {
@@ -40,22 +46,20 @@ export default class PlayerManager {
     other.sprite.setDepth(data.y);
 
     if (data.anim) {
-      // Play walk animation if not already playing this one
       if (other.sprite.anims.currentAnim?.key !== data.anim || !other.sprite.anims.isPlaying) {
         other.sprite.play(data.anim);
       }
     } else {
-      // Stop animation and restore static idle texture
       if (other.sprite.anims.isPlaying) {
         other.sprite.stop();
       }
-      if (other.sprite.texture.key !== "player") {
-        other.sprite.setTexture("player", data.frame);
-      } else if (data.frame !== undefined) {
+      if (data.frame !== undefined) {
         other.sprite.setFrame(data.frame);
       }
     }
 
+    other.shadowImg.setPosition(data.x, data.y);
+    other.shadowImg.setDepth(data.y - 1);
     other.nameText.setPosition(data.x, data.y + 8);
     other.nameText.setDepth(data.y + 1);
     if (other.chatBubble) {
@@ -93,6 +97,7 @@ export default class PlayerManager {
     const other = this.otherPlayers.get(id);
     if (!other) return;
     other.sprite.destroy();
+    other.shadowImg.destroy();
     other.nameText.destroy();
     if (other.chatBubble) other.chatBubble.destroy();
     if (other.chatTimer) clearTimeout(other.chatTimer);

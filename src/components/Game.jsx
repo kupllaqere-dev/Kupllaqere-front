@@ -44,6 +44,7 @@ export default function Game({ user }) {
     const chatBubbles = new ChatBubbleManager();
 
     let player;
+    let shadow;
     let nameText;
     let cursors;
     let walkableZones = [];
@@ -57,25 +58,19 @@ export default function Game({ user }) {
       preloadInteractables(this);
       this.load.spritesheet(
         "player",
-        "/assets/character-bases/kupllaqere-female.png",
-        { frameWidth: 425, frameHeight: 850 },
+        "/assets/character-bases/clothes2.png",
+        { frameWidth: 510, frameHeight: 900 },
       );
-      this.load.spritesheet(
-        "walk-right",
-        "/assets/character-bases/rightt.png",
-        {
-          frameWidth: 510,
-          frameHeight: 850,
-        },
-      );
-      this.load.spritesheet("walk-left", "/assets/character-bases/leftt.png", {
-        frameWidth: 510,
-        frameHeight: 850,
-      });
+      this.load.image("shadow", "/assets/character-bases/shadow.png");
     }
 
     function create() {
       walkableZones = createMap(this);
+
+      shadow = this.add.image(700, 900, "shadow");
+      shadow.setOrigin(0.5, 0.8);
+      shadow.setScale(0.15);
+      shadow.setAlpha(0.2);
 
       player = this.add.sprite(700, 900, "player", FRAME.FRONT);
       player.setOrigin(0.5, 1);
@@ -101,19 +96,37 @@ export default function Game({ user }) {
         .setDepth(51);
 
       this.anims.create({
-        key: "walk-right",
-        frames: this.anims.generateFrameNumbers("walk-right", {
-          start: 0,
-          end: 5,
+        key: "walk-left",
+        frames: this.anims.generateFrameNumbers("player", {
+          start: 6,
+          end: 11,
         }),
         frameRate: 4,
         repeat: -1,
       });
       this.anims.create({
-        key: "walk-left",
-        frames: this.anims.generateFrameNumbers("walk-left", {
-          start: 0,
-          end: 5,
+        key: "walk-right",
+        frames: this.anims.generateFrameNumbers("player", {
+          start: 12,
+          end: 17,
+        }),
+        frameRate: 4,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "walk-down",
+        frames: this.anims.generateFrameNumbers("player", {
+          start: 18,
+          end: 21,
+        }),
+        frameRate: 4,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "walk-up",
+        frames: this.anims.generateFrameNumbers("player", {
+          start: 24,
+          end: 27,
         }),
         frameRate: 4,
         repeat: -1,
@@ -208,6 +221,7 @@ export default function Game({ user }) {
           data.to.map,
         );
         player.setPosition(data.to.x, data.to.y);
+        shadow.setPosition(data.to.x, data.to.y);
         nameText.setPosition(data.to.x, data.to.y + 8);
 
         // Clear all other players and re-add the ones on the new map
@@ -239,6 +253,8 @@ export default function Game({ user }) {
       );
 
       player.setDepth(player.y);
+      shadow.setPosition(player.x, player.y);
+      shadow.setDepth(player.y - 1);
       nameText.setPosition(player.x, player.y + 8);
       nameText.setDepth(player.y + 1);
       chatBubbles.updatePosition(player);

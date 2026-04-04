@@ -91,33 +91,32 @@ export default class MovementManager {
     // Determine facing frame and walk animation
     const isMoving = dx !== 0 || dy !== 0;
     let frame = Number(player.frame.name);
-    let walkDir = null; // "left" or "right" if walking sideways
+    let walkDir = null; // "left", "right", "down", or "up"
 
     if (keyMoving) {
-      if (left && down) frame = FRAME.FRONT_LEFT;
-      else if (right && down) frame = FRAME.FRONT_RIGHT;
-      else if (left && up) frame = FRAME.BACK;
-      else if (right && up) frame = FRAME.BACK;
+      if (left && down) { frame = FRAME.FRONT_LEFT; walkDir = "down"; }
+      else if (right && down) { frame = FRAME.FRONT_RIGHT; walkDir = "down"; }
+      else if (left && up) { frame = FRAME.BACK; walkDir = "up"; }
+      else if (right && up) { frame = FRAME.BACK; walkDir = "up"; }
       else if (left) { frame = FRAME.LEFT; walkDir = "left"; }
       else if (right) { frame = FRAME.RIGHT; walkDir = "right"; }
-      else if (down) frame = FRAME.FRONT;
-      else if (up) frame = FRAME.BACK;
+      else if (down) { frame = FRAME.FRONT; walkDir = "down"; }
+      else if (up) { frame = FRAME.BACK; walkDir = "up"; }
     } else if (isMoving) {
       const angle = Math.atan2(dy, dx);
       if (angle > 2.75 || angle < -2.75) { frame = FRAME.LEFT; walkDir = "left"; }
-      else if (angle > 1.96) frame = FRAME.FRONT_LEFT;
-      else if (angle > 1.18) frame = FRAME.FRONT;
-      else if (angle > 0.39) frame = FRAME.FRONT_RIGHT;
+      else if (angle > 1.96) { frame = FRAME.FRONT_LEFT; walkDir = "down"; }
+      else if (angle > 1.18) { frame = FRAME.FRONT; walkDir = "down"; }
+      else if (angle > 0.39) { frame = FRAME.FRONT_RIGHT; walkDir = "down"; }
       else if (angle > -0.39) { frame = FRAME.RIGHT; walkDir = "right"; }
-      else if (angle > -1.18) frame = FRAME.BACK;
-      else if (angle > -1.96) frame = FRAME.BACK;
+      else if (angle > -1.18) { frame = FRAME.BACK; walkDir = "up"; }
+      else if (angle > -1.96) { frame = FRAME.BACK; walkDir = "up"; }
       else if (angle > -2.75) { frame = FRAME.LEFT; walkDir = "left"; }
       else { frame = FRAME.LEFT; walkDir = "left"; }
     }
 
     if (walkDir) {
-      const animKey = walkDir === "left" ? "walk-left" : "walk-right";
-      // Play animation if not already playing this anim (or was idle last frame)
+      const animKey = `walk-${walkDir}`;
       if (!this.wasWalking || player.anims.currentAnim?.key !== animKey) {
         player.play(animKey);
       }
@@ -128,23 +127,15 @@ export default class MovementManager {
       this.currentAnim = null;
       if (this.wasWalking) {
         player.stop();
-        // Set idle frame matching the last walk direction
-        const idleFrame = this.lastDirection === "left" ? FRAME.LEFT : FRAME.RIGHT;
+        const idleFrame = this.lastDirection === "left" ? FRAME.FRONT_LEFT
+          : this.lastDirection === "right" ? FRAME.FRONT_RIGHT
+          : this.lastDirection === "up" ? FRAME.BACK
+          : FRAME.FRONT;
         player.setTexture("player", idleFrame);
         this.wasWalking = false;
       } else if (isMoving) {
-        // Moving in a non-left/right direction — update idle frame and track direction
-        if (player.texture.key !== "player") {
-          player.setTexture("player", frame);
-        } else {
-          player.setFrame(frame);
-        }
+        player.setFrame(frame);
         this.lastDirection = null;
-      } else if (!isMoving && player.texture.key !== "player") {
-        // Stopped but still on walk texture — restore idle
-        const idleFrame = this.lastDirection === "left" ? FRAME.LEFT
-          : this.lastDirection === "right" ? FRAME.RIGHT : frame;
-        player.setTexture("player", idleFrame);
       } else {
         player.setFrame(frame);
       }
