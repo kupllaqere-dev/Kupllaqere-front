@@ -7,6 +7,7 @@ export default class EditorManager {
     this.editorPolygons = walkableZones.map((z) => [...z]);
     this.currentPoints = [];
 
+    this.showOverlay = false;
     this.graphics = scene.add.graphics().setDepth(100);
     this.label = scene.add
       .text(10, 10, "", {
@@ -24,6 +25,12 @@ export default class EditorManager {
   }
 
   _bindKeys(scene) {
+    scene.input.keyboard.on("keydown-F2", () => {
+      if (this.editorMode) return;
+      this.showOverlay = !this.showOverlay;
+      this.draw();
+    });
+
     scene.input.keyboard.on("keydown-E", () => {
       this.editorMode = !this.editorMode;
       if (this.editorMode) {
@@ -79,8 +86,10 @@ export default class EditorManager {
     this.graphics.clear();
 
     const zones = this.editorMode ? this.editorPolygons : this.walkableZones;
+    const visible = this.editorMode || this.showOverlay;
 
     for (const zone of zones) {
+      if (!visible) break;
       if (zone.length < 3) continue;
       const color = this.editorMode && 0x00ff88;
       const fillAlpha = this.editorMode ? 0.2 : 0.12;
