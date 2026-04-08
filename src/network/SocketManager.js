@@ -81,6 +81,14 @@ export default class SocketManager {
     this.socket.on("chat:history", callback);
   }
 
+  sendOutfitChange(outfit) {
+    this.socket.emit("player:outfit", { outfit });
+  }
+
+  onPlayerOutfit(callback) {
+    this.socket.on("player:outfit", callback);
+  }
+
   get id() {
     return this.socket.id;
   }

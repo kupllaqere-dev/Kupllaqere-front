@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import Phaser from "phaser";
 import * as S from "./GameStyles";
 import {
   MAP_WIDTH,
@@ -11,23 +10,37 @@ import {
   preloadInteractables,
   createInteractables,
 } from "../game/InteractableManager";
+import {
+  preloadLocalPlayer,
+  createLocalPlayer,
+  updateLocalPlayer,
+  repositionLocalPlayer,
+} from "../game/LocalPlayer";
 import MovementManager from "../game/MovementManager";
 import ChatBubbleManager from "../game/ChatBubbleManager";
 import EditorManager from "../game/EditorManager";
-import PlayerManager, { FRAME } from "../game/PlayerManager";
+import PlayerManager from "../game/PlayerManager";
 import SocketManager from "../network/SocketManager";
+import MultiplayerHandler from "../game/MultiplayerHandler";
+import LayerManager from "../game/LayerManager";
+import { createPhaserGame } from "../game/PhaserConfig";
+import { fetchOutfit, updateOutfit } from "../api/items";
 import ChatBox from "./ChatBox";
 
-export default function Game({ user }) {
+export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
+  const sceneRef = useRef(null);
+  const localPlayerRef = useRef(null);
+  const layerManagerRef = useRef(null);
+  const mpRef = useRef(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [whisperMessages, setWhisperMessages] = useState([]);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
-  const onlinePlayersRef = useRef([]);
   const [playerMenu, setPlayerMenu] = useState(null);
   const [objectMenu, setObjectMenu] = useState(null);
   const teleportRef = useRef(null);
+  const equippedRef = useRef({});
 
   useEffect(() => {
     const socketManager = new SocketManager();
@@ -42,10 +55,18 @@ export default function Game({ user }) {
 
     const movement = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
     const chatBubbles = new ChatBubbleManager();
+    const layerManager = new LayerManager();
+    layerManagerRef.current = layerManager;
 
-    let player;
-    let shadow;
-    let nameText;
+    const mp = new MultiplayerHandler(socketManager, playerManager, chatBubbles, {
+      setChatMessages,
+      setWhisperMessages,
+      setOnlinePlayers,
+    });
+    mp.layerManager = layerManager;
+    mpRef.current = mp;
+
+    let localPlayer;
     let cursors;
     let walkableZones = [];
     let editor;
@@ -56,88 +77,22 @@ export default function Game({ user }) {
       });
       preloadMap(this);
       preloadInteractables(this);
-      this.load.spritesheet(
-        "player",
-        "/assets/character-bases/clothes2.png",
-        { frameWidth: 510, frameHeight: 900 },
-      );
-      this.load.image("shadow", "/assets/character-bases/shadow.png");
+      preloadLocalPlayer(this);
     }
 
     function create() {
+      sceneRef.current = this;
       walkableZones = createMap(this);
 
-      shadow = this.add.image(700, 900, "shadow");
-      shadow.setOrigin(0.5, 0.8);
-      shadow.setScale(0.15);
-      shadow.setAlpha(0.2);
-
-      player = this.add.sprite(700, 900, "player", FRAME.FRONT);
-      player.setOrigin(0.5, 1);
-      player.setScale(0.4);
-      player.setInteractive({ pixelPerfect: true });
-      player.on("pointerover", () => player.postFX.addGlow(0xffffff, 3, 0));
-      player.on("pointerout", () => player.postFX.clear());
-
-      nameText = this.add
-        .text(player.x, player.y + 8, user?.name || "Player", {
-          fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
-          fontSize: "13px",
-          color: "#ffffff",
-          shadow: {
-            offsetX: 0,
-            offsetY: 1,
-            color: "#000000",
-            blur: 4,
-            fill: true,
-          },
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(51);
-
-      this.anims.create({
-        key: "walk-left",
-        frames: this.anims.generateFrameNumbers("player", {
-          start: 6,
-          end: 11,
-        }),
-        frameRate: 4,
-        repeat: -1,
-      });
-      this.anims.create({
-        key: "walk-right",
-        frames: this.anims.generateFrameNumbers("player", {
-          start: 12,
-          end: 17,
-        }),
-        frameRate: 4,
-        repeat: -1,
-      });
-      this.anims.create({
-        key: "walk-down",
-        frames: this.anims.generateFrameNumbers("player", {
-          start: 18,
-          end: 21,
-        }),
-        frameRate: 4,
-        repeat: -1,
-      });
-      this.anims.create({
-        key: "walk-up",
-        frames: this.anims.generateFrameNumbers("player", {
-          start: 24,
-          end: 27,
-        }),
-        frameRate: 4,
-        repeat: -1,
-      });
+      localPlayer = createLocalPlayer(this, 700, 900, user?.name || "Player");
+      localPlayerRef.current = localPlayer;
 
       cursors = this.input.keyboard.createCursorKeys();
       this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
       this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
-      this.cameras.main.startFollow(player, true, 1, 1);
+      this.cameras.main.startFollow(localPlayer.sprite, true, 1, 1);
 
-      editor = new EditorManager(this, player, walkableZones);
+      editor = new EditorManager(this, localPlayer.sprite, walkableZones);
 
       createInteractables(this, (pos) => {
         setObjectMenu((prev) => (prev ? null : pos));
@@ -147,137 +102,115 @@ export default function Game({ user }) {
         movement.handleClick(this, pointer, walkableZones);
       });
 
-      // --- Multiplayer setup ---
-      socketManager.join(user?.name || "Player", player.x, player.y);
-
-      socketManager.onGameState((data) => {
-        const others = [];
-        for (const p of data.players) {
-          if (p.id === socketManager.id) continue;
-          playerManager.addPlayer(this, p);
-          others.push({ id: p.id, name: p.name });
-        }
-        onlinePlayersRef.current = others;
-        setOnlinePlayers(others);
+      // Multiplayer
+      mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y);
+      mp.wire(this, localPlayer.sprite);
+      mp.wireTeleport(this, localPlayer, playerManager, {
+        onMapSwitch: (scene, mapName) => {
+          walkableZones = createMap(scene, mapName);
+          createInteractables(
+            scene,
+            (pos) => setObjectMenu((prev) => (prev ? null : pos)),
+            mapName,
+          );
+          return walkableZones;
+        },
+        onReposition: repositionLocalPlayer,
       });
 
-      socketManager.onPlayerJoined((data) => {
-        playerManager.addPlayer(this, data);
-        setOnlinePlayers((prev) => {
-          const next = [...prev, { id: data.id, name: data.name }];
-          onlinePlayersRef.current = next;
-          return next;
-        });
-      });
-      socketManager.onPlayerUpdated((data) => playerManager.updatePlayer(data));
-      socketManager.onPlayerLeft((data) => {
-        playerManager.removePlayer(data.id);
-        setOnlinePlayers((prev) => {
-          const next = prev.filter((p) => p.id !== data.id);
-          onlinePlayersRef.current = next;
-          return next;
-        });
-      });
+      teleportRef.current = (mapName, x, y) => mp.teleport(mapName, x, y);
 
-      socketManager.onChatMessage((msg) => {
-        setChatMessages((prev) => [...prev.slice(-99), msg]);
-        if (msg.from.id === socketManager.id) {
-          chatBubbles.show(this, player, msg.text);
-        } else {
-          playerManager.showChatBubble(this, msg.from.id, msg.text);
-        }
-      });
-
-      socketManager.onChatHistory((history) => setChatMessages(history));
-
-      socketManager.onWhisper((whisper) => {
-        const targetName =
-          whisper.from.id === socketManager.id
-            ? onlinePlayersRef.current.find((p) => p.id === whisper.to)?.name ||
-              "?"
-            : whisper.from.name;
-        setWhisperMessages((prev) => [
-          ...prev.slice(-99),
-          { ...whisper, id: Date.now().toString(36), toName: targetName },
-        ]);
-      });
-
-      socketManager.requestChatHistory();
-
-      // --- Teleport handling ---
+      // Load saved outfit from DB
       const scene = this;
-      teleportRef.current = (mapName, x, y) => {
-        socketManager.teleport(x, y, mapName);
-      };
-
-      socketManager.onPlayerTeleported((data) => {
-        // We teleported — switch map and reposition
-        walkableZones = createMap(scene, data.to.map);
-        createInteractables(
-          scene,
-          (pos) => {
-            setObjectMenu((prev) => (prev ? null : pos));
-          },
-          data.to.map,
-        );
-        player.setPosition(data.to.x, data.to.y);
-        shadow.setPosition(data.to.x, data.to.y);
-        nameText.setPosition(data.to.x, data.to.y + 8);
-
-        // Clear all other players and re-add the ones on the new map
-        playerManager.otherPlayers.forEach((_, id) =>
-          playerManager.removePlayer(id),
-        );
-        if (data.players) {
-          const others = [];
-          for (const p of data.players) {
-            if (p.id === socketManager.id) continue;
-            playerManager.addPlayer(scene, p);
-            others.push({ id: p.id, name: p.name });
+      fetchOutfit()
+        .then((data) => {
+          if (!data.outfit) return;
+          const outfitMap = {};
+          for (const [cat, item] of Object.entries(data.outfit)) {
+            if (item && item.itemId) {
+              outfitMap[cat] = item.itemId;
+              layerManager.equip(scene, localPlayer.sprite, "local", cat, item.imageUrl, item.itemId);
+            }
           }
-          onlinePlayersRef.current = others;
-          setOnlinePlayers(others);
-        }
-      });
+          equippedRef.current = outfitMap;
+          onEquippedChange(outfitMap);
+        })
+        .catch(() => {});
     }
 
     function update(_time, delta) {
       if (editor.panCamera(cursors)) return;
 
-      movement.update(player, cursors, walkableZones, delta);
-      socketManager.sendUpdate(
-        player.x,
-        player.y,
-        Number(player.frame.name),
+      movement.update(localPlayer.sprite, cursors, walkableZones, delta);
+      mp.sendUpdate(
+        localPlayer.sprite.x,
+        localPlayer.sprite.y,
+        Number(localPlayer.sprite.frame.name),
         movement.currentAnim,
       );
 
-      player.setDepth(player.y);
-      shadow.setPosition(player.x, player.y);
-      shadow.setDepth(player.y - 1);
-      nameText.setPosition(player.x, player.y + 8);
-      nameText.setDepth(player.y + 1);
-      chatBubbles.updatePosition(player);
+      updateLocalPlayer(localPlayer);
+      chatBubbles.updatePosition(localPlayer.sprite);
+
+      // Update all layer sprites to follow their base sprites
+      layerManager.update(localPlayer.sprite, "local");
+      for (const [id, { sprite }] of playerManager.otherPlayers) {
+        layerManager.update(sprite, id);
+      }
     }
 
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      parent: gameRef.current,
-      physics: {
-        default: "arcade",
-        arcade: { gravity: { y: 0 }, debug: false },
-      },
-      scene: { preload, create, update },
-    });
+    const game = createPhaserGame(gameRef.current, { preload, create, update });
 
     return () => {
       chatBubbles.destroy();
+      layerManager.destroy();
       socketManager.disconnect();
       game.destroy(true);
     };
   }, []);
+
+  const handleEquip = useCallback((item) => {
+    const scene = sceneRef.current;
+    const lp = localPlayerRef.current;
+    const lm = layerManagerRef.current;
+    const mp = mpRef.current;
+    if (!scene || !lp || !lm) return;
+
+    // Equip locally on the Phaser sprite
+    lm.equip(scene, lp.sprite, "local", item.category, item.imageUrl, item._id);
+
+    // Update equipped state
+    const next = { ...equippedRef.current, [item.category]: item._id };
+    equippedRef.current = next;
+    onEquippedChange(next);
+
+    const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: item._id, imageUrl: item.imageUrl } };
+
+    mp.sendOutfitChange(changePayload);
+    updateOutfit(changePayload).catch(() => {});
+  }, []);
+
+  const handleUnequip = useCallback((category) => {
+    const lm = layerManagerRef.current;
+    const mp = mpRef.current;
+    if (!lm) return;
+
+    lm.unequip("local", category);
+
+    const next = { ...equippedRef.current };
+    delete next[category];
+    equippedRef.current = next;
+    onEquippedChange(next);
+
+    const changePayload = getOutfitPayload(lm);
+    delete changePayload[category];
+
+    mp.sendOutfitChange(changePayload);
+    updateOutfit(changePayload).catch(() => {});
+  }, []);
+
+  equipRef.current = handleEquip;
+  unequipRef.current = handleUnequip;
 
   const handleSend = useCallback((text) => {
     socketRef.current?.sendChatMessage(text);
@@ -341,4 +274,19 @@ export default function Game({ user }) {
       />
     </S.Container>
   );
+}
+
+/** Build the full outfit payload from current layers */
+function getOutfitPayload(layerManager) {
+  const layers = layerManager.layers.get("local");
+  if (!layers) return {};
+  const payload = {};
+  for (const [category, { key }] of layers) {
+    // key format is "item_{itemId}"
+    const itemId = key.replace("item_", "");
+    // We don't have the imageUrl stored on the layer, so the backend must resolve it.
+    // But for the socket broadcast, other clients will get it from the server.
+    payload[category] = { itemId };
+  }
+  return payload;
 }

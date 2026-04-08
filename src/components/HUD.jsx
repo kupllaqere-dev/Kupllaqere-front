@@ -1,11 +1,25 @@
 import * as S from "./HUDStyles";
 import { useState } from "react";
+import UploadItemModal from "./UploadItemModal";
+import InventoryModal from "./InventoryModal";
 
-function HUD({ onLogout }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
 
   return (
+    <>
+    {showUpload && <UploadItemModal onClose={() => setShowUpload(false)} />}
+    {showInventory && (
+      <InventoryModal
+        onClose={() => setShowInventory(false)}
+        onEquip={onEquip}
+        onUnequip={onUnequip}
+        equipped={equipped}
+      />
+    )}
     <S.Container>
       <S.Bar>
         {/* 🔴 ADD ORB HERE */}
@@ -25,7 +39,7 @@ function HUD({ onLogout }) {
                 <S.Bubble>
                   <img src="/icons/profile.png"></img>
                 </S.Bubble>
-                <S.Bubble>
+                <S.Bubble onClick={() => { setShowInventory(true); setIsOpen(false); }}>
                   <img src="/icons/inventory.png"></img>
                 </S.Bubble>
                 <S.Bubble>
@@ -35,6 +49,9 @@ function HUD({ onLogout }) {
             )}
           </S.ProfileWrapper>
 
+          <S.Bubble onClick={() => setShowUpload(true)} title="Upload Item">
+            <img src="/icons/upload.png"></img>
+          </S.Bubble>
           <S.Bubble>
             <img src="/icons/shop.png"></img>
           </S.Bubble>
@@ -78,6 +95,7 @@ function HUD({ onLogout }) {
         </S.StatsGroup>
       </S.Bar>
     </S.Container>
+    </>
   );
 }
 
