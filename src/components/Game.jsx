@@ -152,6 +152,9 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
       updateLocalPlayer(localPlayer);
       chatBubbles.updatePosition(localPlayer.sprite);
 
+      // Smoothly interpolate remote player positions
+      playerManager.interpolate(delta);
+
       // Update all layer sprites to follow their base sprites
       layerManager.update(localPlayer.sprite, "local");
       for (const [id, { sprite }] of playerManager.otherPlayers) {

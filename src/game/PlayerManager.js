@@ -36,14 +36,16 @@ export default class PlayerManager {
       })
       .setOrigin(0.5, 0)
       .setDepth(data.y + 1);
-    this.otherPlayers.set(data.id, { sprite, shadowImg, nameText });
+    this.otherPlayers.set(data.id, { sprite, shadowImg, nameText, targetX: data.x, targetY: data.y });
   }
 
   updatePlayer(data) {
     const other = this.otherPlayers.get(data.id);
     if (!other) return;
-    other.sprite.setPosition(data.x, data.y);
-    other.sprite.setDepth(data.y);
+
+    // Store target position for interpolation instead of snapping
+    other.targetX = data.x;
+    other.targetY = data.y;
 
     if (data.anim) {
       if (other.sprite.anims.currentAnim?.key !== data.anim || !other.sprite.anims.isPlaying) {
@@ -57,13 +59,27 @@ export default class PlayerManager {
         other.sprite.setFrame(data.frame);
       }
     }
+  }
 
-    other.shadowImg.setPosition(data.x, data.y);
-    other.shadowImg.setDepth(data.y - 1);
-    other.nameText.setPosition(data.x, data.y + 8);
-    other.nameText.setDepth(data.y + 1);
-    if (other.chatBubble) {
-      other.chatBubble.setPosition(data.x, data.y - other.sprite.displayHeight - 10);
+  /** Call every frame from the game update loop to smoothly interpolate remote players. */
+  interpolate(delta) {
+    const lerpSpeed = 0.015; // per ms — ~60% per 60fps frame
+    for (const [, other] of this.otherPlayers) {
+      if (other.targetX === undefined) continue;
+
+      const t = Math.min(1, lerpSpeed * delta);
+      const x = other.sprite.x + (other.targetX - other.sprite.x) * t;
+      const y = other.sprite.y + (other.targetY - other.sprite.y) * t;
+
+      other.sprite.setPosition(x, y);
+      other.sprite.setDepth(y);
+      other.shadowImg.setPosition(x, y);
+      other.shadowImg.setDepth(y - 1);
+      other.nameText.setPosition(x, y + 8);
+      other.nameText.setDepth(y + 1);
+      if (other.chatBubble) {
+        other.chatBubble.setPosition(x, y - other.sprite.displayHeight - 10);
+      }
     }
   }
 
