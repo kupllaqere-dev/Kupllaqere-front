@@ -191,7 +191,7 @@ export default function CharacterSetup({ onComplete }) {
             >
               <div className="avatar-preview">
                 <img
-                  src="/assets/character-bases/female.png"
+                  src="/assets/character-bases/sprite2.png"
                   alt="female"
                   style={{
                     width: 36,
@@ -210,7 +210,7 @@ export default function CharacterSetup({ onComplete }) {
             >
               <div className="avatar-preview">
                 <img
-                  src="/assets/character-bases/female.png"
+                  src="/assets/character-bases/sprite2.png"
                   alt="male"
                   style={{
                     width: 36,

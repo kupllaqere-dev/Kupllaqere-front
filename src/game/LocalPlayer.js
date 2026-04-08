@@ -10,7 +10,7 @@ const ANIMATIONS = [
 export function preloadLocalPlayer(scene) {
   scene.load.spritesheet(
     "player",
-    "/assets/character-bases/female-normal.png",
+    "/assets/character-bases/sprite2.png",
     { frameWidth: 510, frameHeight: 900 },
   );
   scene.load.image("shadow", "/assets/character-bases/shadow.png");
