@@ -8,8 +8,8 @@ export default class MultiplayerHandler {
     this.layerManager = null; // set externally
   }
 
-  join(name, x, y) {
-    this.socket.join(name, x, y);
+  join(name, x, y, userId) {
+    this.socket.join(name, x, y, undefined, userId);
   }
 
   wire(scene, localPlayer) {
@@ -107,6 +107,10 @@ export default class MultiplayerHandler {
           if (p.id === socket.id) continue;
           playerManager.addPlayer(scene, p);
           others.push({ id: p.id, name: p.name });
+          if (p.outfit && this.layerManager) {
+            const other = playerManager.otherPlayers.get(p.id);
+            if (other) this.layerManager.applyOutfit(scene, other.sprite, p.id, p.outfit);
+          }
         }
         this.onlinePlayersRef = others;
         this.cb.setOnlinePlayers(others);

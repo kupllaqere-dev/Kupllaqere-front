@@ -10,9 +10,9 @@ export default class PlayerManager {
   addPlayer(scene, data) {
     if (this.otherPlayers.has(data.id)) return;
     const shadowImg = scene.add.image(data.x, data.y, "shadow");
-    shadowImg.setOrigin(0.5, 0.5);
+    shadowImg.setOrigin(0.5, 0.8);
     shadowImg.setScale(0.15);
-    shadowImg.setAlpha(0.5);
+    shadowImg.setAlpha(0.2);
     shadowImg.setDepth(data.y - 1);
 
     const sprite = scene.add.sprite(data.x, data.y, "player", FRAME.FRONT);

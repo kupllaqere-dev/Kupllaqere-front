@@ -39,7 +39,7 @@ export default class LayerManager {
     }
 
     if (scene.textures.exists(textureKey)) {
-      this._createLayerSprite(scene, baseSprite, ownerId, category, textureKey);
+      this._createLayerSprite(scene, baseSprite, ownerId, category, textureKey, imageUrl);
       return;
     }
 
@@ -49,12 +49,12 @@ export default class LayerManager {
     });
     scene.load.once("complete", () => {
       if (!this.layers.has(ownerId)) return;
-      this._createLayerSprite(scene, baseSprite, ownerId, category, textureKey);
+      this._createLayerSprite(scene, baseSprite, ownerId, category, textureKey, imageUrl);
     });
     scene.load.start();
   }
 
-  _createLayerSprite(scene, baseSprite, ownerId, category, textureKey) {
+  _createLayerSprite(scene, baseSprite, ownerId, category, textureKey, imageUrl) {
     const layerSprite = scene.add.sprite(
       baseSprite.x,
       baseSprite.y,
@@ -68,7 +68,7 @@ export default class LayerManager {
     layerSprite.setDepth(baseSprite.depth + 1 + orderIndex);
 
     const playerLayers = this.layers.get(ownerId);
-    playerLayers.set(category, { sprite: layerSprite, key: textureKey });
+    playerLayers.set(category, { sprite: layerSprite, key: textureKey, imageUrl });
   }
 
   unequip(ownerId, category) {

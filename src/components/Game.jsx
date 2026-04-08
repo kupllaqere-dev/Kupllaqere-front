@@ -103,7 +103,7 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
       });
 
       // Multiplayer
-      mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y);
+      mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y, user?.id);
       mp.wire(this, localPlayer.sprite);
       mp.wireTeleport(this, localPlayer, playerManager, {
         onMapSwitch: (scene, mapName) => {
@@ -281,12 +281,9 @@ function getOutfitPayload(layerManager) {
   const layers = layerManager.layers.get("local");
   if (!layers) return {};
   const payload = {};
-  for (const [category, { key }] of layers) {
-    // key format is "item_{itemId}"
+  for (const [category, { key, imageUrl }] of layers) {
     const itemId = key.replace("item_", "");
-    // We don't have the imageUrl stored on the layer, so the backend must resolve it.
-    // But for the socket broadcast, other clients will get it from the server.
-    payload[category] = { itemId };
+    payload[category] = { itemId, imageUrl };
   }
   return payload;
 }

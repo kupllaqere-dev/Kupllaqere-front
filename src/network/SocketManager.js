@@ -8,8 +8,8 @@ export default class SocketManager {
     this.lastSentFrame = 0;
   }
 
-  join(name, x, y, map) {
-    this.socket.emit("player:join", { name, x, y, map });
+  join(name, x, y, map, userId) {
+    this.socket.emit("player:join", { name, x, y, map, userId });
   }
 
   teleport(x, y, map) {
