@@ -1,4 +1,5 @@
 import { FRAME } from "./PlayerManager";
+import { perspectiveScale } from "./perspective";
 
 const ANIMATIONS = [
   { key: "walk-left", start: 6, end: 11 },
@@ -16,7 +17,7 @@ export function preloadLocalPlayer(scene) {
   scene.load.image("shadow", "/assets/character-bases/shadow.png");
 }
 
-export function createLocalPlayer(scene, x, y, name) {
+export function createLocalPlayer(scene, x, y, name, layerManager) {
   const shadow = scene.add.image(x, y, "shadow");
   shadow.setOrigin(0.5, 0.8);
   shadow.setScale(0.15);
@@ -25,9 +26,13 @@ export function createLocalPlayer(scene, x, y, name) {
   const sprite = scene.add.sprite(x, y, "player", FRAME.FRONT);
   sprite.setOrigin(0.5, 1);
   sprite.setScale(0.4);
-  sprite.setInteractive({ pixelPerfect: true });
-  sprite.on("pointerover", () => sprite.postFX.addGlow(0xffffff, 3, 0));
-  sprite.on("pointerout", () => sprite.postFX.clear());
+  if (layerManager) {
+    layerManager.registerBase("local", sprite);
+  } else {
+    sprite.setInteractive({ pixelPerfect: true });
+    sprite.on("pointerover", () => sprite.postFX.addGlow(0xffffff, 2, 0));
+    sprite.on("pointerout", () => sprite.postFX.clear());
+  }
 
   const nameText = scene.add
     .text(x, y + 8, name, {
@@ -62,8 +67,11 @@ export function createLocalPlayer(scene, x, y, name) {
 
 export function updateLocalPlayer(player) {
   const { sprite, shadow, nameText } = player;
+  const s = perspectiveScale(sprite.y);
+  sprite.setScale(s);
   sprite.setDepth(sprite.y);
   shadow.setPosition(sprite.x, sprite.y);
+  shadow.setScale(s * 0.375);
   shadow.setDepth(sprite.y - 1);
   nameText.setPosition(sprite.x, sprite.y + 8);
   nameText.setDepth(sprite.y + 1);

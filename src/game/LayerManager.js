@@ -1,3 +1,5 @@
+import Phaser from "phaser";
+
 /**
  * Manages clothing/accessory sprite layers on top of a base player sprite.
  *
@@ -24,6 +26,25 @@ export default class LayerManager {
   constructor() {
     // ownerId -> Map<category, { sprite, key }>
     this.layers = new Map();
+    // ownerId -> baseSprite
+    this.owners = new Map();
+  }
+
+  /**
+   * Register a base sprite for an owner and set up composite hit-testing
+   * so hovering any visible pixel (base or any layer) counts as hovering the player.
+   */
+  registerBase(ownerId, baseSprite) {
+    this.owners.set(ownerId, baseSprite);
+    const self = this;
+    baseSprite.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(0, 0, 510, 900),
+      hitAreaCallback(hitArea, x, y) {
+        return self._compositeHitTest(ownerId, Math.floor(x), Math.floor(y));
+      },
+    });
+    baseSprite.on("pointerover", () => this._setGlow(ownerId, true));
+    baseSprite.on("pointerout", () => this._setGlow(ownerId, false));
   }
 
   /**
@@ -105,6 +126,7 @@ export default class LayerManager {
 
     for (const [category, { sprite }] of playerLayers) {
       sprite.setPosition(baseSprite.x, baseSprite.y);
+      sprite.setScale(baseSprite.scaleX, baseSprite.scaleY);
 
       const orderIndex = LAYER_ORDER.indexOf(category);
       sprite.setDepth(baseSprite.depth + 1 + orderIndex);
@@ -135,6 +157,47 @@ export default class LayerManager {
     }
   }
 
+  /**
+   * Returns true if (x, y) hits a non-transparent pixel on any layer (base or equipped).
+   */
+  _compositeHitTest(ownerId, x, y) {
+    const baseSprite = this.owners.get(ownerId);
+    if (!baseSprite) return false;
+    const textures = baseSprite.scene.textures;
+
+    if (textures.getPixelAlpha(x, y, baseSprite.texture.key, baseSprite.frame.name) > 0) {
+      return true;
+    }
+
+    const playerLayers = this.layers.get(ownerId);
+    if (!playerLayers) return false;
+    for (const [, { sprite }] of playerLayers) {
+      if (textures.getPixelAlpha(x, y, sprite.texture.key, sprite.frame.name) > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _setGlow(ownerId, on) {
+    const baseSprite = this.owners.get(ownerId);
+    if (!baseSprite) return;
+    if (on) {
+      baseSprite.postFX.addGlow(0xffffff, 2, 0);
+    } else {
+      baseSprite.postFX.clear();
+    }
+    const playerLayers = this.layers.get(ownerId);
+    if (!playerLayers) return;
+    for (const [, { sprite }] of playerLayers) {
+      if (on) {
+        sprite.postFX.addGlow(0xffffff, 2, 0);
+      } else {
+        sprite.postFX.clear();
+      }
+    }
+  }
+
   clearAll(ownerId) {
     const playerLayers = this.layers.get(ownerId);
     if (!playerLayers) return;
@@ -149,6 +212,7 @@ export default class LayerManager {
       this.clearAll(ownerId);
     }
     this.layers.clear();
+    this.owners.clear();
   }
 
   getEquipped(ownerId) {

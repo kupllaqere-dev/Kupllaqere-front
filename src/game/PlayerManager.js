@@ -1,3 +1,5 @@
+import { perspectiveScale } from "./perspective";
+
 const FRAME = { FRONT: 0, FRONT_LEFT: 1, LEFT: 2, BACK: 3, FRONT_RIGHT: 4, RIGHT: 5 };
 
 export { FRAME };
@@ -9,19 +11,24 @@ export default class PlayerManager {
 
   addPlayer(scene, data) {
     if (this.otherPlayers.has(data.id)) return;
+    const s = perspectiveScale(data.y);
     const shadowImg = scene.add.image(data.x, data.y, "shadow");
     shadowImg.setOrigin(0.5, 0.8);
-    shadowImg.setScale(0.15);
+    shadowImg.setScale(s * 0.375);
     shadowImg.setAlpha(0.2);
     shadowImg.setDepth(data.y - 1);
 
     const sprite = scene.add.sprite(data.x, data.y, "player", FRAME.FRONT);
     sprite.setOrigin(0.5, 1);
-    sprite.setScale(0.4);
+    sprite.setScale(s);
     sprite.setDepth(data.y);
-    sprite.setInteractive({ pixelPerfect: true });
-    sprite.on("pointerover", () => sprite.postFX.addGlow(0xffffff, 3, 0));
-    sprite.on("pointerout", () => sprite.postFX.clear());
+    if (this.layerManager) {
+      this.layerManager.registerBase(data.id, sprite);
+    } else {
+      sprite.setInteractive({ pixelPerfect: true });
+      sprite.on("pointerover", () => sprite.postFX.addGlow(0xffffff, 2, 0));
+      sprite.on("pointerout", () => sprite.postFX.clear());
+    }
     sprite.on("pointerdown", (pointer) => {
       if (this.onPlayerClick) {
         this.onPlayerClick(data.id, data.name, pointer.event.clientX, pointer.event.clientY);
@@ -71,9 +78,12 @@ export default class PlayerManager {
       const x = other.sprite.x + (other.targetX - other.sprite.x) * t;
       const y = other.sprite.y + (other.targetY - other.sprite.y) * t;
 
+      const s = perspectiveScale(y);
       other.sprite.setPosition(x, y);
+      other.sprite.setScale(s);
       other.sprite.setDepth(y);
       other.shadowImg.setPosition(x, y);
+      other.shadowImg.setScale(s * 0.375);
       other.shadowImg.setDepth(y - 1);
       other.nameText.setPosition(x, y + 8);
       other.nameText.setDepth(y + 1);

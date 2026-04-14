@@ -64,6 +64,7 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
       setOnlinePlayers,
     });
     mp.layerManager = layerManager;
+    playerManager.layerManager = layerManager;
     mpRef.current = mp;
 
     let localPlayer;
@@ -84,7 +85,7 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
       sceneRef.current = this;
       walkableZones = createMap(this);
 
-      localPlayer = createLocalPlayer(this, 700, 900, user?.name || "Player");
+      localPlayer = createLocalPlayer(this, 700, 900, user?.name || "Player", layerManager);
       localPlayerRef.current = localPlayer;
 
       cursors = this.input.keyboard.createCursorKeys();

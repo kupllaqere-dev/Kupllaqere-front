@@ -1,3 +1,5 @@
+import { setPerspectiveFromColliders } from "./perspective";
+
 export const MAP_WIDTH = 5000;
 export const MAP_HEIGHT = 1000;
 
@@ -67,6 +69,7 @@ export function createMap(scene, mapName = "main") {
   let walkableZones = [];
   if (collidersData?.walkableZones) {
     walkableZones = collidersData.walkableZones.map((z) => z.points);
+    setPerspectiveFromColliders(walkableZones);
   }
   return walkableZones;
 }
