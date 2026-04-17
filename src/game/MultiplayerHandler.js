@@ -44,7 +44,9 @@ export default class MultiplayerHandler {
       });
     });
 
-    socket.onPlayerUpdated((data) => players.updatePlayer(data));
+    socket.onPlayersUpdated((batch) => {
+      for (const data of batch) players.updatePlayer(data);
+    });
 
     socket.onPlayerLeft((data) => {
       if (this.layerManager) this.layerManager.clearAll(data.id);

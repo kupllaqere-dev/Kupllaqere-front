@@ -43,16 +43,19 @@ export default class PlayerManager {
       })
       .setOrigin(0.5, 0)
       .setDepth(data.y + 1);
-    this.otherPlayers.set(data.id, { sprite, shadowImg, nameText, targetX: data.x, targetY: data.y });
+    this.otherPlayers.set(data.id, { sprite, shadowImg, nameText, startX: data.x, startY: data.y, targetX: data.x, targetY: data.y, interpElapsed: 0 });
   }
 
   updatePlayer(data) {
     const other = this.otherPlayers.get(data.id);
     if (!other) return;
 
-    // Store target position for interpolation instead of snapping
+    // Snapshot current position as the start of the new interpolation segment
+    other.startX = other.sprite.x;
+    other.startY = other.sprite.y;
     other.targetX = data.x;
     other.targetY = data.y;
+    other.interpElapsed = 0;
 
     if (data.anim) {
       if (other.sprite.anims.currentAnim?.key !== data.anim || !other.sprite.anims.isPlaying) {
@@ -68,15 +71,18 @@ export default class PlayerManager {
     }
   }
 
-  /** Call every frame from the game update loop to smoothly interpolate remote players. */
+  /** Call every frame to smoothly interpolate remote players between server ticks. */
   interpolate(delta) {
-    const lerpSpeed = 0.015; // per ms — ~60% per 60fps frame
+    // Server sends updates every ~50ms; use a slightly longer window for smoothness
+    const interpDuration = 60;
     for (const [, other] of this.otherPlayers) {
       if (other.targetX === undefined) continue;
 
-      const t = Math.min(1, lerpSpeed * delta);
-      const x = other.sprite.x + (other.targetX - other.sprite.x) * t;
-      const y = other.sprite.y + (other.targetY - other.sprite.y) * t;
+      other.interpElapsed = (other.interpElapsed || 0) + delta;
+      const t = Math.min(1, other.interpElapsed / interpDuration);
+
+      const x = other.startX + (other.targetX - other.startX) * t;
+      const y = other.startY + (other.targetY - other.startY) * t;
 
       const s = perspectiveScale(y);
       other.sprite.setPosition(x, y);

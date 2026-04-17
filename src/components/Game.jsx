@@ -27,7 +27,7 @@ import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
 import ChatBox from "./ChatBox";
 
-export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
+export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const sceneRef = useRef(null);
@@ -41,6 +41,7 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
   const [objectMenu, setObjectMenu] = useState(null);
   const teleportRef = useRef(null);
   const equippedRef = useRef({});
+  const outfitRef = useRef({});
 
   useEffect(() => {
     const socketManager = new SocketManager();
@@ -85,7 +86,7 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
       sceneRef.current = this;
       walkableZones = createMap(this);
 
-      localPlayer = createLocalPlayer(this, 700, 900, user?.name || "Player", layerManager);
+      localPlayer = createLocalPlayer(this, 500, 800, user?.name || "Player", layerManager);
       localPlayerRef.current = localPlayer;
 
       cursors = this.input.keyboard.createCursorKeys();
@@ -127,14 +128,18 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
         .then((data) => {
           if (!data.outfit) return;
           const outfitMap = {};
+          const fullOutfit = {};
           for (const [cat, item] of Object.entries(data.outfit)) {
             if (item && item.itemId) {
               outfitMap[cat] = item.itemId;
+              fullOutfit[cat] = { itemId: item.itemId, imageUrl: item.imageUrl };
               layerManager.equip(scene, localPlayer.sprite, "local", cat, item.imageUrl, item.itemId);
             }
           }
           equippedRef.current = outfitMap;
+          outfitRef.current = fullOutfit;
           onEquippedChange(outfitMap);
+          onOutfitChange(fullOutfit);
         })
         .catch(() => {});
     }
@@ -188,6 +193,10 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
     equippedRef.current = next;
     onEquippedChange(next);
 
+    const nextOutfit = { ...outfitRef.current, [item.category]: { itemId: item._id, imageUrl: item.imageUrl } };
+    outfitRef.current = nextOutfit;
+    onOutfitChange(nextOutfit);
+
     const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: item._id, imageUrl: item.imageUrl } };
 
     mp.sendOutfitChange(changePayload);
@@ -205,6 +214,11 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
     delete next[category];
     equippedRef.current = next;
     onEquippedChange(next);
+
+    const nextOutfit = { ...outfitRef.current };
+    delete nextOutfit[category];
+    outfitRef.current = nextOutfit;
+    onOutfitChange(nextOutfit);
 
     const changePayload = getOutfitPayload(lm);
     delete changePayload[category];
@@ -268,14 +282,14 @@ export default function Game({ user, onEquippedChange, equipRef, unequipRef }) {
           </S.PlayerMenuButton>
         </S.PlayerMenu>
       )}
-      <ChatBox
+      {/* <ChatBox
         messages={chatMessages}
         whispers={whisperMessages}
         players={onlinePlayers}
         myId={socketRef.current?.id}
         onSend={handleSend}
         onWhisper={handleWhisper}
-      />
+      /> */}
     </S.Container>
   );
 }

@@ -45,8 +45,8 @@ export default class SocketManager {
     this.socket.on("player:joined", callback);
   }
 
-  onPlayerUpdated(callback) {
-    this.socket.on("player:updated", callback);
+  onPlayersUpdated(callback) {
+    this.socket.on("players:updated", callback);
   }
 
   onPlayerLeft(callback) {

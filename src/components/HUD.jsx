@@ -2,15 +2,24 @@ import * as S from "./HUDStyles";
 import { useState } from "react";
 import UploadItemModal from "./UploadItemModal";
 import InventoryModal from "./InventoryModal";
+import PlayerProfile from "./PlayerProfile";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   return (
     <>
+    {showProfile && (
+      <PlayerProfile
+        onClose={() => setShowProfile(false)}
+        playerName={playerName}
+        outfit={outfit}
+      />
+    )}
     {showUpload && <UploadItemModal onClose={() => setShowUpload(false)} />}
     {showInventory && (
       <InventoryModal
@@ -36,7 +45,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip }) {
 
             {isOpen && (
               <S.Dropdown>
-                <S.Bubble>
+                <S.Bubble onClick={() => { setShowProfile(true); setIsOpen(false); }}>
                   <img src="/icons/profile.png"></img>
                 </S.Bubble>
                 <S.Bubble onClick={() => { setShowInventory(true); setIsOpen(false); }}>

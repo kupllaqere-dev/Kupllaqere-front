@@ -19,6 +19,7 @@ function App() {
     return null;
   });
   const [equipped, setEquipped] = useState({});
+  const [outfit, setOutfit] = useState({});
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
 
@@ -60,10 +61,13 @@ function App() {
         equipped={equipped}
         onEquip={handleEquip}
         onUnequip={handleUnequip}
+        playerName={user?.name}
+        outfit={outfit}
       />
       <Game
         user={user}
         onEquippedChange={setEquipped}
+        onOutfitChange={setOutfit}
         equipRef={equipRef}
         unequipRef={unequipRef}
       />

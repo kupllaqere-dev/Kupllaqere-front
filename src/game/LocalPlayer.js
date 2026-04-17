@@ -25,7 +25,7 @@ export function createLocalPlayer(scene, x, y, name, layerManager) {
 
   const sprite = scene.add.sprite(x, y, "player", FRAME.FRONT);
   sprite.setOrigin(0.5, 1);
-  sprite.setScale(0.4);
+  sprite.setScale(0.2);
   if (layerManager) {
     layerManager.registerBase("local", sprite);
   } else {
