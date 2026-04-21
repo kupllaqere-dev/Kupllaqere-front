@@ -25,6 +25,7 @@ import MultiplayerHandler from "../game/MultiplayerHandler";
 import LayerManager from "../game/LayerManager";
 import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
+import { sendFriendRequest } from "../api/friends";
 import ChatBox from "./ChatBox";
 
 export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef }) {
@@ -42,16 +43,25 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const teleportRef = useRef(null);
   const equippedRef = useRef({});
   const outfitRef = useRef({});
+  const playerMenuDomRef = useRef(null);
+  const playerMenuTargetRef = useRef(null);
+  const playerManagerRef = useRef(null);
 
   useEffect(() => {
     const socketManager = new SocketManager();
     socketRef.current = socketManager;
 
     const playerManager = new PlayerManager();
-    playerManager.onPlayerClick = (id, name, clientX, clientY) => {
-      setPlayerMenu((prev) =>
-        prev && prev.id === id ? null : { id, name, x: clientX, y: clientY },
-      );
+    playerManagerRef.current = playerManager;
+    playerManager.onPlayerClick = (id, name, clientX, clientY, userId) => {
+      setPlayerMenu((prev) => {
+        if (prev && prev.id === id) {
+          playerMenuTargetRef.current = null;
+          return null;
+        }
+        playerMenuTargetRef.current = id;
+        return { id, name, x: clientX, y: clientY, userId, status: null };
+      });
     };
 
     const movement = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
@@ -166,6 +176,23 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       for (const [id, { sprite }] of playerManager.otherPlayers) {
         layerManager.update(sprite, id);
       }
+
+      // Keep the player menu attached to the clicked player as they move
+      const menuTargetId = playerMenuTargetRef.current;
+      const menuEl = playerMenuDomRef.current;
+      if (menuTargetId && menuEl) {
+        const other = playerManager.otherPlayers.get(menuTargetId);
+        if (other) {
+          const cam = this.cameras.main;
+          const rect = this.game.canvas.getBoundingClientRect();
+          const worldX = other.sprite.x;
+          const worldY = other.sprite.y - other.sprite.displayHeight / 2;
+          const screenX = (worldX - cam.worldView.x) * cam.zoom + rect.left;
+          const screenY = (worldY - cam.worldView.y) * cam.zoom + rect.top;
+          menuEl.style.left = `${screenX}px`;
+          menuEl.style.top = `${screenY}px`;
+        }
+      }
     }
 
     const game = createPhaserGame(gameRef.current, { preload, create, update });
@@ -242,6 +269,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     if (!playerMenu && !objectMenu) return;
     const handleClick = (e) => {
       if (playerMenu && !e.target.closest("[data-player-menu]")) {
+        playerMenuTargetRef.current = null;
         setPlayerMenu(null);
       }
       if (objectMenu && !e.target.closest("[data-object-menu]")) {
@@ -257,12 +285,35 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       <S.GameWrapper ref={gameRef} />
       {playerMenu && (
         <S.PlayerMenu
+          ref={playerMenuDomRef}
           data-player-menu
           style={{ left: playerMenu.x, top: playerMenu.y }}
         >
           <S.PlayerMenuName>{playerMenu.name}</S.PlayerMenuName>
           <S.PlayerMenuButton>View Info</S.PlayerMenuButton>
-          <S.PlayerMenuButton>Add Friend</S.PlayerMenuButton>
+          <S.PlayerMenuButton
+            disabled={!playerMenu.userId || playerMenu.status === "pending"}
+            onClick={async () => {
+              if (!playerMenu.userId) return;
+              setPlayerMenu((prev) => prev && { ...prev, status: "pending" });
+              try {
+                const result = await sendFriendRequest(playerMenu.userId);
+                setPlayerMenu((prev) =>
+                  prev && { ...prev, status: result.status === "accepted" ? "accepted" : "sent" },
+                );
+              } catch (err) {
+                setPlayerMenu((prev) =>
+                  prev && { ...prev, status: "error", error: err.message },
+                );
+              }
+            }}
+          >
+            {playerMenu.status === "pending" && "Sending…"}
+            {playerMenu.status === "sent" && "Request Sent"}
+            {playerMenu.status === "accepted" && "Friends!"}
+            {playerMenu.status === "error" && (playerMenu.error || "Failed")}
+            {!playerMenu.status && "Add Friend"}
+          </S.PlayerMenuButton>
           <S.PlayerMenuButton $danger>Block</S.PlayerMenuButton>
         </S.PlayerMenu>
       )}

@@ -3,6 +3,7 @@ import { useState } from "react";
 import UploadItemModal from "./UploadItemModal";
 import InventoryModal from "./InventoryModal";
 import PlayerProfile from "./PlayerProfile";
+import FriendsModal from "./FriendsModal";
 
 function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
 
   return (
     <>
@@ -20,6 +22,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
         outfit={outfit}
       />
     )}
+    {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}
     {showUpload && <UploadItemModal onClose={() => setShowUpload(false)} />}
     {showInventory && (
       <InventoryModal
@@ -51,7 +54,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
                 <S.Bubble onClick={() => { setShowInventory(true); setIsOpen(false); }}>
                   <img src="/icons/inventory.png"></img>
                 </S.Bubble>
-                <S.Bubble>
+                <S.Bubble onClick={() => { setShowFriends(true); setIsOpen(false); }}>
                   <img src="/icons/friends.png"></img>
                 </S.Bubble>
               </S.Dropdown>

@@ -31,7 +31,7 @@ export default class PlayerManager {
     }
     sprite.on("pointerdown", (pointer) => {
       if (this.onPlayerClick) {
-        this.onPlayerClick(data.id, data.name, pointer.event.clientX, pointer.event.clientY);
+        this.onPlayerClick(data.id, data.name, pointer.event.clientX, pointer.event.clientY, data.userId);
       }
     });
     const nameText = scene.add

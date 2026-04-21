@@ -4,7 +4,7 @@ import { uploadItem } from "../api/items";
 
 const CATEGORIES = {
   tops: ["longSleeve", "shortSleeve", "sleeveless", "baggy"],
-  bottoms: ["pants", "skinny", "shorts"],
+  bottoms: ["pants", "skinny", "shorts", "skirt"],
   coats: ["jackets", "vests", "hoodie"],
   head: ["hats", "sunglasses", "decorations", "horns", "halos"],
   hair: ["short", "medium", "long", "facial"],
