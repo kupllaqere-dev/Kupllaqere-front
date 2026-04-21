@@ -15,6 +15,7 @@ import {
   createLocalPlayer,
   updateLocalPlayer,
   repositionLocalPlayer,
+  setLocalPlayerGender,
 } from "../game/LocalPlayer";
 import MovementManager from "../game/MovementManager";
 import ChatBubbleManager from "../game/ChatBubbleManager";
@@ -118,6 +119,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       });
 
       // Multiplayer
+      mp.onLocalGender = (gender) => setLocalPlayerGender(localPlayer, gender);
       mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y, user?.id, user?.gender);
       mp.wire(this, localPlayer.sprite);
       mp.wireTeleport(this, localPlayer, playerManager, {

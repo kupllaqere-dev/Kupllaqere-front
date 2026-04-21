@@ -1,5 +1,5 @@
 import { perspectiveScale } from "./perspective";
-import { baseTextureKey } from "./LocalPlayer";
+import { baseTextureKey, genderScale } from "./LocalPlayer";
 
 const FRAME = { FRONT: 0, FRONT_LEFT: 1, LEFT: 2, BACK: 3, FRONT_RIGHT: 4, RIGHT: 5 };
 
@@ -12,7 +12,7 @@ export default class PlayerManager {
 
   addPlayer(scene, data) {
     if (this.otherPlayers.has(data.id)) return;
-    const s = perspectiveScale(data.y);
+    const s = perspectiveScale(data.y) * genderScale(data.gender);
     const shadowImg = scene.add.image(data.x, data.y, "shadow");
     shadowImg.setOrigin(0.5, 0.8);
     shadowImg.setScale(s * 0.375);
@@ -23,6 +23,7 @@ export default class PlayerManager {
     sprite.setOrigin(0.5, 1);
     sprite.setScale(s);
     sprite.setDepth(data.y);
+    sprite.gender = data.gender;
     if (this.layerManager) {
       this.layerManager.registerBase(data.id, sprite);
     } else {
@@ -85,7 +86,7 @@ export default class PlayerManager {
       const x = other.startX + (other.targetX - other.startX) * t;
       const y = other.startY + (other.targetY - other.startY) * t;
 
-      const s = perspectiveScale(y);
+      const s = perspectiveScale(y) * genderScale(other.sprite.gender);
       other.sprite.setPosition(x, y);
       other.sprite.setScale(s);
       other.sprite.setDepth(y);

@@ -17,6 +17,10 @@ export function baseTextureKey(gender) {
   return gender === "male" ? "player-male" : "player-female";
 }
 
+export function genderScale(gender) {
+  return gender === "male" ? 1.05 : 1.0;
+}
+
 export function getBaseSpriteUrl(gender) {
   return gender === "male" ? BASE_SPRITE_URLS.male : BASE_SPRITE_URLS.female;
 }
@@ -52,15 +56,17 @@ function ensureAnimations(scene, textureKey) {
 }
 
 export function createLocalPlayer(scene, x, y, name, layerManager, gender) {
+  const gScale = genderScale(gender);
   const shadow = scene.add.image(x, y, "shadow");
   shadow.setOrigin(0.5, 0.8);
-  shadow.setScale(0.15);
+  shadow.setScale(0.15 * gScale);
   shadow.setAlpha(0.2);
 
   const textureKey = baseTextureKey(gender);
   const sprite = scene.add.sprite(x, y, textureKey, FRAME.FRONT);
   sprite.setOrigin(0.5, 1);
-  sprite.setScale(0.2);
+  sprite.setScale(0.2 * gScale);
+  sprite.gender = gender;
   if (layerManager) {
     layerManager.registerBase("local", sprite);
   } else {
@@ -93,7 +99,8 @@ export function createLocalPlayer(scene, x, y, name, layerManager, gender) {
 
 export function updateLocalPlayer(player) {
   const { sprite, shadow, nameText } = player;
-  const s = perspectiveScale(sprite.y);
+  const gScale = genderScale(sprite.gender);
+  const s = perspectiveScale(sprite.y) * gScale;
   sprite.setScale(s);
   sprite.setDepth(sprite.y);
   shadow.setPosition(sprite.x, sprite.y);
@@ -107,4 +114,19 @@ export function repositionLocalPlayer(player, x, y) {
   player.sprite.setPosition(x, y);
   player.shadow.setPosition(x, y);
   player.nameText.setPosition(x, y + 8);
+}
+
+export function setLocalPlayerGender(player, gender) {
+  const { sprite } = player;
+  if (sprite.gender === gender) return;
+  sprite.gender = gender;
+  const textureKey = baseTextureKey(gender);
+  const frame = Number(sprite.frame.name);
+  const wasPlaying = sprite.anims.isPlaying;
+  const animBase = sprite.anims.currentAnim?.key?.replace(/-player-(male|female)$/, "");
+  sprite.setTexture(textureKey, frame);
+  if (wasPlaying && animBase) {
+    const nextKey = `${animBase}-${textureKey}`;
+    if (sprite.scene.anims.exists(nextKey)) sprite.play(nextKey);
+  }
 }

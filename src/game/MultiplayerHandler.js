@@ -6,6 +6,7 @@ export default class MultiplayerHandler {
     this.cb = callbacks;
     this.onlinePlayersRef = [];
     this.layerManager = null; // set externally
+    this.onLocalGender = null; // set externally — called when server confirms local gender
   }
 
   join(name, x, y, userId, gender) {
@@ -16,6 +17,9 @@ export default class MultiplayerHandler {
     const { socket, players, bubbles, cb } = this;
 
     socket.onGameState((data) => {
+      if (data.you?.gender && this.onLocalGender) {
+        this.onLocalGender(data.you.gender);
+      }
       const others = [];
       for (const p of data.players) {
         if (p.id === socket.id) continue;
