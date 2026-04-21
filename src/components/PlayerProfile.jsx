@@ -16,7 +16,7 @@ function extractFrame(img, frameIndex, cols) {
   return { sx: col * FRAME_W, sy: row * FRAME_H };
 }
 
-export default function PlayerProfile({ onClose, playerName, outfit }) {
+export default function PlayerProfile({ onClose, playerName, outfit, gender }) {
   const canvasRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [baseImg, setBaseImg] = useState(null);
@@ -26,9 +26,11 @@ export default function PlayerProfile({ onClose, playerName, outfit }) {
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = "/assets/character-bases/sprite2.png";
+    img.src = gender === "male"
+      ? "/assets/character-bases/men-test.png"
+      : "/assets/character-bases/females.png";
     img.onload = () => setBaseImg(img);
-  }, []);
+  }, [gender]);
 
   // Load equipped layer images
   useEffect(() => {

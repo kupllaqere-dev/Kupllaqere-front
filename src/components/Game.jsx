@@ -27,6 +27,7 @@ import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
 import { sendFriendRequest } from "../api/friends";
 import ChatBox from "./ChatBox";
+import OnlineFriendsBar from "./OnlineFriendsBar";
 
 export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef }) {
   const gameRef = useRef(null);
@@ -40,6 +41,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [playerMenu, setPlayerMenu] = useState(null);
   const [objectMenu, setObjectMenu] = useState(null);
+  const [socketReady, setSocketReady] = useState(false);
   const teleportRef = useRef(null);
   const equippedRef = useRef({});
   const outfitRef = useRef({});
@@ -50,6 +52,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   useEffect(() => {
     const socketManager = new SocketManager();
     socketRef.current = socketManager;
+    setSocketReady(true);
 
     const playerManager = new PlayerManager();
     playerManagerRef.current = playerManager;
@@ -96,7 +99,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       sceneRef.current = this;
       walkableZones = createMap(this);
 
-      localPlayer = createLocalPlayer(this, 500, 800, user?.name || "Player", layerManager);
+      localPlayer = createLocalPlayer(this, 500, 800, user?.name || "Player", layerManager, user?.gender);
       localPlayerRef.current = localPlayer;
 
       cursors = this.input.keyboard.createCursorKeys();
@@ -115,7 +118,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       });
 
       // Multiplayer
-      mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y, user?.id);
+      mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y, user?.id, user?.gender);
       mp.wire(this, localPlayer.sprite);
       mp.wireTeleport(this, localPlayer, playerManager, {
         onMapSwitch: (scene, mapName) => {
@@ -341,6 +344,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         onSend={handleSend}
         onWhisper={handleWhisper}
       /> */}
+      {socketReady && <OnlineFriendsBar socket={socketRef.current} />}
     </S.Container>
   );
 }

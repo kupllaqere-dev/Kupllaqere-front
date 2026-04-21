@@ -8,8 +8,8 @@ export default class MultiplayerHandler {
     this.layerManager = null; // set externally
   }
 
-  join(name, x, y, userId) {
-    this.socket.join(name, x, y, undefined, userId);
+  join(name, x, y, userId, gender) {
+    this.socket.join(name, x, y, undefined, userId, gender);
   }
 
   wire(scene, localPlayer) {

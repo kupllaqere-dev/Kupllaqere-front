@@ -115,8 +115,10 @@ export default class MovementManager {
       else { frame = FRAME.LEFT; walkDir = "left"; }
     }
 
+    const baseTextureKey = player.texture.key;
+
     if (walkDir) {
-      const animKey = `walk-${walkDir}`;
+      const animKey = `walk-${walkDir}-${baseTextureKey}`;
       if (!this.wasWalking || player.anims.currentAnim?.key !== animKey) {
         player.play(animKey);
       }
@@ -131,7 +133,7 @@ export default class MovementManager {
           : this.lastDirection === "right" ? FRAME.FRONT_RIGHT
           : this.lastDirection === "up" ? FRAME.BACK
           : FRAME.FRONT;
-        player.setTexture("player", idleFrame);
+        player.setTexture(baseTextureKey, idleFrame);
         this.wasWalking = false;
       } else if (isMoving) {
         player.setFrame(frame);

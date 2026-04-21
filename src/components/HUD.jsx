@@ -5,7 +5,7 @@ import InventoryModal from "./InventoryModal";
 import PlayerProfile from "./PlayerProfile";
 import FriendsModal from "./FriendsModal";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -20,6 +20,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit }) {
         onClose={() => setShowProfile(false)}
         playerName={playerName}
         outfit={outfit}
+        gender={gender}
       />
     )}
     {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}

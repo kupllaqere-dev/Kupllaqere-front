@@ -191,7 +191,7 @@ export default function CharacterSetup({ onComplete }) {
             >
               <div className="avatar-preview">
                 <img
-                  src="/assets/character-bases/sprite2.png"
+                  src="/assets/character-bases/females.png"
                   alt="female"
                   style={{
                     width: 36,
@@ -210,14 +210,13 @@ export default function CharacterSetup({ onComplete }) {
             >
               <div className="avatar-preview">
                 <img
-                  src="/assets/character-bases/sprite2.png"
+                  src="/assets/character-bases/men-test.png"
                   alt="male"
                   style={{
                     width: 36,
                     height: 72,
                     objectFit: "cover",
                     objectPosition: "top",
-                    filter: "hue-rotate(180deg)",
                   }}
                 />
               </div>

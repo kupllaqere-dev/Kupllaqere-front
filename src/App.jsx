@@ -62,6 +62,7 @@ function App() {
         onEquip={handleEquip}
         onUnequip={handleUnequip}
         playerName={user?.name}
+        gender={user?.gender}
         outfit={outfit}
       />
       <Game

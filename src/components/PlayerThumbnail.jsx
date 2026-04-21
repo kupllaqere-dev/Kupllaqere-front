@@ -14,7 +14,14 @@ const LAYER_ORDER = [
 // Crop window inside the 510×900 FRONT frame, tuned to show head + shoulders.
 const CROP = { sx: 125, sy: 30, sw: 260, sh: 260 };
 
-const BASE_SPRITE_URL = "/assets/character-bases/sprite2.png";
+const BASE_SPRITE_URLS = {
+  female: "/assets/character-bases/females.png",
+  male: "/assets/character-bases/men-test.png",
+};
+
+function baseSpriteUrl(gender) {
+  return gender === "male" ? BASE_SPRITE_URLS.male : BASE_SPRITE_URLS.female;
+}
 
 const imageCache = new Map();
 function loadImage(url) {
@@ -31,14 +38,14 @@ function loadImage(url) {
   return imageCache.get(url);
 }
 
-export default function PlayerThumbnail({ outfit, size = 36 }) {
+export default function PlayerThumbnail({ outfit, gender, size = 36 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const urls = [
-      BASE_SPRITE_URL,
+      baseSpriteUrl(gender),
       ...LAYER_ORDER
         .filter((cat) => outfit?.[cat]?.imageUrl)
         .map((cat) => outfit[cat].imageUrl),
@@ -62,7 +69,7 @@ export default function PlayerThumbnail({ outfit, size = 36 }) {
     });
 
     return () => { cancelled = true; };
-  }, [outfit]);
+  }, [outfit, gender]);
 
   return (
     <canvas

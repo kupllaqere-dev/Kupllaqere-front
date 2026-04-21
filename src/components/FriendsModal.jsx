@@ -85,7 +85,7 @@ export default function FriendsModal({ onClose }) {
               online.map((f) => (
                 <Row key={f.id}>
                   <Avatar>
-                    <PlayerThumbnail outfit={f.outfit} />
+                    <PlayerThumbnail outfit={f.outfit} gender={f.gender} />
                     <Dot $online />
                   </Avatar>
                   <NameCol>
@@ -112,7 +112,7 @@ export default function FriendsModal({ onClose }) {
               offline.map((f) => (
                 <Row key={f.id}>
                   <Avatar>
-                    <PlayerThumbnail outfit={f.outfit} />
+                    <PlayerThumbnail outfit={f.outfit} gender={f.gender} />
                     <Dot />
                   </Avatar>
                   <NameCol>
@@ -139,7 +139,7 @@ export default function FriendsModal({ onClose }) {
               data.received.map((f) => (
                 <Row key={f.id}>
                   <Avatar>
-                    <PlayerThumbnail outfit={f.outfit} />
+                    <PlayerThumbnail outfit={f.outfit} gender={f.gender} />
                   </Avatar>
                   <NameCol>
                     <Name>{f.name || "Unknown"}</Name>
@@ -171,7 +171,7 @@ export default function FriendsModal({ onClose }) {
               data.sent.map((f) => (
                 <Row key={f.id}>
                   <Avatar>
-                    <PlayerThumbnail outfit={f.outfit} />
+                    <PlayerThumbnail outfit={f.outfit} gender={f.gender} />
                   </Avatar>
                   <NameCol>
                     <Name>{f.name || "Unknown"}</Name>

@@ -1,4 +1,5 @@
 import { perspectiveScale } from "./perspective";
+import { baseTextureKey } from "./LocalPlayer";
 
 const FRAME = { FRONT: 0, FRONT_LEFT: 1, LEFT: 2, BACK: 3, FRONT_RIGHT: 4, RIGHT: 5 };
 
@@ -18,7 +19,7 @@ export default class PlayerManager {
     shadowImg.setAlpha(0.2);
     shadowImg.setDepth(data.y - 1);
 
-    const sprite = scene.add.sprite(data.x, data.y, "player", FRAME.FRONT);
+    const sprite = scene.add.sprite(data.x, data.y, baseTextureKey(data.gender), FRAME.FRONT);
     sprite.setOrigin(0.5, 1);
     sprite.setScale(s);
     sprite.setDepth(data.y);

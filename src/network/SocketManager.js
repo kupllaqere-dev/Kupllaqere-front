@@ -8,8 +8,8 @@ export default class SocketManager {
     this.lastSentFrame = 0;
   }
 
-  join(name, x, y, map, userId) {
-    this.socket.emit("player:join", { name, x, y, map, userId });
+  join(name, x, y, map, userId, gender) {
+    this.socket.emit("player:join", { name, x, y, map, userId, gender });
   }
 
   teleport(x, y, map) {
@@ -87,6 +87,26 @@ export default class SocketManager {
 
   onPlayerOutfit(callback) {
     this.socket.on("player:outfit", callback);
+  }
+
+  onFriendsOnline(callback) {
+    this.socket.on("friends:online", callback);
+  }
+
+  onFriendOnline(callback) {
+    this.socket.on("friend:online", callback);
+  }
+
+  onFriendOffline(callback) {
+    this.socket.on("friend:offline", callback);
+  }
+
+  onFriendsRefresh(callback) {
+    this.socket.on("friends:refresh", callback);
+  }
+
+  off(event, callback) {
+    this.socket.off(event, callback);
   }
 
   get id() {

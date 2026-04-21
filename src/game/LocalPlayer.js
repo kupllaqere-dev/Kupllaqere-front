@@ -8,22 +8,57 @@ const ANIMATIONS = [
   { key: "walk-up", start: 24, end: 27 },
 ];
 
+export const BASE_SPRITE_URLS = {
+  female: "/assets/character-bases/females.png",
+  male: "/assets/character-bases/men-test.png",
+};
+
+export function baseTextureKey(gender) {
+  return gender === "male" ? "player-male" : "player-female";
+}
+
+export function getBaseSpriteUrl(gender) {
+  return gender === "male" ? BASE_SPRITE_URLS.male : BASE_SPRITE_URLS.female;
+}
+
 export function preloadLocalPlayer(scene) {
   scene.load.spritesheet(
-    "player",
-    "/assets/character-bases/sprite2.png",
+    "player-female",
+    BASE_SPRITE_URLS.female,
+    { frameWidth: 510, frameHeight: 900 },
+  );
+  scene.load.spritesheet(
+    "player-male",
+    BASE_SPRITE_URLS.male,
     { frameWidth: 510, frameHeight: 900 },
   );
   scene.load.image("shadow", "/assets/character-bases/shadow.png");
 }
 
-export function createLocalPlayer(scene, x, y, name, layerManager) {
+function ensureAnimations(scene, textureKey) {
+  for (const anim of ANIMATIONS) {
+    const key = `${anim.key}-${textureKey}`;
+    if (scene.anims.exists(key)) continue;
+    scene.anims.create({
+      key,
+      frames: scene.anims.generateFrameNumbers(textureKey, {
+        start: anim.start,
+        end: anim.end,
+      }),
+      frameRate: 4,
+      repeat: -1,
+    });
+  }
+}
+
+export function createLocalPlayer(scene, x, y, name, layerManager, gender) {
   const shadow = scene.add.image(x, y, "shadow");
   shadow.setOrigin(0.5, 0.8);
   shadow.setScale(0.15);
   shadow.setAlpha(0.2);
 
-  const sprite = scene.add.sprite(x, y, "player", FRAME.FRONT);
+  const textureKey = baseTextureKey(gender);
+  const sprite = scene.add.sprite(x, y, textureKey, FRAME.FRONT);
   sprite.setOrigin(0.5, 1);
   sprite.setScale(0.2);
   if (layerManager) {
@@ -50,17 +85,8 @@ export function createLocalPlayer(scene, x, y, name, layerManager) {
     .setOrigin(0.5, 0)
     .setDepth(51);
 
-  for (const anim of ANIMATIONS) {
-    scene.anims.create({
-      key: anim.key,
-      frames: scene.anims.generateFrameNumbers("player", {
-        start: anim.start,
-        end: anim.end,
-      }),
-      frameRate: 4,
-      repeat: -1,
-    });
-  }
+  ensureAnimations(scene, "player-female");
+  ensureAnimations(scene, "player-male");
 
   return { sprite, shadow, nameText };
 }
