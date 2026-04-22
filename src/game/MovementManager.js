@@ -32,7 +32,9 @@ export default class MovementManager {
   }
 
   update(player, cursors, walkableZones, delta) {
-    const dt = delta / 1000;
+    // Clamp to 33ms (~30fps floor) so a hitched frame doesn't teleport the
+    // player or stall them relative to wall-clock time.
+    const dt = Math.min(delta, 33) / 1000;
     const left = cursors.left.isDown;
     const right = cursors.right.isDown;
     const up = cursors.up.isDown;
