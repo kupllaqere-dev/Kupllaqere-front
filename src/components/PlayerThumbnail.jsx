@@ -12,7 +12,7 @@ const LAYER_ORDER = [
 ];
 
 // Crop window inside the 510×900 FRONT frame, tuned to show head + shoulders.
-const CROP = { sx: 125, sy: 30, sw: 260, sh: 260 };
+const CROP = { sx: 125, sy: 70, sw: 260, sh: 260 };
 
 const BASE_SPRITE_URLS = {
   female: "/assets/character-bases/females.png",
