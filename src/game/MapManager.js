@@ -17,7 +17,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "old-town-bg",
-      path: "/assets/maps/old-town/background3.webp",
+      path: "/assets/maps/old-town/background4.webp",
     },
     colliders: "/assets/maps/old-town/colliders.json",
   },
@@ -30,7 +30,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "old-town-bg",
-      path: "/assets/maps/old-town/background3.webp",
+      path: "/assets/maps/old-town/background4.webp",
     },
     colliders: "/assets/maps/old-town/colliders.json",
   },
@@ -42,7 +42,7 @@ export function preloadMap(scene) {
   scene.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
   scene.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
   scene.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
-  scene.load.image("old-town-bg", "/assets/maps/old-town/background3.webp");
+  scene.load.image("old-town-bg", "/assets/maps/old-town/background4.webp");
   scene.load.json("colliders", "/assets/maps/old-town/colliders.json");
 }
 
