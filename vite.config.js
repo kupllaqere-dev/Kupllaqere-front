@@ -16,7 +16,7 @@ function saveCollidersPlugin() {
         let body = '';
         req.on('data', (chunk) => { body += chunk.toString(); });
         req.on('end', () => {
-          const outPath = path.resolve(process.cwd(), 'public/assets/maps/old-town/colliders.json');
+          const outPath = path.resolve(process.cwd(), 'public/assets/maps/mainmap/colliders.json');
           fs.writeFileSync(outPath, body, 'utf-8');
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true }));

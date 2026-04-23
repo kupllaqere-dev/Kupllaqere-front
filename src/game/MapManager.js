@@ -16,23 +16,23 @@ const MAP_CONFIGS = {
   main: {
     type: "single",
     background: {
-      key: "old-town-bg",
-      path: "/assets/maps/old-town/background4.webp",
+      key: "mainmap-bg",
+      path: "/assets/maps/mainmap/background4.webp",
     },
-    colliders: "/assets/maps/old-town/colliders.json",
+    colliders: "/assets/maps/mainmap/colliders.json",
   },
   // main: {
   //   type: "parallax",
   //   layers: PARALLAX_LAYERS,
-  //   colliders: "/assets/maps/old-town/colliders.json",
+  //   colliders: "/assets/maps/mainmap/colliders.json",
   // },
-  "old-town": {
+  "mainmap": {
     type: "single",
     background: {
-      key: "old-town-bg",
-      path: "/assets/maps/old-town/background4.webp",
+      key: "mainmap-bg",
+      path: "/assets/maps/mainmap/background4.webp",
     },
-    colliders: "/assets/maps/old-town/colliders.json",
+    colliders: "/assets/maps/mainmap/colliders.json",
   },
 };
 
@@ -42,8 +42,8 @@ export function preloadMap(scene) {
   scene.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
   scene.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
   scene.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
-  scene.load.image("old-town-bg", "/assets/maps/old-town/background4.webp");
-  scene.load.json("colliders", "/assets/maps/old-town/colliders.json");
+  scene.load.image("mainmap-bg", "/assets/maps/mainmap/background4.webp");
+  scene.load.json("colliders", "/assets/maps/mainmap/colliders.json");
 }
 
 export function createMap(scene, mapName = "main") {

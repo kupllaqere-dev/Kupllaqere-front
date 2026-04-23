@@ -375,7 +375,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           <S.PlayerMenuName>Butterfly</S.PlayerMenuName>
           <S.PlayerMenuButton
             onClick={() => {
-              teleportRef.current?.("old-town", 700, 900);
+              teleportRef.current?.("mainmap", 700, 900);
               setObjectMenu(null);
             }}
           >
