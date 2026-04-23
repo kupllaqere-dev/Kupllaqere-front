@@ -11,9 +11,9 @@ export default class MovementManager {
     this.mapHeight = mapHeight;
     this.moveTarget = null;
     this.clickIndicators = [];
-    this.lastDirection = null; // tracks last walk direction for idle frame
-    this.wasWalking = false;   // tracks whether we were animating last frame
-    this.currentAnim = null;   // current walk animation key (e.g. "walk-left") or null
+    this.lastDirection = null;
+    this.wasWalking = false;
+    this.currentAnim = null;
   }
 
   handleClick(scene, pointer, walkableZones) {
@@ -31,10 +31,22 @@ export default class MovementManager {
     this._spawnClickIndicator(scene, worldX, worldY);
   }
 
-  update(player, cursors, walkableZones, delta) {
-    // Clamp to 33ms (~30fps floor) so a hitched frame doesn't teleport the
-    // player or stall them relative to wall-clock time.
-    const dt = Math.min(delta, 33) / 1000;
+  /**
+   * Fixed-timestep simulation step. `dt` is seconds (typically 1/60).
+   *
+   * Operates on a "logical" position stored on the sprite (`_logicalX/Y`),
+   * NOT sprite.x/y — the sprite's rendered x/y is set every frame by
+   * `applyRender()` using an accumulator alpha, so that motion stays smooth
+   * on 60/120/144Hz displays instead of stepping in 60Hz chunks.
+   */
+  step(player, cursors, walkableZones, dt) {
+    if (player._logicalX === undefined) {
+      player._logicalX = player.x;
+      player._logicalY = player.y;
+    }
+    player._prevLogicalX = player._logicalX;
+    player._prevLogicalY = player._logicalY;
+
     const left = cursors.left.isDown;
     const right = cursors.right.isDown;
     const up = cursors.up.isDown;
@@ -54,27 +66,30 @@ export default class MovementManager {
         dy *= 0.7071;
       }
     } else if (this.moveTarget) {
-      const distX = this.moveTarget.x - player.x;
-      const distY = this.moveTarget.y - player.y;
+      const distX = this.moveTarget.x - player._logicalX;
+      const distY = this.moveTarget.y - player._logicalY;
       const dist = Math.sqrt(distX * distX + distY * distY);
       if (dist < ARRIVE_THRESHOLD) {
         this.moveTarget = null;
       } else {
-        const step = Math.min(SPEED * dt, dist);
-        dx = (distX / dist) * step;
-        dy = (distY / dist) * step;
+        const stepLen = Math.min(SPEED * dt, dist);
+        dx = (distX / dist) * stepLen;
+        dy = (distY / dist) * stepLen;
       }
     }
 
-    const curX = player.x;
-    const curY = player.y;
-    let newX = Phaser.Math.Clamp(curX + dx, 0, this.mapWidth);
-    let newY = Phaser.Math.Clamp(curY + dy, 0, this.mapHeight);
+    const curX = player._logicalX;
+    const curY = player._logicalY;
+    const newX = Phaser.Math.Clamp(curX + dx, 0, this.mapWidth);
+    const newY = Phaser.Math.Clamp(curY + dy, 0, this.mapHeight);
 
+    let finalX = curX;
+    let finalY = curY;
     if (walkableZones.length > 0 && (dx !== 0 || dy !== 0)) {
       const fullOk = walkableZones.some((z) => pointInPolygon(newX, newY, z));
       if (fullOk) {
-        player.setPosition(newX, newY);
+        finalX = newX;
+        finalY = newY;
       } else {
         const xOk =
           dx !== 0 &&
@@ -82,18 +97,43 @@ export default class MovementManager {
         const yOk =
           dy !== 0 &&
           walkableZones.some((z) => pointInPolygon(curX, newY, z));
-        if (xOk) player.setPosition(newX, curY);
-        else if (yOk) player.setPosition(curX, newY);
+        if (xOk) finalX = newX;
+        else if (yOk) finalY = newY;
         else this.moveTarget = null;
       }
     } else {
-      player.setPosition(newX, newY);
+      finalX = newX;
+      finalY = newY;
     }
 
-    // Determine facing frame and walk animation
+    player._logicalX = finalX;
+    player._logicalY = finalY;
+
+    this._updateAnimation(player, keyMoving, left, right, up, down, dx, dy);
+  }
+
+  /**
+   * Render-time interpolation between the last two logic steps. `alpha` is
+   * the accumulator's progress into the next step (0 → at prev, 1 → at cur).
+   * Safe to call every frame; does nothing if step() hasn't run yet.
+   */
+  applyRender(player, alpha) {
+    if (player._logicalX === undefined) return;
+    const prevX = player._prevLogicalX ?? player._logicalX;
+    const prevY = player._prevLogicalY ?? player._logicalY;
+    const rx = prevX + (player._logicalX - prevX) * alpha;
+    const ry = prevY + (player._logicalY - prevY) * alpha;
+    player.setPosition(rx, ry);
+  }
+
+  reset() {
+    this.moveTarget = null;
+  }
+
+  _updateAnimation(player, keyMoving, left, right, up, down, dx, dy) {
     const isMoving = dx !== 0 || dy !== 0;
     let frame = Number(player.frame.name);
-    let walkDir = null; // "left", "right", "down", or "up"
+    let walkDir = null;
 
     if (keyMoving) {
       if (left && down) { frame = FRAME.FRONT_LEFT; walkDir = "down"; }
@@ -137,9 +177,6 @@ export default class MovementManager {
           : FRAME.FRONT;
         player.setTexture(baseTextureKey, idleFrame);
         this.wasWalking = false;
-      } else if (isMoving) {
-        player.setFrame(frame);
-        this.lastDirection = null;
       } else {
         player.setFrame(frame);
       }

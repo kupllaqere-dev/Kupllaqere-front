@@ -24,6 +24,7 @@ import PlayerManager from "../game/PlayerManager";
 import SocketManager from "../network/SocketManager";
 import MultiplayerHandler from "../game/MultiplayerHandler";
 import LayerManager from "../game/LayerManager";
+import GameLoop from "../game/GameLoop";
 import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
 import { sendFriendRequest } from "../api/friends";
@@ -147,7 +148,13 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         cursors = this.input.keyboard.createCursorKeys();
         this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
         this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
-        this.cameras.main.startFollow(localPlayer.sprite, true, 1, 1);
+        // Snap the camera to the player (lerp=1). Lerping the camera while
+        // the player moves makes the two desync by a fractional amount each
+        // frame — combined with any pixel rounding that produced visible
+        // wobble. With snap, player screen position is stable → no wobble.
+        // Second arg is `roundPixels` on the camera itself; keep it off to
+        // match the global config so sub-pixel motion renders smoothly.
+        this.cameras.main.startFollow(localPlayer.sprite, false, 1, 1);
 
         editor = new EditorManager(this, localPlayer.sprite, walkableZones);
 
@@ -200,24 +207,43 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         updateReady();
       }
 
+      const gameLoop = new GameLoop();
+
       function update(_time, delta) {
         if (editor.panCamera(cursors)) return;
 
-        movement.update(localPlayer.sprite, cursors, walkableZones, delta);
-        mp.sendUpdate(
-          localPlayer.sprite.x,
-          localPlayer.sprite.y,
-          Number(localPlayer.sprite.frame.name),
-          movement.currentAnim,
-        );
+        // ─── Fixed-timestep simulation ───────────────────────────────
+        // Runs at a deterministic 60Hz regardless of render framerate.
+        // This decouples movement speed from frame hitches and high-refresh
+        // monitors, and ensures the networked send cadence is stable.
+        const alpha = gameLoop.run(delta, () => {
+          movement.step(localPlayer.sprite, cursors, walkableZones, 1 / 60);
 
-        updateLocalPlayer(localPlayer);
+          // Client-side prediction: local player position is authoritative
+          // until/unless the server contradicts it (see onLocalAuthoritative).
+          // Send the LOGICAL position, not the interpolated render position —
+          // the sim is the source of truth. SocketManager throttles internally.
+          mp.sendUpdate(
+            localPlayer.sprite._logicalX,
+            localPlayer.sprite._logicalY,
+            Number(localPlayer.sprite.frame.name),
+            movement.currentAnim,
+          );
+        });
+
+        // Render-time interpolation: smooth motion at any display refresh
+        // rate. Without this, fixed-timestep sim → visible stutter on 120/144Hz
+        // monitors (and subtle stutter at 60Hz from frame-delta jitter).
+        movement.applyRender(localPlayer.sprite, alpha);
+
+        // ─── Render-rate visual updates ──────────────────────────────
+        // These must run every frame for smooth visuals at any refresh rate.
+        // Scale smoothing and remote interpolation use `delta` so they're
+        // frame-rate-independent.
+        updateLocalPlayer(localPlayer, delta);
         chatBubbles.updatePosition(localPlayer.sprite);
-
-        // Smoothly interpolate remote player positions
         playerManager.interpolate(delta);
 
-        // Update all layer sprites to follow their base sprites
         layerManager.update(localPlayer.sprite, "local");
         for (const [id, { sprite }] of playerManager.otherPlayers) {
           layerManager.update(sprite, id);

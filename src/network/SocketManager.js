@@ -45,11 +45,15 @@ export default class SocketManager {
 
     // Volatile: if the socket is mid-flush or backed up, drop stale position
     // packets rather than queueing them — the next tick's packet supersedes.
+    // `t` is a client-clock timestamp. The server is free to overwrite it with
+    // its own authoritative clock before rebroadcast; the receiver treats it
+    // as "when this sample was generated" for interpolation purposes.
     this.socket.volatile.emit("player:update", {
       x: px,
       y: py,
       frame,
       anim: normAnim,
+      t: Date.now(),
     });
     this.lastSentX = px;
     this.lastSentY = py;

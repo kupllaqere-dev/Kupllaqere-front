@@ -7,6 +7,10 @@ export default class MultiplayerHandler {
     this.onlinePlayersRef = [];
     this.layerManager = null; // set externally
     this.onLocalGender = null; // set externally — called when server confirms local gender
+    // Hook invoked when the server echoes our own state back in a broadcast.
+    // Consumers should treat this as authoritative and smooth-correct rather
+    // than snap. Null = client movement is the source of truth.
+    this.onLocalAuthoritative = null;
   }
 
   join(name, x, y, userId, gender) {
@@ -49,7 +53,15 @@ export default class MultiplayerHandler {
     });
 
     socket.onPlayersUpdated((batch) => {
-      for (const data of batch) players.updatePlayer(data);
+      const receiveTime = performance.now();
+      for (const data of batch) {
+        if (data.id === socket.id) {
+          // Authoritative echo of our own state — feeds reconciliation.
+          this.onLocalAuthoritative?.(data, receiveTime);
+          continue;
+        }
+        players.pushSnapshot(data, receiveTime);
+      }
     });
 
     socket.onPlayerLeft((data) => {
