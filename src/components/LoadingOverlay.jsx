@@ -22,7 +22,7 @@ export default function LoadingOverlay({ progress, ready }) {
 
   return (
     <Overlay $fadingOut={fadingOut}>
-      <Title>Neclis</Title>
+      <Title>Neclis World</Title>
       <BarTrack>
         <BarFill style={{ width: `${displayPct}%` }} />
       </BarTrack>
