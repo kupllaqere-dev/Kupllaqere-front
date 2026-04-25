@@ -16,6 +16,7 @@ import {
   updateLocalPlayer,
   repositionLocalPlayer,
   setLocalPlayerGender,
+  setLocalPlayerBadge,
 } from "../game/LocalPlayer";
 import MovementManager from "../game/MovementManager";
 import ChatBubbleManager from "../game/ChatBubbleManager";
@@ -115,6 +116,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           prev && String(prev.userId) === String(userId) ? { ...prev, bio } : prev,
         );
       };
+      mp.onBadgeUpdate = (userId, badge) => {
+        setViewedProfile((prev) =>
+          prev && String(prev.userId) === String(userId) ? { ...prev, selectedBadge: badge } : prev,
+        );
+      };
       mpRef.current = mp;
 
       let localPlayer;
@@ -197,6 +203,14 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
 
         // Multiplayer
         mp.onLocalGender = (gender) => setLocalPlayerGender(localPlayer, gender);
+        mp.onLocalBadge = (userId, badge) => {
+          if (user?.id && String(userId) === String(user.id)) {
+            setLocalPlayerBadge(this, localPlayer, badge);
+          }
+        };
+        if (user?.selectedBadge) {
+          setLocalPlayerBadge(this, localPlayer, user.selectedBadge);
+        }
         mp.join(user?.name || "Player", localPlayer.sprite.x, localPlayer.sprite.y, user?.id, user?.gender);
         mp.wire(this, localPlayer.sprite);
         mp.wireTeleport(this, localPlayer, playerManager, {
@@ -390,6 +404,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
                 gender: other.sprite.gender,
                 outfit: getOutfitPayload(lm, playerMenu.id),
                 bio: other.bio || "",
+                selectedBadge: other.selectedBadge || null,
               });
               playerMenuTargetRef.current = null;
               setPlayerMenu(null);
@@ -455,6 +470,10 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           outfit={viewedProfile.outfit}
           gender={viewedProfile.gender}
           bio={viewedProfile.bio}
+          selectedBadge={viewedProfile.selectedBadge}
+          currentUserId={user?.id || null}
+          targetUserId={viewedProfile.userId || null}
+          socket={socketRef.current}
         />
       )}
     </S.Container>

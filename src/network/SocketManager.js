@@ -118,6 +118,10 @@ export default class SocketManager {
     this.socket.on("player:bio", callback);
   }
 
+  onPlayerBadge(callback) {
+    this.socket.on("player:badge", callback);
+  }
+
   onFriendsOnline(callback) {
     this.socket.on("friends:online", callback);
   }
@@ -132,6 +136,10 @@ export default class SocketManager {
 
   onFriendsRefresh(callback) {
     this.socket.on("friends:refresh", callback);
+  }
+
+  onSoulMateRefresh(callback) {
+    this.socket.on("soulmate:refresh", callback);
   }
 
   off(event, callback) {

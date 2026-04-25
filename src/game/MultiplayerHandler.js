@@ -14,6 +14,11 @@ export default class MultiplayerHandler {
     // Hook invoked when any player's bio changes (including self when echoed).
     // Lets the React layer refresh open profile modals in real time.
     this.onBioUpdate = null;
+    // Hook invoked when any player's selected badge changes.
+    this.onBadgeUpdate = null;
+    // Hook invoked when our own badge changes (server-confirmed). Drives the
+    // local-player nameplate badge.
+    this.onLocalBadge = null;
   }
 
   join(name, x, y, userId, gender) {
@@ -37,6 +42,7 @@ export default class MultiplayerHandler {
           const other = players.otherPlayers.get(p.id);
           if (other) this.layerManager.applyOutfit(scene, other.sprite, p.id, p.outfit);
         }
+        if (p.selectedBadge) players.updateBadge(scene, p.id, p.selectedBadge);
       }
       this.onlinePlayersRef = others;
       cb.setOnlinePlayers(others);
@@ -48,6 +54,7 @@ export default class MultiplayerHandler {
         const other = players.otherPlayers.get(data.id);
         if (other) this.layerManager.applyOutfit(scene, other.sprite, data.id, data.outfit);
       }
+      if (data.selectedBadge) players.updateBadge(scene, data.id, data.selectedBadge);
       cb.setOnlinePlayers((prev) => {
         const next = [...prev, { id: data.id, name: data.name }];
         this.onlinePlayersRef = next;
@@ -96,6 +103,18 @@ export default class MultiplayerHandler {
       this.onBioUpdate?.(data.userId, data.bio || "");
     });
 
+    // When any player's badge selection changes
+    socket.onPlayerBadge((data) => {
+      for (const [id, other] of players.otherPlayers) {
+        if (other.userId && String(other.userId) === String(data.userId)) {
+          other.selectedBadge = data.badge || null;
+          players.updateBadge(scene, id, data.badge || null);
+        }
+      }
+      this.onLocalBadge?.(data.userId, data.badge || null);
+      this.onBadgeUpdate?.(data.userId, data.badge || null);
+    });
+
     socket.onChatMessage((msg) => {
       cb.setChatMessages((prev) => [...prev.slice(-99), msg]);
       if (msg.from.id === socket.id) {
@@ -142,6 +161,7 @@ export default class MultiplayerHandler {
             const other = playerManager.otherPlayers.get(p.id);
             if (other) this.layerManager.applyOutfit(scene, other.sprite, p.id, p.outfit);
           }
+          if (p.selectedBadge) playerManager.updateBadge(scene, p.id, p.selectedBadge);
         }
         this.onlinePlayersRef = others;
         this.cb.setOnlinePlayers(others);

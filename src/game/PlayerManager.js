@@ -1,5 +1,5 @@
 import { perspectiveScale } from "./perspective";
-import { baseTextureKey, genderScale } from "./LocalPlayer";
+import { baseTextureKey, genderScale, setNameBadge, layoutNameBadge } from "./LocalPlayer";
 
 const FRAME = { FRONT: 0, FRONT_LEFT: 1, LEFT: 2, BACK: 3, FRONT_RIGHT: 4, RIGHT: 5 };
 
@@ -65,14 +65,27 @@ export default class PlayerManager {
       sprite,
       shadowImg,
       nameText,
+      badgeIcon: null,
       userId: data.userId || null,
       bio: data.bio || "",
+      selectedBadge: data.selectedBadge || null,
       buffer: [{ t: seedTime, x: data.x, y: data.y }],
       lastAnim: null,
       lastFrame: FRAME.FRONT,
       lastRenderX: data.x,
       lastRenderY: data.y,
     });
+
+    if (data.selectedBadge) {
+      this.updateBadge(scene, data.id, data.selectedBadge);
+    }
+  }
+
+  updateBadge(scene, id, badge) {
+    const other = this.otherPlayers.get(id);
+    if (!other) return;
+    other.selectedBadge = badge || null;
+    other.badgeIcon = setNameBadge(scene, other.badgeIcon, other.nameText, badge);
   }
 
   /**
@@ -199,6 +212,9 @@ export default class PlayerManager {
       other.shadowImg.setDepth(y - 1);
       other.nameText.setPosition(x, y + 8);
       other.nameText.setDepth(y + 1);
+      if (other.badgeIcon && other.badgeIcon.visible) {
+        layoutNameBadge(other.badgeIcon, other.nameText);
+      }
       if (other.chatBubble) {
         other.chatBubble.setPosition(x, y - other.sprite.displayHeight - 10);
       }
@@ -237,6 +253,7 @@ export default class PlayerManager {
     other.sprite.destroy();
     other.shadowImg.destroy();
     other.nameText.destroy();
+    if (other.badgeIcon) other.badgeIcon.destroy();
     if (other.chatBubble) other.chatBubble.destroy();
     if (other.chatTimer) clearTimeout(other.chatTimer);
     this.otherPlayers.delete(id);

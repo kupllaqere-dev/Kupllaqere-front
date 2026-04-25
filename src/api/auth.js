@@ -86,6 +86,23 @@ export async function updateBio(bio) {
   return res.json(); // { bio }
 }
 
+export async function updateBadge(badge) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/badge`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ badge }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Badge update failed");
+  }
+  return res.json(); // { selectedBadge }
+}
+
 export async function loginWithGoogle(credential) {
   const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google`, {
     method: "POST",

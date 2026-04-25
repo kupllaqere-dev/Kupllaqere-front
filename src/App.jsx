@@ -3,7 +3,7 @@ import Game from "./components/Game";
 import HUD from "./components/HUD";
 import Login from "./components/Login";
 import CharacterSetup from "./components/CharacterSetup";
-import { updateBio } from "./api/auth";
+import { updateBio, updateBadge } from "./api/auth";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -52,6 +52,15 @@ function App() {
     });
   }, []);
 
+  const handleSaveBadge = useCallback(async (badge) => {
+    const result = await updateBadge(badge);
+    setUser((prev) => {
+      const next = { ...prev, selectedBadge: result.selectedBadge };
+      localStorage.setItem("fv_user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
@@ -76,6 +85,9 @@ function App() {
         outfit={outfit}
         bio={user?.bio || ""}
         onSaveBio={handleSaveBio}
+        selectedBadge={user?.selectedBadge || null}
+        onSaveBadge={handleSaveBadge}
+        currentUserId={user?.id || null}
       />
       <Game
         user={user}

@@ -6,7 +6,7 @@ import PlayerProfile from "./PlayerProfile";
 import FriendsModal from "./FriendsModal";
 import { lookupUser } from "../api/auth";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -63,6 +63,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         gender={gender}
         bio={bio}
         onSaveBio={onSaveBio}
+        selectedBadge={selectedBadge}
+        onSaveBadge={onSaveBadge}
+        currentUserId={currentUserId}
+        targetUserId={currentUserId}
       />
     )}
     {searchedUser && (
@@ -72,6 +76,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         outfit={searchedUser.outfit}
         gender={searchedUser.gender}
         bio={searchedUser.bio}
+        selectedBadge={searchedUser.selectedBadge}
+        currentUserId={currentUserId}
+        targetUserId={searchedUser.id}
       />
     )}
     {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}

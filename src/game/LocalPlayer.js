@@ -13,6 +13,14 @@ export const BASE_SPRITE_URLS = {
   male: "/assets/character-bases/men-test.png",
 };
 
+export const BADGE_NAMES = ["diamond", "flame", "medal", "paint", "verified"];
+export const BADGE_DISPLAY_SIZE = 18; // px wide, drawn next to the name text
+const NAME_BADGE_GAP = 4;
+
+export function badgeTextureKey(name) {
+  return `badge-${name}`;
+}
+
 export function baseTextureKey(gender) {
   return gender === "male" ? "player-male" : "player-female";
 }
@@ -37,6 +45,41 @@ export function preloadLocalPlayer(scene) {
     { frameWidth: 510, frameHeight: 900 },
   );
   scene.load.image("shadow", "/assets/character-bases/shadow.png");
+  for (const name of BADGE_NAMES) {
+    scene.load.image(badgeTextureKey(name), `/assets/badges/${name}.png`);
+  }
+}
+
+/**
+ * Position a badge image immediately to the left of the name label.
+ * Badges use origin (1, 0.5) so we anchor them by their right edge.
+ */
+export function layoutNameBadge(badgeIcon, nameText) {
+  if (!badgeIcon || !badgeIcon.visible) return;
+  const left = nameText.x - nameText.displayWidth / 2 - NAME_BADGE_GAP;
+  const centerY = nameText.y + nameText.displayHeight / 2;
+  badgeIcon.setPosition(left, centerY);
+  badgeIcon.setDepth(nameText.depth);
+}
+
+export function setNameBadge(scene, badgeIcon, nameText, badge) {
+  if (badge && BADGE_NAMES.includes(badge)) {
+    if (!badgeIcon) {
+      badgeIcon = scene.add.image(nameText.x, nameText.y, badgeTextureKey(badge));
+      badgeIcon.setOrigin(1, 0.5);
+      const scale = BADGE_DISPLAY_SIZE / badgeIcon.width;
+      badgeIcon.setScale(scale);
+    } else {
+      badgeIcon.setTexture(badgeTextureKey(badge));
+      badgeIcon.setVisible(true);
+      const scale = BADGE_DISPLAY_SIZE / badgeIcon.width;
+      badgeIcon.setScale(scale);
+    }
+    layoutNameBadge(badgeIcon, nameText);
+  } else if (badgeIcon) {
+    badgeIcon.setVisible(false);
+  }
+  return badgeIcon;
 }
 
 function ensureAnimations(scene, textureKey) {
@@ -107,7 +150,11 @@ export function createLocalPlayer(scene, x, y, name, layerManager, gender) {
   ensureAnimations(scene, "player-female");
   ensureAnimations(scene, "player-male");
 
-  return { sprite, shadow, nameText };
+  return { sprite, shadow, nameText, badgeIcon: null };
+}
+
+export function setLocalPlayerBadge(scene, player, badge) {
+  player.badgeIcon = setNameBadge(scene, player.badgeIcon, player.nameText, badge);
 }
 
 /**
@@ -133,12 +180,18 @@ export function updateLocalPlayer(player, renderDeltaMs = 16.67) {
   shadow.setDepth(sprite.y - 1);
   nameText.setPosition(sprite.x, sprite.y + 8);
   nameText.setDepth(sprite.y + 1);
+  if (player.badgeIcon && player.badgeIcon.visible) {
+    layoutNameBadge(player.badgeIcon, nameText);
+  }
 }
 
 export function repositionLocalPlayer(player, x, y) {
   player.sprite.setPosition(x, y);
   player.shadow.setPosition(x, y);
   player.nameText.setPosition(x, y + 8);
+  if (player.badgeIcon && player.badgeIcon.visible) {
+    layoutNameBadge(player.badgeIcon, player.nameText);
+  }
   // Reset logical state so the next fixed step doesn't interpolate from the
   // pre-teleport position (that would visually "slingshot" across the map).
   player.sprite._logicalX = x;
