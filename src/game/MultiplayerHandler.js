@@ -11,6 +11,9 @@ export default class MultiplayerHandler {
     // Consumers should treat this as authoritative and smooth-correct rather
     // than snap. Null = client movement is the source of truth.
     this.onLocalAuthoritative = null;
+    // Hook invoked when any player's bio changes (including self when echoed).
+    // Lets the React layer refresh open profile modals in real time.
+    this.onBioUpdate = null;
   }
 
   join(name, x, y, userId, gender) {
@@ -81,6 +84,16 @@ export default class MultiplayerHandler {
       if (other) {
         this.layerManager.applyOutfit(scene, other.sprite, data.id, data.outfit);
       }
+    });
+
+    // When another player changes their bio
+    socket.onPlayerBio((data) => {
+      for (const other of players.otherPlayers.values()) {
+        if (other.userId && String(other.userId) === String(data.userId)) {
+          other.bio = data.bio || "";
+        }
+      }
+      this.onBioUpdate?.(data.userId, data.bio || "");
     });
 
     socket.onChatMessage((msg) => {

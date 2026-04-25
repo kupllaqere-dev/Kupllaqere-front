@@ -65,6 +65,8 @@ export default class PlayerManager {
       sprite,
       shadowImg,
       nameText,
+      userId: data.userId || null,
+      bio: data.bio || "",
       buffer: [{ t: seedTime, x: data.x, y: data.y }],
       lastAnim: null,
       lastFrame: FRAME.FRONT,

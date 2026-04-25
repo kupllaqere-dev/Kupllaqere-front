@@ -1,17 +1,57 @@
 import * as S from "./HUDStyles";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import UploadItemModal from "./UploadItemModal";
 import InventoryModal from "./InventoryModal";
 import PlayerProfile from "./PlayerProfile";
 import FriendsModal from "./FriendsModal";
+import { lookupUser } from "../api/auth";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchStatus, setSearchStatus] = useState(null); // null | "searching" | "notfound" | "error"
+  const [searchedUser, setSearchedUser] = useState(null);
+  const searchInputRef = useRef(null);
+  const searchWrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e) => {
+      if (!searchWrapperRef.current?.contains(e.target)) setSearchOpen(false);
+    };
+    window.addEventListener("pointerdown", handler);
+    return () => window.removeEventListener("pointerdown", handler);
+  }, [searchOpen]);
+
+  async function handleSearchSubmit() {
+    const name = searchValue.trim();
+    if (!name) return;
+    setSearchStatus("searching");
+    try {
+      const found = await lookupUser(name);
+      if (!found) {
+        setSearchStatus("notfound");
+        return;
+      }
+      setSearchedUser(found);
+      setSearchOpen(false);
+      setSearchValue("");
+      setSearchStatus(null);
+    } catch (err) {
+      setSearchStatus("error");
+      console.error(err);
+    }
+  }
 
   return (
     <>
@@ -21,6 +61,17 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         playerName={playerName}
         outfit={outfit}
         gender={gender}
+        bio={bio}
+        onSaveBio={onSaveBio}
+      />
+    )}
+    {searchedUser && (
+      <PlayerProfile
+        onClose={() => setSearchedUser(null)}
+        playerName={searchedUser.name}
+        outfit={searchedUser.outfit}
+        gender={searchedUser.gender}
+        bio={searchedUser.bio}
       />
     )}
     {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}
@@ -68,9 +119,32 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
           <S.Bubble>
             <img src="/icons/shop.png"></img>
           </S.Bubble>
-          <S.Bubble>
-            <img src="/icons/search.png"></img>
-          </S.Bubble>
+          <S.ProfileWrapper ref={searchWrapperRef}>
+            <S.Bubble onClick={() => setSearchOpen((p) => !p)} title="Search Player">
+              <img src="/icons/search.png"></img>
+            </S.Bubble>
+            {searchOpen && (
+              <S.SearchPopover>
+                <S.SearchInput
+                  ref={searchInputRef}
+                  placeholder="Player username…"
+                  value={searchValue}
+                  onChange={(e) => { setSearchValue(e.target.value); setSearchStatus(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSearchSubmit();
+                    if (e.key === "Escape") setSearchOpen(false);
+                  }}
+                  disabled={searchStatus === "searching"}
+                />
+                <S.SearchHint $error={searchStatus === "notfound" || searchStatus === "error"}>
+                  {searchStatus === "searching" && "Searching…"}
+                  {searchStatus === "notfound" && "No player with that name."}
+                  {searchStatus === "error" && "Search failed. Try again."}
+                  {!searchStatus && "Press Enter to search."}
+                </S.SearchHint>
+              </S.SearchPopover>
+            )}
+          </S.ProfileWrapper>
           <S.ProfileWrapper>
             <S.Bubble onClick={() => setSettingsOpen((prev) => !prev)}>
               <img src="/icons/settings.png"></img>

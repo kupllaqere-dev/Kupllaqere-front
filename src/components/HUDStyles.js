@@ -226,6 +226,40 @@ export const AngelButton = styled.button`
   }
 `;
 
+export const SearchPopover = styled.div`
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  border: 1px solid #ffffff22;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+`;
+
+export const SearchInput = styled.input`
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #ffffff22;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  &:focus { border-color: #7b2ff7; }
+  &::placeholder { color: #666; }
+`;
+
+export const SearchHint = styled.div`
+  font-size: 11px;
+  color: ${({ $error }) => ($error ? "#ff7777" : "#888")};
+  min-height: 14px;
+`;
+
 export const LogoutButton = styled.button`
   background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
   border: 1px solid #ffffff22;

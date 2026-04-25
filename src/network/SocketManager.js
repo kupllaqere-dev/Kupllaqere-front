@@ -114,6 +114,10 @@ export default class SocketManager {
     this.socket.on("player:outfit", callback);
   }
 
+  onPlayerBio(callback) {
+    this.socket.on("player:bio", callback);
+  }
+
   onFriendsOnline(callback) {
     this.socket.on("friends:online", callback);
   }

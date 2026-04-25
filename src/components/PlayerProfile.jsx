@@ -16,11 +16,19 @@ function extractFrame(img, frameIndex, cols) {
   return { sx: col * FRAME_W, sy: row * FRAME_H };
 }
 
-export default function PlayerProfile({ onClose, playerName, outfit, gender }) {
+const BIO_MAX = 500;
+
+export default function PlayerProfile({ onClose, playerName, outfit, gender, bio = "", onSaveBio }) {
   const canvasRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [baseImg, setBaseImg] = useState(null);
   const [layerImages, setLayerImages] = useState([]);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState(bio);
+  const [bioSaving, setBioSaving] = useState(false);
+  const [bioError, setBioError] = useState(null);
+
+  useEffect(() => { setBioDraft(bio); }, [bio]);
 
   // Load base sprite
   useEffect(() => {
@@ -108,10 +116,58 @@ export default function PlayerProfile({ onClose, playerName, outfit, gender }) {
           <InfoSide>
             <PlayerName>{playerName || "Player"}</PlayerName>
             <Divider />
-            <DescLabel>About</DescLabel>
-            <Description>
-              Hello. This is me.
-            </Description>
+            <BioHeader>
+              <DescLabel>About</DescLabel>
+              {onSaveBio && !editingBio && (
+                <EditBtn onClick={() => { setBioDraft(bio); setBioError(null); setEditingBio(true); }}>
+                  Edit
+                </EditBtn>
+              )}
+            </BioHeader>
+            {editingBio ? (
+              <>
+                <BioTextarea
+                  value={bioDraft}
+                  maxLength={BIO_MAX}
+                  onChange={(e) => setBioDraft(e.target.value)}
+                  placeholder="Tell others about yourself…"
+                  disabled={bioSaving}
+                />
+                <BioFooter>
+                  <BioCounter>{bioDraft.length}/{BIO_MAX}</BioCounter>
+                  <BioActions>
+                    <SecondaryBtn
+                      disabled={bioSaving}
+                      onClick={() => { setEditingBio(false); setBioError(null); setBioDraft(bio); }}
+                    >
+                      Cancel
+                    </SecondaryBtn>
+                    <PrimaryBtn
+                      disabled={bioSaving || bioDraft === bio}
+                      onClick={async () => {
+                        setBioSaving(true);
+                        setBioError(null);
+                        try {
+                          await onSaveBio(bioDraft.trim());
+                          setEditingBio(false);
+                        } catch (err) {
+                          setBioError(err.message || "Failed to save");
+                        } finally {
+                          setBioSaving(false);
+                        }
+                      }}
+                    >
+                      {bioSaving ? "Saving…" : "Save"}
+                    </PrimaryBtn>
+                  </BioActions>
+                </BioFooter>
+                {bioError && <BioErrorMsg>{bioError}</BioErrorMsg>}
+              </>
+            ) : (
+              <Description>
+                {bio?.trim() ? bio : <EmptyOutfit>No bio yet.</EmptyOutfit>}
+              </Description>
+            )}
 
             <Divider />
             <DescLabel>Outfit</DescLabel>
@@ -279,4 +335,90 @@ const OutfitTag = styled.span`
 const EmptyOutfit = styled.span`
   font-size: 12px;
   color: #666;
+`;
+
+const BioHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const EditBtn = styled.button`
+  background: none;
+  border: none;
+  color: #c4a1ff;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 0;
+  &:hover { color: #fff; }
+`;
+
+const BioTextarea = styled.textarea`
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #ffffff22;
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  outline: none;
+  &:focus { border-color: #7b2ff7; }
+`;
+
+const BioFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+`;
+
+const BioCounter = styled.span`
+  font-size: 11px;
+  color: #666;
+`;
+
+const BioActions = styled.div`
+  display: flex;
+  gap: 6px;
+`;
+
+const PrimaryBtn = styled.button`
+  background: rgba(124, 58, 237, 0.6);
+  border: 1px solid rgba(124, 58, 237, 0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124, 58, 237, 0.85); }
+`;
+
+const SecondaryBtn = styled.button`
+  background: transparent;
+  border: 1px solid #ffffff22;
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); color: #fff; }
+`;
+
+const BioErrorMsg = styled.div`
+  margin-top: 6px;
+  font-size: 11px;
+  color: #ff7777;
 `;

@@ -31,6 +31,7 @@ import { sendFriendRequest } from "../api/friends";
 import ChatBox from "./ChatBox";
 import OnlineFriendsBar from "./OnlineFriendsBar";
 import LoadingOverlay from "./LoadingOverlay";
+import PlayerProfile from "./PlayerProfile";
 
 export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef }) {
   const gameRef = useRef(null);
@@ -44,6 +45,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [playerMenu, setPlayerMenu] = useState(null);
   const [objectMenu, setObjectMenu] = useState(null);
+  const [viewedProfile, setViewedProfile] = useState(null);
   const [socketReady, setSocketReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadingReady, setLoadingReady] = useState(false);
@@ -108,6 +110,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       });
       mp.layerManager = layerManager;
       playerManager.layerManager = layerManager;
+      mp.onBioUpdate = (userId, bio) => {
+        setViewedProfile((prev) =>
+          prev && String(prev.userId) === String(userId) ? { ...prev, bio } : prev,
+        );
+      };
       mpRef.current = mp;
 
       let localPlayer;
@@ -146,6 +153,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         localPlayerRef.current = localPlayer;
 
         cursors = this.input.keyboard.createCursorKeys();
+        // createCursorKeys auto-captures arrows + SPACE + SHIFT, which calls
+        // preventDefault on them globally — that breaks typing spaces (and
+        // shift-modified chars) inside any HTML input/textarea overlay. We
+        // don't use space/shift for movement, so release them.
+        this.input.keyboard.removeCapture(["SPACE", "SHIFT"]);
         this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
         this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
         // Snap the camera to the player (lerp=1). Lerping the camera while
@@ -366,7 +378,25 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           style={{ left: playerMenu.x, top: playerMenu.y }}
         >
           <S.PlayerMenuName>{playerMenu.name}</S.PlayerMenuName>
-          <S.PlayerMenuButton>View Info</S.PlayerMenuButton>
+          <S.PlayerMenuButton
+            onClick={() => {
+              const pm = playerManagerRef.current;
+              const lm = layerManagerRef.current;
+              const other = pm?.otherPlayers.get(playerMenu.id);
+              if (!other) return;
+              setViewedProfile({
+                userId: other.userId,
+                name: playerMenu.name,
+                gender: other.sprite.gender,
+                outfit: getOutfitPayload(lm, playerMenu.id),
+                bio: other.bio || "",
+              });
+              playerMenuTargetRef.current = null;
+              setPlayerMenu(null);
+            }}
+          >
+            View Info
+          </S.PlayerMenuButton>
           <S.PlayerMenuButton
             disabled={!playerMenu.userId || playerMenu.status === "pending"}
             onClick={async () => {
@@ -418,13 +448,22 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         onWhisper={handleWhisper}
       /> */}
       {socketReady && <OnlineFriendsBar socket={socketRef.current} />}
+      {viewedProfile && (
+        <PlayerProfile
+          onClose={() => setViewedProfile(null)}
+          playerName={viewedProfile.name}
+          outfit={viewedProfile.outfit}
+          gender={viewedProfile.gender}
+          bio={viewedProfile.bio}
+        />
+      )}
     </S.Container>
   );
 }
 
 /** Build the full outfit payload from current layers */
-function getOutfitPayload(layerManager) {
-  const layers = layerManager.layers.get("local");
+function getOutfitPayload(layerManager, ownerId = "local") {
+  const layers = layerManager?.layers.get(ownerId);
   if (!layers) return {};
   const payload = {};
   for (const [category, { key, imageUrl }] of layers) {
