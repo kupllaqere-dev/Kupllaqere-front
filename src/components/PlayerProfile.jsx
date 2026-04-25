@@ -518,9 +518,10 @@ const Modal = styled.div`
   aspect-ratio: ${FRAME_ASPECT};
   color: #fff;
   filter: drop-shadow(0 8px 40px rgba(0, 0, 0, 0.6));
-`;
+  `;
 
 const Inner = styled.div`
+  border-radius: 14px;
   position: absolute;
   top: ${INSET_TOP};
   right: ${INSET_RIGHT};
@@ -570,9 +571,14 @@ const AvatarSide = styled.div`
 `;
 
 const AvatarCanvas = styled.canvas`
-  background: rgba(255, 255, 255, 0.03);
+  background: linear-gradient(
+    to top,
+    rgba(55, 20, 153, 0.18) 0%,
+    rgba(109, 44, 194, 0.76) 50%,
+    rgba(161, 65, 250, 0.705) 100%
+  );
   border: 1px solid #ffffff15;
-  border-radius: 12px;
+  border-radius: 14px;
   width: 400px;
   max-width: 100%;
   height: auto;
@@ -792,7 +798,7 @@ const SmError = styled.div`
 const NameAndBadges = styled.div`
  display: flex;
  gap: 16px;
- justify-content: space-between;
+ flex-direction: column
 `;
 
 const PlayerName = styled.h2`
