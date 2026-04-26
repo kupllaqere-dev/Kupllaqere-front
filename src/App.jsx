@@ -21,6 +21,7 @@ function App() {
   });
   const [equipped, setEquipped] = useState({});
   const [outfit, setOutfit] = useState({});
+  const [gameSocket, setGameSocket] = useState(null);
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
 
@@ -88,6 +89,7 @@ function App() {
         selectedBadge={user?.selectedBadge || null}
         onSaveBadge={handleSaveBadge}
         currentUserId={user?.id || null}
+        socket={gameSocket}
       />
       <Game
         user={user}
@@ -95,6 +97,7 @@ function App() {
         onOutfitChange={setOutfit}
         equipRef={equipRef}
         unequipRef={unequipRef}
+        onSocketReady={setGameSocket}
       />
     </>
   );

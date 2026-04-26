@@ -142,6 +142,10 @@ export default class SocketManager {
     this.socket.on("soulmate:refresh", callback);
   }
 
+  onMailNew(callback) {
+    this.socket.on("mail:new", callback);
+  }
+
   off(event, callback) {
     this.socket.off(event, callback);
   }

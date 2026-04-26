@@ -260,6 +260,31 @@ export const SearchHint = styled.div`
   min-height: 14px;
 `;
 
+export const BubbleWrapper = styled.div`
+  position: relative;
+  display: inline-flex;
+`;
+
+export const NotifBadge = styled.div`
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  background: #e03131;
+  border-radius: 8px;
+  border: 2px solid #141414;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  pointer-events: none;
+  z-index: 1;
+`;
+
 export const LogoutButton = styled.button`
   background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
   border: 1px solid #ffffff22;

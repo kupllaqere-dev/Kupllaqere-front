@@ -13,6 +13,8 @@ import PlayerThumbnail from "./PlayerThumbnail";
 const FRAME_W = 510;
 const FRAME_H = 900;
 
+const ZOOM_LEVELS = [1, 1.2, 1.4, 1.6, 1.8];
+
 // Clockwise rotation order through idle poses
 const POSE_ORDER = [0, 4, 5, 3, 2, 1]; // FRONT, FRONT_RIGHT, RIGHT, BACK, LEFT, FRONT_LEFT
 const POSE_LABELS = ["Front", "Front Right", "Right", "Back", "Left", "Front Left"];
@@ -41,9 +43,12 @@ export default function PlayerProfile({
   currentUserId = null,
   targetUserId = null,
   socket = null,
+  onOpenMail = null,
+  onComposeMail = null,
 }) {
   const canvasRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
+  const [zoomIndex, setZoomIndex] = useState(2);
   const [baseImg, setBaseImg] = useState(null);
   const [layerImages, setLayerImages] = useState([]);
   const [editingBio, setEditingBio] = useState(false);
@@ -54,6 +59,8 @@ export default function PlayerProfile({
   const [smState, setSmState] = useState(null); // { mine, sent, received, target?, relationship? }
   const [smBusy, setSmBusy] = useState(false);
   const [smError, setSmError] = useState(null);
+
+  
 
   const isSelfView = !!(currentUserId && targetUserId &&
     String(currentUserId) === String(targetUserId));
@@ -190,6 +197,8 @@ export default function PlayerProfile({
 
   const turnLeft = () => setPoseIndex((i) => (i - 1 + POSE_ORDER.length) % POSE_ORDER.length);
   const turnRight = () => setPoseIndex((i) => (i + 1) % POSE_ORDER.length);
+  const zoomOut = () => setZoomIndex((i) => Math.max(i - 1, 0));
+  const zoomIn = () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1));
 
   return (
     <Overlay onClick={onClose}>
@@ -198,8 +207,27 @@ export default function PlayerProfile({
           <CloseBtn onClick={onClose}>&times;</CloseBtn>
           <Content>
             <AvatarSide>
-              <AvatarCanvas ref={canvasRef} width={FRAME_W} height={FRAME_H} />
+              <AvatarViewport>
+                <AvatarCanvas
+                  ref={canvasRef}
+                  width={FRAME_W}
+                  height={FRAME_H}
+                  style={{
+                    transform: `scale(${ZOOM_LEVELS[zoomIndex]})`,
+                    transformOrigin: "top center",
+                  }}
+                />
+              </AvatarViewport>
               <Controls>
+                <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>
+                  −
+                </ArrowBtn>
+                <ArrowBtn
+                  onClick={zoomIn}
+                  disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+                >
+                  +
+                </ArrowBtn>
                 <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
                 <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel>
                 <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
@@ -208,13 +236,20 @@ export default function PlayerProfile({
 
             <MiddleColumn>
               <PlayerLevel>Level 78</PlayerLevel>
-              <ActionBtn type="button"> Appearance </ActionBtn>
-              <ActionBtn type="button"> Inventory</ActionBtn>
-              <ActionBtn type="button"> Friend List</ActionBtn>
-              <ActionBtn type="button"> Mail</ActionBtn>
-              <ActionBtn type="button"> Album</ActionBtn>
-              <ActionBtn type="button"> Stats</ActionBtn>
-              <ActionBtn type="button"> Wishlist</ActionBtn>
+              {isSelfView && (
+                <>
+                  <ActionBtn type="button"> Appearance </ActionBtn>
+                  <ActionBtn type="button"> Inventory</ActionBtn>
+                  <ActionBtn type="button"> Friend List</ActionBtn>
+                  <ActionBtn type="button" onClick={onOpenMail ?? undefined}>
+                    {" "}
+                    Mail
+                  </ActionBtn>
+                  <ActionBtn type="button"> Album</ActionBtn>
+                  <ActionBtn type="button"> Stats</ActionBtn>
+                  <ActionBtn type="button"> Wishlist</ActionBtn>
+                </>
+              )}
             </MiddleColumn>
 
             <InfoSide>
@@ -308,6 +343,7 @@ export default function PlayerProfile({
               )}
 
               <Divider />
+
               <PlaceholderGrid>
                 <SoulMateBox>
                   <SoulMateLabel>Soul Mate</SoulMateLabel>
@@ -326,10 +362,34 @@ export default function PlayerProfile({
                   })}
                 </SoulMateBox>
               </PlaceholderGrid>
+
+              {!isSelfView && (
+                <OtherPlayerActions>
+                  <ActionBtn
+                    type="button"
+                    onClick={
+                      onComposeMail
+                        ? () => {
+                            console.log("Compose mail clicked:", {
+                              targetUserId,
+                              playerName,
+                            });
+                            onComposeMail(targetUserId, playerName);
+                          }
+                        : undefined
+                    }
+                  >
+                    Mail
+                  </ActionBtn>
+                  <ActionBtn type="button">Placeholder</ActionBtn>
+                  <ActionBtn type="button">Placeholder</ActionBtn>
+                  <ActionBtn type="button">Placeholder</ActionBtn>
+                </OtherPlayerActions>
+              )}
             </InfoSide>
           </Content>
         </Inner>
-        <Frame src="/assets/menus/frame.png" alt="" aria-hidden="true" />
+        {/* <Frame src="/assets/menus/frame.png" alt="" aria-hidden="true" /> */}
       </Modal>
     </Overlay>
   );
@@ -563,7 +623,8 @@ const CloseBtn = styled.button`
 const Content = styled.div`
   display: flex;
   gap: 28px;
-  align-items: flex-start;
+  align-items: stretch;
+  height: 100%;
 `;
 
 const AvatarSide = styled.div`
@@ -573,19 +634,28 @@ const AvatarSide = styled.div`
   flex-shrink: 0;
 `;
 
-const AvatarCanvas = styled.canvas`
+const AvatarViewport = styled.div`
+  width: 400px;
+  max-width: 100%;
+  aspect-ratio: ${FRAME_W} / ${FRAME_H};
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid #ffffff15;
+  flex-shrink: 0;
   background: linear-gradient(
     to top,
     rgba(55, 20, 153, 0.18) 0%,
     rgba(109, 44, 194, 0.76) 50%,
     rgba(161, 65, 250, 0.705) 100%
   );
-  border: 1px solid #ffffff15;
-  border-radius: 14px;
-  width: 400px;
-  max-width: 100%;
-  height: auto;
-  aspect-ratio: ${FRAME_W} / ${FRAME_H};
+`;
+
+const AvatarCanvas = styled.canvas`
+  
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 `;
 
 const Controls = styled.div`
@@ -609,10 +679,15 @@ const ArrowBtn = styled.button`
   justify-content: center;
   transition: all 0.15s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(124, 58, 237, 0.3);
     border-color: #7b2ff7;
     color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 `;
 
@@ -669,9 +744,24 @@ const ActionBtn = styled.button`
   }
 `;
 
+const OtherPlayerActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 14px;
+  padding-bottom: 16px;
+
+  ${ActionBtn} {
+    flex: 1;
+    width: auto;
+  }
+`;
+
 const InfoSide = styled.div`
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const PlaceholderGrid = styled.div`

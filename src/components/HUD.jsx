@@ -1,24 +1,55 @@
 import * as S from "./HUDStyles";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import UploadItemModal from "./UploadItemModal";
 import InventoryModal from "./InventoryModal";
 import PlayerProfile from "./PlayerProfile";
 import FriendsModal from "./FriendsModal";
+import MailModal from "./MailModal";
+import ComposeMailModal from "./ComposeMailModal";
 import { lookupUser } from "../api/auth";
+import { fetchUnreadCount } from "../api/mail";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket }) {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [showMail, setShowMail] = useState(false);
+  const [composeMail, setComposeMail] = useState(null); // { targetId, targetName }
+  const [unreadCount, setUnreadCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [searchStatus, setSearchStatus] = useState(null); // null | "searching" | "notfound" | "error"
+  const [searchStatus, setSearchStatus] = useState(null);
   const [searchedUser, setSearchedUser] = useState(null);
   const searchInputRef = useRef(null);
   const searchWrapperRef = useRef(null);
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const { count } = await fetchUnreadCount();
+      setUnreadCount(count);
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
+  // Fetch unread count on mount when user is logged in
+  useEffect(() => {
+    if (!currentUserId) return;
+    fetchUnreadCount()
+      .then(({ count }) => setUnreadCount(count))
+      .catch(() => {});
+  }, [currentUserId]);
+
+  // Listen for real-time new mail via socket
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const handler = () => setUnreadCount((c) => c + 1);
+    socket.socket.on("mail:new", handler);
+    return () => socket.socket.off("mail:new", handler);
+  }, [socket]);
 
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
@@ -53,6 +84,16 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
     }
   }
 
+  function openMail() {
+    setShowProfile(false);
+    setShowMail(true);
+  }
+
+  function handleMailClosed() {
+    setShowMail(false);
+    refreshUnread();
+  }
+
   return (
     <>
     {showProfile && (
@@ -67,6 +108,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onSaveBadge={onSaveBadge}
         currentUserId={currentUserId}
         targetUserId={currentUserId}
+        onOpenMail={openMail}
       />
     )}
     {searchedUser && (
@@ -79,6 +121,23 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         selectedBadge={searchedUser.selectedBadge}
         currentUserId={currentUserId}
         targetUserId={searchedUser.id}
+        onComposeMail={(id, name) => {
+          setSearchedUser(null);
+          setComposeMail({ targetId: id, targetName: name });
+        }}
+      />
+    )}
+    {showMail && (
+      <MailModal
+        onClose={handleMailClosed}
+        onUnreadChange={refreshUnread}
+      />
+    )}
+    {composeMail && (
+      <ComposeMailModal
+        targetId={composeMail.targetId}
+        targetName={composeMail.targetName}
+        onClose={() => setComposeMail(null)}
       />
     )}
     {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}
@@ -100,19 +159,29 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         </div>
 
         <S.ButtonGroup>
-            {/* <S.Bubble onClick={() => setIsOpen((prev) => !prev)}>
-              <img src="/icons/avatar.png"></img>
-            </S.Bubble> */}
-                <S.Bubble onClick={() => { setShowProfile(true); setIsOpen(false); }}>
-                  <img src="/icons/profile.png"></img>
-                </S.Bubble>
+            <S.BubbleWrapper>
+              <S.Bubble onClick={() => { setShowProfile(true); setIsOpen(false); }}>
+                <img src="/icons/profile.png"></img>
+              </S.Bubble>
+              {unreadCount > 0 && (
+                <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
+              )}
+            </S.BubbleWrapper>
                 <S.Bubble onClick={() => { setShowInventory(true); setIsOpen(false); }}>
                   <img src="/icons/inventory.png"></img>
                 </S.Bubble>
                 <S.Bubble onClick={() => { setShowFriends(true); setIsOpen(false); }}>
                   <img src="/icons/friends.png"></img>
                 </S.Bubble>
-              
+                <S.BubbleWrapper>
+                  <S.Bubble onClick={() => { setShowMail(true); setIsOpen(false); }} title="Mailbox">
+                    <img src="/icons/mail.png"></img>
+                  </S.Bubble>
+                  {unreadCount > 0 && (
+                    <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
+                  )}
+                </S.BubbleWrapper>
+
 
           <S.Bubble onClick={() => setShowUpload(true)} title="Upload Item">
             <img src="/icons/upload.png"></img>

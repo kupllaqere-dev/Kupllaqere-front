@@ -34,7 +34,7 @@ import OnlineFriendsBar from "./OnlineFriendsBar";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
 
-export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef }) {
+export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, onSocketReady }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const sceneRef = useRef(null);
@@ -79,6 +79,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       socketManager = new SocketManager();
       socketRef.current = socketManager;
       setSocketReady(true);
+      onSocketReady?.(socketManager);
 
       socketManager.socket.on("game:state", () => {
         stateReceived = true;
@@ -419,12 +420,18 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
               setPlayerMenu((prev) => prev && { ...prev, status: "pending" });
               try {
                 const result = await sendFriendRequest(playerMenu.userId);
-                setPlayerMenu((prev) =>
-                  prev && { ...prev, status: result.status === "accepted" ? "accepted" : "sent" },
+                setPlayerMenu(
+                  (prev) =>
+                    prev && {
+                      ...prev,
+                      status:
+                        result.status === "accepted" ? "accepted" : "sent",
+                    },
                 );
               } catch (err) {
-                setPlayerMenu((prev) =>
-                  prev && { ...prev, status: "error", error: err.message },
+                setPlayerMenu(
+                  (prev) =>
+                    prev && { ...prev, status: "error", error: err.message },
                 );
               }
             }}
