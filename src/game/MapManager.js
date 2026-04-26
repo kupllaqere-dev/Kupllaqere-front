@@ -1,7 +1,7 @@
 import { setPerspectiveFromColliders } from "./perspective";
 
 export const MAP_WIDTH = 5000;
-export const MAP_HEIGHT = 1000;
+export const MAP_HEIGHT = 1080;
 
 const LAYER_W = 1578;
 const LAYER_H = 714;
@@ -17,7 +17,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "mainmap-bg",
-      path: "/assets/maps/mainmap/background4.webp",
+      path: "/assets/maps/mainmap/background.webp",
     },
     colliders: "/assets/maps/mainmap/colliders.json",
   },
@@ -30,7 +30,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "mainmap-bg",
-      path: "/assets/maps/mainmap/background4.webp",
+      path: "/assets/maps/mainmap/background.webp",
     },
     colliders: "/assets/maps/mainmap/colliders.json",
   },
@@ -42,7 +42,7 @@ export function preloadMap(scene) {
   scene.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
   scene.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
   scene.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
-  scene.load.image("mainmap-bg", "/assets/maps/mainmap/background4.webp");
+  scene.load.image("mainmap-bg", "/assets/maps/mainmap/background.webp");
   scene.load.json("colliders", "/assets/maps/mainmap/colliders.json");
 }
 

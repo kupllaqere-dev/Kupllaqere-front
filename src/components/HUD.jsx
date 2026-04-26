@@ -100,13 +100,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         </div>
 
         <S.ButtonGroup>
-          <S.ProfileWrapper>
-            <S.Bubble onClick={() => setIsOpen((prev) => !prev)}>
+            {/* <S.Bubble onClick={() => setIsOpen((prev) => !prev)}>
               <img src="/icons/avatar.png"></img>
-            </S.Bubble>
-
-            {isOpen && (
-              <S.Dropdown>
+            </S.Bubble> */}
                 <S.Bubble onClick={() => { setShowProfile(true); setIsOpen(false); }}>
                   <img src="/icons/profile.png"></img>
                 </S.Bubble>
@@ -116,9 +112,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
                 <S.Bubble onClick={() => { setShowFriends(true); setIsOpen(false); }}>
                   <img src="/icons/friends.png"></img>
                 </S.Bubble>
-              </S.Dropdown>
-            )}
-          </S.ProfileWrapper>
+              
 
           <S.Bubble onClick={() => setShowUpload(true)} title="Upload Item">
             <img src="/icons/upload.png"></img>

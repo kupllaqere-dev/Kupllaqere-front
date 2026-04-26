@@ -8,6 +8,7 @@ import {
   cancelSoulMateRequest,
   removeSoulMate,
 } from "../api/soulmate";
+import PlayerThumbnail from "./PlayerThumbnail";
 
 const FRAME_W = 510;
 const FRAME_H = 900;
@@ -328,7 +329,7 @@ export default function PlayerProfile({
             </InfoSide>
           </Content>
         </Inner>
-        {/* <Frame src="/assets/menus/frame.png" alt="" aria-hidden="true" /> */}
+        <Frame src="/assets/menus/frame.png" alt="" aria-hidden="true" />
       </Modal>
     </Overlay>
   );
@@ -359,8 +360,10 @@ function renderSoulMate({
     if (mine) {
       return (
         <SoulMateContent>
-          <SoulMateHeart>♥</SoulMateHeart>
-          <SoulMateName>{mine.name}</SoulMateName>
+          <SoulMateName>
+            <PlayerThumbnail playerName={mine.name}/>
+            {mine.name}
+          </SoulMateName>
           <SoulMateActions>
             <SmDangerBtn disabled={smBusy} onClick={smRemove}>
               Break Up
@@ -716,8 +719,9 @@ const SoulMateSubLabel = styled.div`
 
 const SoulMateContent = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
+  justify-content: space-between;
 `;
 
 const SoulMateEmpty = styled.div`
@@ -729,6 +733,8 @@ const SoulMateName = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #fff;
+  display: flex;
+  align-items: center;
 `;
 
 const SoulMateHeart = styled.div`

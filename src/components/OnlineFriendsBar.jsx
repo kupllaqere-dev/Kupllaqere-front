@@ -77,7 +77,7 @@ export default function OnlineFriendsBar({ socket }) {
       {friends.map((f) => (
         <Item key={f.id} title={f.name || "Unknown"}>
           <Avatar>
-            <PlayerThumbnail outfit={f.outfit} gender={f.gender} size={52} />
+            <PlayerThumbnail playerName={f.name} size={52} />
             <Dot />
           </Avatar>
           <Name>{f.name || ""}</Name>

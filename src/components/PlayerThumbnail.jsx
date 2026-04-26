@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { fetchPlayerAppearance } from "../api/users";
 
 const LAYER_ORDER = [
   "bottoms",
@@ -38,11 +39,22 @@ function loadImage(url) {
   return imageCache.get(url);
 }
 
-export default function PlayerThumbnail({ outfit, gender, size = 36 }) {
+export default function PlayerThumbnail({ playerName, size = 36 }) {
   const canvasRef = useRef(null);
+  const [appearance, setAppearance] = useState(null);
+
+  useEffect(() => {
+    if (!playerName) return;
+    let cancelled = false;
+    fetchPlayerAppearance(playerName).then((data) => {
+      if (!cancelled) setAppearance(data);
+    });
+    return () => { cancelled = true; };
+  }, [playerName]);
 
   useEffect(() => {
     let cancelled = false;
+    const { gender, outfit } = appearance || {};
 
     const urls = [
       baseSpriteUrl(gender),
@@ -57,7 +69,6 @@ export default function PlayerThumbnail({ outfit, gender, size = 36 }) {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       for (const img of images) {
         if (!img) continue;
         ctx.drawImage(
@@ -69,7 +80,7 @@ export default function PlayerThumbnail({ outfit, gender, size = 36 }) {
     });
 
     return () => { cancelled = true; };
-  }, [outfit, gender]);
+  }, [appearance]);
 
   return (
     <canvas
