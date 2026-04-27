@@ -9,6 +9,7 @@ import {
   removeSoulMate,
 } from "../api/soulmate";
 import PlayerThumbnail from "./PlayerThumbnail";
+import ComposeMailModal from "./ComposeMailModal";
 
 const FRAME_W = 510;
 const FRAME_H = 900;
@@ -31,6 +32,17 @@ function extractFrame(img, frameIndex, cols) {
 
 const BIO_MAX = 150;
 
+function bioToHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+?)\*/g, "<em>$1</em>")
+    .replace(/_([^_]+?)_/g, "<u>$1</u>")
+    .replace(/\n/g, "<br>");
+}
+
 export default function PlayerProfile({
   onClose,
   playerName,
@@ -44,9 +56,9 @@ export default function PlayerProfile({
   targetUserId = null,
   socket = null,
   onOpenMail = null,
-  onComposeMail = null,
 }) {
   const canvasRef = useRef(null);
+  const textareaRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [zoomIndex, setZoomIndex] = useState(2);
   const [baseImg, setBaseImg] = useState(null);
@@ -59,6 +71,7 @@ export default function PlayerProfile({
   const [smState, setSmState] = useState(null); // { mine, sent, received, target?, relationship? }
   const [smBusy, setSmBusy] = useState(false);
   const [smError, setSmError] = useState(null);
+  const [composing, setComposing] = useState(false);
 
   
 
@@ -195,12 +208,37 @@ export default function PlayerProfile({
 
   useEffect(() => { draw(); }, [draw]);
 
+  const applyFormat = (marker) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const { selectionStart: ss, selectionEnd: se } = ta;
+    const selected = bioDraft.substring(ss, se);
+    const newText = bioDraft.substring(0, ss) + marker + selected + marker + bioDraft.substring(se);
+    setBioDraft(newText);
+    setTimeout(() => {
+      ta.focus();
+      if (ss === se) {
+        ta.setSelectionRange(ss + marker.length, ss + marker.length);
+      } else {
+        ta.setSelectionRange(ss + marker.length, se + marker.length);
+      }
+    }, 0);
+  };
+
   const turnLeft = () => setPoseIndex((i) => (i - 1 + POSE_ORDER.length) % POSE_ORDER.length);
   const turnRight = () => setPoseIndex((i) => (i + 1) % POSE_ORDER.length);
   const zoomOut = () => setZoomIndex((i) => Math.max(i - 1, 0));
   const zoomIn = () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1));
 
   return (
+    <>
+    {composing && !isSelfView && (
+      <ComposeMailModal
+        targetId={targetUserId}
+        targetName={playerName}
+        onClose={() => setComposing(false)}
+      />
+    )}
     <Overlay onClick={onClose}>
       <Modal onClick={(e) => e.stopPropagation()}>
         <Inner>
@@ -293,7 +331,13 @@ export default function PlayerProfile({
               </BioHeader>
               {editingBio ? (
                 <>
+                  <FormatToolbar>
+                    <FormatBtn title="Bold" onMouseDown={(e) => { e.preventDefault(); applyFormat("**"); }}><b>B</b></FormatBtn>
+                    <FormatBtn title="Italic" onMouseDown={(e) => { e.preventDefault(); applyFormat("*"); }}><i>I</i></FormatBtn>
+                    <FormatBtn title="Underline" onMouseDown={(e) => { e.preventDefault(); applyFormat("_"); }}><u>U</u></FormatBtn>
+                  </FormatToolbar>
                   <BioTextarea
+                    ref={textareaRef}
                     value={bioDraft}
                     maxLength={BIO_MAX}
                     onChange={(e) => setBioDraft(e.target.value)}
@@ -337,9 +381,9 @@ export default function PlayerProfile({
                   {bioError && <BioErrorMsg>{bioError}</BioErrorMsg>}
                 </>
               ) : (
-                <Description>
-                  {bio?.trim() ? bio : <EmptyOutfit>No bio yet.</EmptyOutfit>}
-                </Description>
+                bio?.trim()
+                  ? <Description dangerouslySetInnerHTML={{ __html: bioToHtml(bio) }} />
+                  : <Description><EmptyOutfit>No bio yet.</EmptyOutfit></Description>
               )}
 
               <Divider />
@@ -365,20 +409,7 @@ export default function PlayerProfile({
 
               {!isSelfView && (
                 <OtherPlayerActions>
-                  <ActionBtn
-                    type="button"
-                    onClick={
-                      onComposeMail
-                        ? () => {
-                            console.log("Compose mail clicked:", {
-                              targetUserId,
-                              playerName,
-                            });
-                            onComposeMail(targetUserId, playerName);
-                          }
-                        : undefined
-                    }
-                  >
+                  <ActionBtn type="button" onClick={() => setComposing(true)}>
                     Mail
                   </ActionBtn>
                   <ActionBtn type="button">Placeholder</ActionBtn>
@@ -392,6 +423,7 @@ export default function PlayerProfile({
         {/* <Frame src="/assets/menus/frame.png" alt="" aria-hidden="true" /> */}
       </Modal>
     </Overlay>
+    </>
   );
 }
 
@@ -958,6 +990,28 @@ const Description = styled.p`
   font-size: 13px;
   color: #bbb;
   line-height: 1.5;
+  white-space: pre-wrap;
+`;
+
+const FormatToolbar = styled.div`
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+`;
+
+const FormatBtn = styled.button`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #ffffff22;
+  color: #ccc;
+  font-size: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: rgba(124, 58, 237, 0.3); border-color: #7b2ff7; color: #fff; }
 `;
 
 const EmptyOutfit = styled.span`

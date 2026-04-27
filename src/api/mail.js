@@ -24,6 +24,19 @@ export async function fetchSent() {
   return handle(await fetch(`${API}/api/mail/sent`, { headers: authHeaders() }));
 }
 
+export async function fetchThread(threadId) {
+  return handle(await fetch(`${API}/api/mail/thread/${encodeURIComponent(threadId)}`, { headers: authHeaders() }));
+}
+
+export async function markThreadRead(threadId) {
+  return handle(
+    await fetch(`${API}/api/mail/thread/${encodeURIComponent(threadId)}/read`, {
+      method: "PATCH",
+      headers: authHeaders(),
+    })
+  );
+}
+
 export async function sendMail(targetId, subject, body) {
   return handle(
     await fetch(`${API}/api/mail/send`, {
@@ -34,11 +47,12 @@ export async function sendMail(targetId, subject, body) {
   );
 }
 
-export async function markMailRead(mailId) {
+export async function replyToThread(threadId, body) {
   return handle(
-    await fetch(`${API}/api/mail/${mailId}/read`, {
-      method: "PATCH",
+    await fetch(`${API}/api/mail/reply`, {
+      method: "POST",
       headers: authHeaders(),
+      body: JSON.stringify({ threadId, body }),
     })
   );
 }
