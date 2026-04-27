@@ -53,13 +53,13 @@ async function extractVariantAssets(file) {
   });
 }
 
-const EMPTY_VARIANTS = () => Array(5).fill(null);
+const EMPTY_VARIANTS = () => Array(10).fill(null);
 
 const EMPTY_SET_ITEM = () => ({
   name: "",
   category: null,
   subcategory: null,
-  variants: EMPTY_VARIANTS(), // each: null | { file, avatarUrl, thumbnailUrl }
+  variants: Array(5).fill(null),
   activeVar: 0,
 });
 
@@ -112,21 +112,13 @@ function VariantSlot({ variant, required, isActive, onUpload, onSelect, onDelete
 
 // ── CategorySelector ──────────────────────────────────────────────────────────
 function CategorySelector({ mode, selectedSlot, singleSel, setItems, onSelectSingle, onSelectForSlot }) {
-  const [expanded, setExpanded] = useState({});
-  const toggle = (cat) => setExpanded((p) => ({ ...p, [cat]: !p[cat] }));
-
-  // Which slot (1-based) owns this subcat? (for the badge)
+  // Which slot (1-based) owns this exact subcat? (for the badge)
   const slotForSub = (cat, sub) => {
     const i = setItems.findIndex((it) => it.category === cat && it.subcategory === sub);
     return i >= 0 ? i + 1 : null;
   };
 
-  // In set mode: is this category used by a DIFFERENT slot (blocks entire category)
-  const catBlockedByOther = (cat) =>
-    mode === "set" && setItems.some((it, i) => i !== selectedSlot && it.category === cat);
-
-  const handleClick = (cat, sub, blocked) => {
-    if (blocked) return;
+  const handleClick = (cat, sub) => {
     if (mode === "single") { onSelectSingle(cat, sub); return; }
     if (selectedSlot === null) return;
     onSelectForSlot(selectedSlot, cat, sub);
@@ -134,38 +126,31 @@ function CategorySelector({ mode, selectedSlot, singleSel, setItems, onSelectSin
 
   return (
     <CatList>
-      {Object.entries(CATEGORIES).map(([cat, subs]) => {
-        const blocked = catBlockedByOther(cat);
-        return (
-          <CatGroup key={cat}>
-            <CatHeader onClick={() => toggle(cat)} $blocked={blocked}>
-              <CatName>{CAT_LABELS[cat]}</CatName>
-              <CatArrow>{expanded[cat] ? "▾" : "▸"}</CatArrow>
-            </CatHeader>
-            {expanded[cat] && (
-              <SubList>
-                {subs.map((sub) => {
-                  const isThisSlotActive = mode === "single"
-                    ? singleSel.category === cat && singleSel.subcategory === sub
-                    : setItems[selectedSlot]?.category === cat && setItems[selectedSlot]?.subcategory === sub;
-                  const slotNum = mode === "set" ? slotForSub(cat, sub) : null;
-                  return (
-                    <SubItem
-                      key={sub}
-                      $active={isThisSlotActive}
-                      $blocked={blocked}
-                      onClick={() => handleClick(cat, sub, blocked)}
-                    >
-                      {SUBCAT_LABELS[sub] || sub}
-                      {slotNum !== null && <SlotBadge>{slotNum}</SlotBadge>}
-                    </SubItem>
-                  );
-                })}
-              </SubList>
-            )}
-          </CatGroup>
-        );
-      })}
+      {Object.entries(CATEGORIES).map(([cat, subs]) => (
+        <CatGroup key={cat}>
+          <CatHeader>
+            <CatName>{CAT_LABELS[cat]}</CatName>
+          </CatHeader>
+          <SubList>
+            {subs.map((sub) => {
+              const isThisSlotActive = mode === "single"
+                ? singleSel.category === cat && singleSel.subcategory === sub
+                : setItems[selectedSlot]?.category === cat && setItems[selectedSlot]?.subcategory === sub;
+              const slotNum = mode === "set" ? slotForSub(cat, sub) : null;
+              return (
+                <SubItem
+                  key={sub}
+                  $active={isThisSlotActive}
+                  onClick={() => handleClick(cat, sub)}
+                >
+                  {SUBCAT_LABELS[sub] || sub}
+                  {slotNum !== null && <SlotBadge>{slotNum}</SlotBadge>}
+                </SubItem>
+              );
+            })}
+          </SubList>
+        </CatGroup>
+      ))}
     </CatList>
   );
 }
@@ -324,18 +309,6 @@ export default function Create() {
         {/* ── LEFT: Category selector ── */}
         <LeftPanel>
           <PanelTitle>Category</PanelTitle>
-          {mode === "set" && (
-            <SlotTabs>
-              {setItems.map((it, i) => (
-                <SlotTab key={i} $active={selectedSlot === i} onClick={() => setSelectedSlot(i)}>
-                  <SlotNum>{i + 1}</SlotNum>
-                  {it.subcategory
-                    ? <SlotLabel>{SUBCAT_LABELS[it.subcategory] || it.subcategory}</SlotLabel>
-                    : <SlotLabelEmpty>empty</SlotLabelEmpty>}
-                </SlotTab>
-              ))}
-            </SlotTabs>
-          )}
           <CategorySelector
             mode={mode}
             selectedSlot={selectedSlot}
@@ -397,7 +370,7 @@ export default function Create() {
             <VariantBox>
               <VariantBoxTitle>
                 {singleSel.subcategory
-                  ? `${SUBCAT_LABELS[singleSel.subcategory] || singleSel.subcategory} · ${CAT_LABELS[singleSel.category]}`
+                  ? `${CAT_LABELS[singleSel.category]} - ${SUBCAT_LABELS[singleSel.subcategory] || singleSel.subcategory}`
                   : "Select a category"}
               </VariantBoxTitle>
               <VariantGrid>
@@ -423,14 +396,14 @@ export default function Create() {
               >
                 <VariantBoxTitle>
                   {item.subcategory
-                    ? `${slotIdx + 1}. ${SUBCAT_LABELS[item.subcategory] || item.subcategory}`
+                    ? `${slotIdx + 1}. ${CAT_LABELS[item.category]} - ${SUBCAT_LABELS[item.subcategory] || item.subcategory}`
                     : `${slotIdx + 1}. No category`}
                 </VariantBoxTitle>
                 <VariantGrid>
-                  {EMPTY_VARIANTS().map((_, varIdx) => (
+                  {item.variants.map((variant, varIdx) => (
                     <VariantSlot
                       key={varIdx}
-                      variant={item.variants[varIdx]}
+                      variant={variant}
                       required={true}
                       isActive={!!item.variants[varIdx] && varIdx === item.activeVar}
                       onUpload={(f) => { setSelectedSlot(slotIdx); handleSetUpload(slotIdx, varIdx, f); }}
@@ -466,42 +439,28 @@ const ThreeCols = styled.div`display:flex;flex:1;overflow:hidden;`;
 
 // Left panel
 const LeftPanel = styled.div`
-  width:210px;flex-shrink:0;border-right:1px solid #ffffff0a;
+  width:240px;flex-shrink:0;border-right:1px solid #ffffff0a;
   display:flex;flex-direction:column;overflow-y:auto;padding:16px 0;
 `;
 const PanelTitle = styled.div`font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 10px;`;
 
-const SlotTabs = styled.div`display:flex;flex-direction:column;gap:4px;padding:0 10px 12px;border-bottom:1px solid #ffffff08;margin-bottom:8px;`;
-const SlotTab = styled.button`
-  padding:6px 10px;border-radius:7px;cursor:pointer;text-align:left;
-  display:flex;align-items:center;gap:8px;
-  border:1px solid ${(p) => p.$active ? "rgba(104,207,238,0.6)" : "#ffffff10"};
-  background:${(p) => p.$active ? "rgba(104,207,238,0.15)" : "transparent"};
-  color:${(p) => p.$active ? "#a8e6f5" : "#888"};
-  &:hover{border-color:#68cfee;color:#a8e6f5;}
-`;
-const SlotNum       = styled.span`font-size:12px;font-weight:700;flex-shrink:0;`;
-const SlotLabel     = styled.small`font-size:11px;opacity:0.9;text-transform:capitalize;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-const SlotLabelEmpty= styled.small`font-size:11px;opacity:0.4;font-style:italic;`;
 
-const CatList   = styled.div`display:flex;flex-direction:column;gap:2px;padding:0 10px;`;
+const CatList   = styled.div`display:flex;flex-direction:column;gap:4px;padding:0 10px;`;
 const CatGroup  = styled.div``;
 const CatHeader = styled.div`
-  display:flex;align-items:center;justify-content:space-between;
-  padding:7px 8px;border-radius:6px;cursor:pointer;
-  color:${(p) => p.$blocked ? "#444" : "#aaa"};
-  font-size:13px;font-weight:600;text-transform:capitalize;
-  &:hover{background:${(p) => p.$blocked ? "none" : "rgba(255,255,255,0.04)"};color:${(p) => p.$blocked ? "#444" : "#fff"};}
+  padding:10px 6px 4px;
+  color:#bbb;
+  font-size:13px;font-weight:700;
 `;
 const CatName   = styled.span``;
-const CatArrow  = styled.span`font-size:11px;color:#555;`;
-const SubList   = styled.div`display:flex;flex-direction:column;gap:1px;padding:2px 0 4px 12px;`;
+const SubList   = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:0 0 6px 0;`;
 const SubItem   = styled.div`
-  display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:5px;
-  cursor:${(p) => p.$blocked ? "not-allowed" : "pointer"};font-size:12px;
-  color:${(p) => p.$blocked ? "#333" : p.$active ? "#a8e6f5" : "#777"};
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 7px;border-radius:5px;min-height:30px;
+  cursor:pointer;font-size:11px;white-space:nowrap;overflow:hidden;
+  color:${(p) => p.$active ? "#a8e6f5" : "#777"};
   background:${(p) => p.$active ? "rgba(104,207,238,0.12)" : "transparent"};
-  &:hover{background:${(p) => p.$blocked ? "transparent" : "rgba(104,207,238,0.08)"};color:${(p) => p.$blocked ? "#333" : "#a8e6f5"};}
+  &:hover{background:rgba(104,207,238,0.08);color:#a8e6f5;}
 `;
 const SlotBadge = styled.span`font-size:10px;font-weight:700;background:rgba(104,207,238,0.3);color:#a8e6f5;padding:1px 6px;border-radius:10px;`;
 
