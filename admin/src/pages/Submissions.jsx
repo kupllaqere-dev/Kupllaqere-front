@@ -17,8 +17,6 @@ const ANIM = {
 };
 const DIR_CYCLE = ["down", "left", "up", "right"];
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 const imageCache = new Map();
 function loadImg(url) {
   if (!imageCache.has(url)) {
@@ -36,8 +34,8 @@ function loadImg(url) {
 
 function baseUrl(gender) {
   return gender === "male"
-    ? `${API_URL}/assets/character-bases/men-test.png`
-    : `${API_URL}/assets/character-bases/females_new.png`;
+    ? "/assets/character-bases/men-test.png"
+    : "/assets/character-bases/females_new.png";
 }
 
 // ── AvatarCanvas ─────────────────────────────────────────────────────────────
@@ -48,11 +46,15 @@ function AvatarCanvas({ gender, itemImageUrl }) {
   const [frameIdx, setFrameIdx] = useState(0);
 
   const frames = ANIM[dir][mode];
-
-  useEffect(() => { setFrameIdx(0); }, [dir, mode]);
+  const prevKeyRef = useRef(`${dir}-${mode}`);
 
   useEffect(() => {
     if (mode === "idle") return;
+    const key = `${dir}-${mode}`;
+    if (prevKeyRef.current !== key) {
+      prevKeyRef.current = key;
+      setFrameIdx(0);
+    }
     const id = setInterval(() => setFrameIdx((i) => (i + 1) % frames.length), 250);
     return () => clearInterval(id);
   }, [mode, dir, frames.length]);
