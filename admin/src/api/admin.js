@@ -32,7 +32,8 @@ export async function adminLogin(email, password) {
     throw new Error(err.message || "Login failed");
   }
   const data = await res.json();
-  if (data.user?.role !== "admin") throw new Error("This account does not have admin access.");
+  const userRoles = data.user?.roles ?? [data.user?.role];
+  if (!userRoles.includes("admin")) throw new Error("This account does not have admin access.");
   localStorage.setItem(TOKEN_KEY, data.token);
   return data;
 }
@@ -66,8 +67,10 @@ export const deleteItem = (id) =>
 // Submissions
 export const getSubmissions = (params = {}) =>
   request(`/api/admin/submissions?${new URLSearchParams(params)}`);
-export const updateSubmissionStatus = (id, status) =>
-  request(`/api/admin/submissions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+export const updateSubmissionStatus = (id, status, adminNote) =>
+  request(`/api/admin/submissions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, adminNote }) });
+export const updateSetStatus = (setCode, status, adminNote) =>
+  request(`/api/admin/submissions/set/${setCode}/status`, { method: "PATCH", body: JSON.stringify({ status, adminNote }) });
 
 // Online
 export const getOnline = () => request("/api/admin/online");

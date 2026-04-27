@@ -45,11 +45,12 @@ export async function updateOutfit(outfit) {
   return res.json();
 }
 
-export async function submitItems({ name, category, subcategory, variants }) {
+export async function submitItems({ name, category, subcategory, gender, variants }) {
   const formData = new FormData();
   formData.append("name", name);
   formData.append("category", category);
   formData.append("subcategory", subcategory);
+  formData.append("gender", gender);
   formData.append("colors", JSON.stringify(variants.map((v) => v.color)));
   variants.forEach((v, i) => formData.append(`image_${i}`, v.file));
 

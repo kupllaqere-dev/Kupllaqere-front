@@ -29,6 +29,7 @@ function UploadItemModal({ onClose }) {
   const [name, setName]             = useState("");
   const [category, setCategory]     = useState("");
   const [subcategory, setSubcat]    = useState("");
+  const [gender, setGender]         = useState("");
   const [variants, setVariants]     = useState([makeVariant(0)]);
   const [uploading, setUploading]   = useState(false);
   const [error, setError]           = useState("");
@@ -68,13 +69,14 @@ function UploadItemModal({ onClose }) {
     if (!name.trim())   return setError("Name is required");
     if (!category)      return setError("Pick a category");
     if (!subcategory)   return setError("Pick a subcategory");
+    if (!gender)        return setError("Select a gender");
     const filledVariants = variants.filter((v) => v.file);
     if (filledVariants.length === 0) return setError("Upload at least one image");
 
     setUploading(true);
     setError("");
     try {
-      await submitItems({ name: name.trim(), category, subcategory, variants: filledVariants });
+      await submitItems({ name: name.trim(), category, subcategory, gender, variants: filledVariants });
       onClose();
     } catch (err) {
       setError(err.message);
@@ -123,6 +125,14 @@ function UploadItemModal({ onClose }) {
             </Select>
           </Field>
         </Row>
+
+        <Field>
+          <Label>Gender</Label>
+          <GenderRow>
+            <GenderBtn $active={gender === "female"} onClick={() => setGender("female")}>Female</GenderBtn>
+            <GenderBtn $active={gender === "male"}   onClick={() => setGender("male")}>Male</GenderBtn>
+          </GenderRow>
+        </Field>
 
         <SectionLabel>Color Variants <Hint>({variants.length}/{MAX_VARIANTS})</Hint></SectionLabel>
 
@@ -298,6 +308,18 @@ const AddBtn = styled.button`
 `;
 
 const Error = styled.div`color: #ff6b6b; font-size: 13px; margin-top: 10px;`;
+
+const GenderRow = styled.div`display: flex; gap: 8px; margin-bottom: 12px;`;
+
+const GenderBtn = styled.button`
+  flex: 1; padding: 9px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid ${(p) => p.$active ? "rgba(123,47,247,0.8)" : "#ffffff22"};
+  background: ${(p) => p.$active ? "rgba(123,47,247,0.35)" : "transparent"};
+  color: ${(p) => p.$active ? "#c4a1ff" : "#666"};
+  transition: all 0.15s;
+  &:hover { border-color: #7b2ff7; color: #c4a1ff; }
+`;
 
 const SubmitBtn = styled.button`
   width: 100%; margin-top: 16px; padding: 12px;

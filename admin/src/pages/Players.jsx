@@ -106,9 +106,13 @@ export default function Players() {
                 </Td>
                 <Td><Gray>{p.email || "—"}</Gray></Td>
                 <Td>
-                  <Badge $color={p.role === "admin" ? "#7b2ff7" : "#444"}>
-                    {p.role}
-                  </Badge>
+                  <RolePips>
+                    {(p.roles ?? [p.role]).map((r) => (
+                      <Badge key={r} $color={r === "admin" ? "#7b2ff7" : r === "creator" ? "#f97316" : "#444"}>
+                        {r}
+                      </Badge>
+                    ))}
+                  </RolePips>
                 </Td>
                 <Td>
                   {p.isBanned
@@ -185,13 +189,26 @@ export default function Players() {
   );
 }
 
+const ALL_ROLES = ["player", "admin", "creator"];
+const ROLE_COLOR = { admin: "#7b2ff7", creator: "#f97316", player: "#444" };
+
 function EditForm({ player, busy, onSave, onClose }) {
   const [name, setName]   = useState(player.name || "");
-  const [role, setRole]   = useState(player.role || "player");
+  const [roles, setRoles] = useState(() => player.roles ?? [player.role ?? "player"]);
   const [coins, setCoins] = useState(player.coins ?? 0);
   const [gems, setGems]   = useState(player.gems ?? 0);
 
-  const save = () => onSave({ name, role, coins: Number(coins), gems: Number(gems) });
+  const toggleRole = (r) => {
+    setRoles((prev) => {
+      if (r === "player") return prev; // player is always included
+      return prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r];
+    });
+  };
+
+  const save = () => {
+    const finalRoles = roles.includes("player") ? roles : ["player", ...roles];
+    onSave({ name, roles: finalRoles, coins: Number(coins), gems: Number(gems) });
+  };
 
   return (
     <>
@@ -200,11 +217,20 @@ function EditForm({ player, busy, onSave, onClose }) {
         <FieldInput value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
       </FieldRow>
       <FieldRow>
-        <FieldLabel>Role</FieldLabel>
-        <FieldSelect value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="player">player</option>
-          <option value="admin">admin</option>
-        </FieldSelect>
+        <FieldLabel>Roles</FieldLabel>
+        <RoleCheckboxes>
+          {ALL_ROLES.map((r) => (
+            <RoleCheck key={r} $color={ROLE_COLOR[r]}>
+              <input
+                type="checkbox"
+                checked={roles.includes(r)}
+                disabled={r === "player"}
+                onChange={() => toggleRole(r)}
+              />
+              {r}
+            </RoleCheck>
+          ))}
+        </RoleCheckboxes>
       </FieldRow>
       <FieldRow>
         <FieldLabel>Coins</FieldLabel>
@@ -293,4 +319,12 @@ const FieldSelect = styled.select`
   padding:8px 10px;border-radius:7px;border:1px solid #ffffff18;
   background:#1c1c22;color:#fff;font-size:13px;outline:none;
   &:focus{border-color:#7b2ff7;}
+`;
+const RolePips = styled.div`display:flex;gap:4px;flex-wrap:wrap;`;
+const RoleCheckboxes = styled.div`display:flex;flex-direction:column;gap:8px;margin-top:4px;`;
+const RoleCheck = styled.label`
+  display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;
+  color:${(p) => p.$color};font-weight:600;text-transform:capitalize;
+  input{cursor:pointer;accent-color:${(p) => p.$color};width:15px;height:15px;}
+  &:has(input:disabled){opacity:0.45;cursor:not-allowed;}
 `;
