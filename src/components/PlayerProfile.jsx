@@ -149,7 +149,7 @@ export default function PlayerProfile({
     img.crossOrigin = "anonymous";
     img.src = gender === "male"
       ? "/assets/character-bases/men-test.png"
-      : "/assets/character-bases/females.png";
+      : "/assets/character-bases/females_new.png";
     img.onload = () => setBaseImg(img);
   }, [gender]);
 

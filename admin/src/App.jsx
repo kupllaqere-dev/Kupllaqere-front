@@ -7,6 +7,7 @@ import Players from "./pages/Players";
 import Items from "./pages/Items";
 import Online from "./pages/Online";
 import Mail from "./pages/Mail";
+import Submissions from "./pages/Submissions";
 
 function RequireAuth({ children }) {
   return getToken() ? children : <Navigate to="/login" replace />;
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="items" element={<Items />} />
           <Route path="online" element={<Online />} />
           <Route path="mail" element={<Mail />} />
+          <Route path="submissions" element={<Submissions />} />
         </Route>
       </Routes>
     </BrowserRouter>

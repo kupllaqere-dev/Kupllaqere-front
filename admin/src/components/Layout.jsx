@@ -6,8 +6,9 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard",  icon: "▦" },
   { to: "/players",   label: "Players",    icon: "👤" },
   { to: "/items",     label: "Items",      icon: "🎒" },
-  { to: "/online",    label: "Online Now", icon: "🟢" },
-  { to: "/mail",      label: "Mail",       icon: "✉" },
+  { to: "/online",      label: "Online Now",  icon: "🟢" },
+  { to: "/mail",        label: "Mail",        icon: "✉" },
+  { to: "/submissions", label: "Submissions", icon: "📋" },
 ];
 
 export default function Layout() {

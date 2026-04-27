@@ -191,7 +191,7 @@ export default function CharacterSetup({ onComplete }) {
             >
               <div className="avatar-preview">
                 <img
-                  src="/assets/character-bases/females.png"
+                  src="/assets/character-bases/females_new.png"
                   alt="female"
                   style={{
                     width: 36,

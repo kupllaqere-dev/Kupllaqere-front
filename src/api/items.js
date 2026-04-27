@@ -45,6 +45,26 @@ export async function updateOutfit(outfit) {
   return res.json();
 }
 
+export async function submitItems({ name, category, subcategory, variants }) {
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("category", category);
+  formData.append("subcategory", subcategory);
+  formData.append("colors", JSON.stringify(variants.map((v) => v.color)));
+  variants.forEach((v, i) => formData.append(`image_${i}`, v.file));
+
+  const res = await fetch(`${API}/api/items/submit`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Submission failed");
+  }
+  return res.json();
+}
+
 export async function fetchOutfit() {
   const res = await fetch(`${API}/api/items/outfit`, {
     headers: authHeaders(),

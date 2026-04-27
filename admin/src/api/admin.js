@@ -63,6 +63,12 @@ export const updateItem = (id, data) =>
 export const deleteItem = (id) =>
   request(`/api/admin/items/${id}`, { method: "DELETE" });
 
+// Submissions
+export const getSubmissions = (params = {}) =>
+  request(`/api/admin/submissions?${new URLSearchParams(params)}`);
+export const updateSubmissionStatus = (id, status) =>
+  request(`/api/admin/submissions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+
 // Online
 export const getOnline = () => request("/api/admin/online");
 

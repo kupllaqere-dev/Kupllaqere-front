@@ -9,7 +9,7 @@ const ANIMATIONS = [
 ];
 
 export const BASE_SPRITE_URLS = {
-  female: "/assets/character-bases/females.png",
+  female: "/assets/character-bases/females_new.png",
   male: "/assets/character-bases/men-test.png",
 };
 

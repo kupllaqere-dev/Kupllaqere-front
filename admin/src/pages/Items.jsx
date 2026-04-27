@@ -99,7 +99,7 @@ export default function Items() {
             {data.items.map((item) => (
               <tr key={item.id}>
                 <Td>
-                  <ItemImg src={item.imageUrl} alt={item.name} />
+                  <ItemImg src={item.thumbnailUrl || item.imageUrl} alt={item.name} />
                 </Td>
                 <Td><strong>{item.name}</strong></Td>
                 <Td><Gray>{item.category}</Gray></Td>
