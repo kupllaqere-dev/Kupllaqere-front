@@ -62,6 +62,14 @@ function App() {
     });
   }, []);
 
+  const handlePurchaseComplete = useCallback(({ coins, gems }) => {
+    setUser((prev) => {
+      const next = { ...prev, coins, gems };
+      localStorage.setItem("fv_user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
@@ -90,6 +98,9 @@ function App() {
         onSaveBadge={handleSaveBadge}
         currentUserId={user?.id || null}
         socket={gameSocket}
+        coins={user?.coins ?? 0}
+        gems={user?.gems ?? 0}
+        onPurchaseComplete={handlePurchaseComplete}
       />
       <Game
         user={user}

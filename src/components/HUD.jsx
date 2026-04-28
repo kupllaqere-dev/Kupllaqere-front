@@ -2,19 +2,21 @@ import * as S from "./HUDStyles";
 import { useState, useRef, useEffect, useCallback } from "react";
 import UploadItemModal from "./UploadItemModal";
 import InventoryModal from "./InventoryModal";
+import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
 import FriendsModal from "./FriendsModal";
 import MailModal from "./MailModal";
 import { lookupUser } from "../api/auth";
 import { fetchUnreadCount } from "../api/mail";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [showMail, setShowMail] = useState(false);
+  const [showStore, setShowStore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -121,6 +123,18 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onEquip={onEquip}
         onUnequip={onUnequip}
         equipped={equipped}
+        currentOutfit={outfit}
+        gender={gender}
+      />
+    )}
+    {showStore && (
+      <StoreModal
+        onClose={() => setShowStore(false)}
+        gender={gender}
+        coins={coins ?? 0}
+        gems={gems ?? 0}
+        currentOutfit={outfit}
+        onPurchaseComplete={onPurchaseComplete}
       />
     )}
     <S.Container>
@@ -152,7 +166,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
             <img src="/icons/upload.png" />
           </S.Bubble>
 
-          <S.Bubble>
+          <S.Bubble onClick={() => setShowStore(true)} title="Store">
             <img src="/icons/shop.png" />
           </S.Bubble>
 
@@ -206,11 +220,11 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
           </S.LevelBar>
           <S.Currency>
             <img src="/icons/coin.png" alt="coins" />
-            <span>1,250</span>
+            <span>{(coins ?? 0).toLocaleString()}</span>
           </S.Currency>
           <S.Currency>
             <img src="/icons/gem.png" alt="gems" />
-            <span>30</span>
+            <span>{(gems ?? 0).toLocaleString()}</span>
           </S.Currency>
           <S.AngelButton>Become an Angel</S.AngelButton>
         </S.StatsGroup>

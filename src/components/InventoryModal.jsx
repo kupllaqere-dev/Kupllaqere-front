@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import styled from "styled-components";
-import { fetchItems } from "../api/items";
+import AvatarCanvas from "./AvatarCanvas";
+import { fetchInventory } from "../api/store";
 
 const CATEGORY_LABELS = {
   tops: "Tops",
   bottoms: "Bottoms",
+  onePiece: "One Piece",
   coats: "Coats",
   head: "Head",
   hair: "Hair",
@@ -15,69 +17,112 @@ const CATEGORY_LABELS = {
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
-function InventoryModal({ onClose, onEquip, onUnequip, equipped }) {
+function InventoryModal({ onClose, onEquip, onUnequip, equipped, currentOutfit, gender }) {
   const [items, setItems] = useState([]);
-  const [activeTab, setActiveTab] = useState("tops");
+  const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(true);
+  // previewOutfit: category -> { imageUrl }
+  const [previewOutfit, setPreviewOutfit] = useState(currentOutfit || {});
 
   useEffect(() => {
-    fetchItems()
+    fetchInventory()
       .then((data) => setItems(data.items || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = items.filter((item) => item.category === activeTab);
+  const filtered = activeCategory === "all"
+    ? items
+    : items.filter((item) => item.category === activeCategory);
 
-  const isEquipped = (item) => equipped[item.category] === item._id;
+  const isPreviewSelected = (item) =>
+    previewOutfit[item.category]?.imageUrl === item.imageUrl;
 
-  const handleClick = (item) => {
-    if (isEquipped(item)) {
-      onUnequip(item.category);
-    } else {
-      onEquip(item);
+  const toggleItem = (item) => {
+    setPreviewOutfit((prev) => {
+      if (prev[item.category]?.imageUrl === item.imageUrl) {
+        const next = { ...prev };
+        delete next[item.category];
+        return next;
+      }
+      return { ...prev, [item.category]: { imageUrl: item.imageUrl } };
+    });
+  };
+
+  const handleApply = () => {
+    // Find categories to unequip (in current equipped but not in previewOutfit)
+    const currentCategories = Object.keys(equipped || {});
+    for (const cat of currentCategories) {
+      if (!previewOutfit[cat]) {
+        onUnequip(cat);
+      }
     }
+    // Find items to equip (in previewOutfit)
+    for (const [cat, { imageUrl }] of Object.entries(previewOutfit)) {
+      const item = items.find((i) => i.category === cat && i.imageUrl === imageUrl);
+      if (item) {
+        onEquip(item);
+      }
+    }
+    onClose();
   };
 
   return (
     <Overlay onClick={onClose}>
-      <Modal onClick={(e) => e.stopPropagation()}>
-        <CloseBtn onClick={onClose}>&times;</CloseBtn>
-        <Title>Inventory</Title>
+      <Container onClick={(e) => e.stopPropagation()}>
+        <Header>
+          <Title>Inventory</Title>
+          <CloseBtn onClick={onClose}>&times;</CloseBtn>
+        </Header>
 
-        <Tabs>
-          {CATEGORIES.map((cat) => (
-            <Tab
-              key={cat}
-              $active={activeTab === cat}
-              onClick={() => setActiveTab(cat)}
-            >
-              {CATEGORY_LABELS[cat]}
-            </Tab>
-          ))}
-        </Tabs>
+        <Body>
+          {/* Left: category sidebar + item grid */}
+          <LeftPanel>
+            <Sidebar>
+              <CatBtn $active={activeCategory === "all"} onClick={() => setActiveCategory("all")}>
+                All
+              </CatBtn>
+              {CATEGORIES.map((cat) => (
+                <CatBtn key={cat} $active={activeCategory === cat} onClick={() => setActiveCategory(cat)}>
+                  {CATEGORY_LABELS[cat]}
+                </CatBtn>
+              ))}
+            </Sidebar>
 
-        <ItemGrid>
-          {loading && <Empty>Loading...</Empty>}
-          {!loading && filtered.length === 0 && (
-            <Empty>No items in this category</Empty>
-          )}
-          {filtered.map((item) => (
-            <ItemCard
-              key={item._id}
-              $equipped={isEquipped(item)}
-              onClick={() => handleClick(item)}
-            >
-              <ItemImg src={item.imageUrl} alt={item.name} crossOrigin="anonymous" />
-              <ItemName>{item.name}</ItemName>
-              <ItemSub>
-                {item.subcategory.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
-              </ItemSub>
-              {isEquipped(item) && <EquippedBadge>Equipped</EquippedBadge>}
-            </ItemCard>
-          ))}
-        </ItemGrid>
-      </Modal>
+            <ItemArea>
+              {loading && <Empty>Loading…</Empty>}
+              {!loading && filtered.length === 0 && (
+                <Empty>{activeCategory === "all" ? "Your inventory is empty." : "No items in this category."}</Empty>
+              )}
+              {filtered.map((item) => {
+                const selected = isPreviewSelected(item);
+                return (
+                  <ItemCard key={item._id} $selected={selected} onClick={() => toggleItem(item)}>
+                    <ItemImg src={item.thumbnailUrl || item.imageUrl} alt={item.name} crossOrigin="anonymous" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <ItemName>{item.name}</ItemName>
+                      <ItemSub>{CATEGORY_LABELS[item.category] || item.category}</ItemSub>
+                    </div>
+                    {selected && <SelectedBadge>On</SelectedBadge>}
+                  </ItemCard>
+                );
+              })}
+            </ItemArea>
+          </LeftPanel>
+
+          {/* Right: avatar preview + apply */}
+          <RightPanel>
+            <AvatarFill>
+              <AvatarCanvas gender={gender} outfit={previewOutfit} width={320} height={722} />
+            </AvatarFill>
+
+            <Actions>
+              <ApplyBtn onClick={handleApply}>Apply Outfit</ApplyBtn>
+              <ResetBtn onClick={() => setPreviewOutfit(currentOutfit || {})}>Reset</ResetBtn>
+            </Actions>
+          </RightPanel>
+        </Body>
+      </Container>
     </Overlay>
   );
 }
@@ -90,135 +135,205 @@ const Overlay = styled.div`
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
 `;
 
-const Modal = styled.div`
-  position: relative;
-  background: #1a1a2e;
-  border: 1px solid #ffffff22;
-  border-radius: 14px;
-  padding: 28px;
-  width: 600px;
-  max-width: 94vw;
-  max-height: 85vh;
+const Container = styled.div`
+  background: #13131f;
+  border: 1px solid #ffffff1a;
+  border-radius: 16px;
+  width: min(85vw, 96vh * 1.5);
+  max-width: 96vw;
+  max-height: 96vh;
+  height: 96vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
   color: #fff;
 `;
 
-const CloseBtn = styled.button`
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 24px;
-  cursor: pointer;
-  &:hover { color: #fff; }
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #ffffff12;
+  flex-shrink: 0;
 `;
 
 const Title = styled.h2`
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 20px;
   font-weight: 700;
+  background: linear-gradient(135deg, #c471ed, #7b2ff7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 `;
 
-const Tabs = styled.div`
+const CloseBtn = styled.button`
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+  &:hover { color: #fff; }
+`;
+
+const Body = styled.div`
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-`;
-
-const Tab = styled.button`
-  background: ${(p) => (p.$active ? "linear-gradient(135deg, #7b2ff7, #c471ed)" : "#12121f")};
-  border: 1px solid ${(p) => (p.$active ? "#7b2ff7" : "#ffffff22")};
-  color: ${(p) => (p.$active ? "#fff" : "#aaa")};
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  &:hover {
-    color: #fff;
-    border-color: #7b2ff7;
-  }
-`;
-
-const ItemGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  overflow-y: auto;
   flex: 1;
-  padding-right: 4px;
+  overflow: hidden;
 `;
 
-const ItemCard = styled.div`
-  background: ${(p) => (p.$equipped ? "#2a1f4e" : "#12121f")};
-  border: 2px solid ${(p) => (p.$equipped ? "#7b2ff7" : "#ffffff15")};
-  border-radius: 10px;
-  padding: 10px;
-  cursor: pointer;
+const LeftPanel = styled.div`
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+`;
+
+const Sidebar = styled.div`
+  width: 130px;
+  flex-shrink: 0;
+  border-right: 1px solid #ffffff10;
+  padding: 12px 8px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  position: relative;
-  transition: all 0.15s;
-  &:hover {
-    border-color: #7b2ff7;
-    transform: translateY(-2px);
-  }
+  gap: 4px;
 `;
 
-const ItemImg = styled.img`
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  margin-bottom: 6px;
-`;
-
-const ItemName = styled.div`
+const CatBtn = styled.button`
+  background: ${(p) => p.$active ? "linear-gradient(135deg, #7b2ff7, #c471ed)" : "transparent"};
+  border: 1px solid ${(p) => p.$active ? "#7b2ff7" : "#ffffff14"};
+  color: ${(p) => p.$active ? "#fff" : "#888"};
   font-size: 12px;
   font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s;
+  &:hover { color: #fff; border-color: #7b2ff7; }
 `;
 
-const ItemSub = styled.div`
-  font-size: 10px;
-  color: #888;
-  margin-top: 2px;
-`;
-
-const EquippedBadge = styled.div`
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: #7b2ff7;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
+const ItemArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 `;
 
 const Empty = styled.div`
   grid-column: 1 / -1;
   text-align: center;
-  color: #666;
+  color: #555;
   padding: 40px 0;
   font-size: 14px;
+`;
+
+const ItemCard = styled.div`
+  background: ${(p) => p.$selected ? "#2a1f4e" : "#18182a"};
+  border: 2px solid ${(p) => p.$selected ? "#7b2ff7" : "#ffffff14"};
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  transition: all 0.12s;
+  &:hover { border-color: #7b2ff7; }
+`;
+
+const ItemImg = styled.img`
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+`;
+
+const ItemName = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+`;
+
+const ItemSub = styled.div`
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
+`;
+
+const SelectedBadge = styled.div`
+  background: #7b2ff7;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+`;
+
+const RightPanel = styled.div`
+  width: 370px;
+  flex-shrink: 0;
+  border-left: 1px solid #ffffff10;
+  display: flex;
+  flex-direction: column;
+`;
+
+const AvatarFill = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px 0 4px;
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid #ffffff0e;
+  flex-shrink: 0;
+`;
+
+const ApplyBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  border: none;
+  background: linear-gradient(135deg, #7b2ff7, #c471ed);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.12s;
+  &:hover { opacity: 0.85; }
+`;
+
+const ResetBtn = styled.button`
+  padding: 10px 16px;
+  border-radius: 9px;
+  border: 1px solid #ffffff18;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  &:hover { color: #fff; border-color: #ffffff33; }
 `;

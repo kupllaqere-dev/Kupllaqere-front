@@ -1,0 +1,33 @@
+const API = import.meta.env.VITE_API_URL;
+
+function authHeaders() {
+  const token = localStorage.getItem("fv_token");
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function fetchStoreItems({ category = "", page = 1 } = {}) {
+  const params = new URLSearchParams({ page });
+  if (category) params.set("category", category);
+  const res = await fetch(`${API}/api/store?${params}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch store items");
+  return res.json(); // { groups, total, page, hasMore, ownedIds }
+}
+
+export async function fetchInventory() {
+  const res = await fetch(`${API}/api/store/inventory`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch inventory");
+  return res.json(); // { items }
+}
+
+export async function purchaseItems({ itemIds, currency }) {
+  const res = await fetch(`${API}/api/store/purchase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ itemIds, currency }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Purchase failed");
+  }
+  return res.json(); // { success, coins, gems, purchasedIds }
+}

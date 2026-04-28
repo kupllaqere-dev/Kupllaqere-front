@@ -86,15 +86,16 @@ export default function Items() {
               <Th>Name</Th>
               <Th>Category</Th>
               <Th>Subcategory</Th>
+              <Th>Store</Th>
               <Th>Uploaded by</Th>
               <Th>Date</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={7}><Center>Loading…</Center></td></tr>}
+            {loading && <tr><td colSpan={8}><Center>Loading…</Center></td></tr>}
             {!loading && data.items.length === 0 && (
-              <tr><td colSpan={7}><Center>No items found.</Center></td></tr>
+              <tr><td colSpan={8}><Center>No items found.</Center></td></tr>
             )}
             {data.items.map((item) => (
               <tr key={item.id}>
@@ -104,6 +105,7 @@ export default function Items() {
                 <Td><strong>{item.name}</strong></Td>
                 <Td><Gray>{item.category}</Gray></Td>
                 <Td><Gray>{item.subcategory}</Gray></Td>
+                <Td>{item.storeType ? <StoreBadge>{item.storeType}</StoreBadge> : <Gray>—</Gray>}</Td>
                 <Td><Gray>{item.uploadedBy?.name || item.uploadedBy?.email || "—"}</Gray></Td>
                 <Td><Gray>{new Date(item.createdAt).toLocaleDateString()}</Gray></Td>
                 <Td>
@@ -231,9 +233,10 @@ function CreateForm({ busy, setBusy, onDone, onClose }) {
 }
 
 function EditForm({ item, busy, onSave, onClose }) {
-  const [name, setName]         = useState(item.name);
-  const [category, setCategory] = useState(item.category);
-  const [subcategory, setSub]   = useState(item.subcategory);
+  const [name, setName]           = useState(item.name);
+  const [category, setCategory]   = useState(item.category);
+  const [subcategory, setSub]     = useState(item.subcategory);
+  const [storeType, setStoreType] = useState(item.storeType || "");
   const subs = CATEGORY_SUBCATEGORIES[category] || [];
 
   return (
@@ -254,9 +257,16 @@ function EditForm({ item, busy, onSave, onClose }) {
           {subs.map((s) => <option key={s} value={s}>{s}</option>)}
         </FieldSelect>
       </FieldRow>
+      <FieldRow>
+        <FieldLabel>Store Type</FieldLabel>
+        <FieldSelect value={storeType} onChange={(e) => setStoreType(e.target.value)}>
+          <option value="">Not in store</option>
+          <option value="normal">Normal Store</option>
+        </FieldSelect>
+      </FieldRow>
       <Actions style={{ marginTop: 20 }}>
         <Btn onClick={onClose}>Cancel</Btn>
-        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory })}>{busy ? "Saving…" : "Save"}</Btn>
+        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory, storeType: storeType || null })}>{busy ? "Saving…" : "Save"}</Btn>
       </Actions>
     </>
   );
@@ -320,4 +330,8 @@ const FieldSelect = styled.select`
   padding:8px 10px;border-radius:7px;border:1px solid #ffffff18;
   background:#1c1c22;color:#fff;font-size:13px;outline:none;
   &:focus{border-color:#7b2ff7;}
+`;
+const StoreBadge = styled.span`
+  background:rgba(123,47,247,0.25);border:1px solid rgba(123,47,247,0.5);
+  color:#c4a1ff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:capitalize;
 `;
