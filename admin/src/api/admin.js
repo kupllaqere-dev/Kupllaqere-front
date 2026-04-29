@@ -63,6 +63,10 @@ export const updateItem = (id, data) =>
   request(`/api/admin/items/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteItem = (id) =>
   request(`/api/admin/items/${id}`, { method: "DELETE" });
+export const updateItemGroup = (name, category, data) =>
+  request("/api/admin/items/group", { method: "PATCH", body: JSON.stringify({ name, category, ...data }) });
+export const deleteItemGroup = (name, category) =>
+  request(`/api/admin/items/group?name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}`, { method: "DELETE" });
 
 // Submissions
 export const getSubmissions = (params = {}) =>

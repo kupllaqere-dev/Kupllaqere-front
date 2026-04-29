@@ -21,11 +21,12 @@ export async function fetchInventory() {
   return res.json(); // { items }
 }
 
-export async function purchaseItems({ itemIds, currency }) {
+// items: [{ id, currency: "coins"|"gems" }]
+export async function purchaseItems({ items }) {
   const res = await fetch(`${API}/api/store/purchase`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ itemIds, currency }),
+    body: JSON.stringify({ items }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -143,8 +143,9 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
   const addToCart = item => {
     if (ownedIds.has(String(item._id))) return;
-    setCart(prev => [...prev.filter(c => c.category !== item.category), item]);
+    setCart(prev => prev.some(c => String(c._id) === String(item._id)) ? prev : [...prev, item]);
     setPurchaseError(null); setPurchaseSuccess(false);
+    previewItem(item);
   };
 
   const removeFromCart = item => {
@@ -157,20 +158,23 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
     });
   };
 
-  const handleBuy = async currency => {
+  const handlePurchase = async () => {
     if (!cart.length) return;
     setPurchasing(true); setPurchaseError(null);
     try {
-      const result = await purchaseItems({ itemIds: cart.map(i => i._id), currency });
+      const result = await purchaseItems({
+        items: cart.map(i => ({ id: i._id, currency: i.chosenCurrency })),
+      });
       setOwnedIds(prev => { const n = new Set(prev); result.purchasedIds.forEach(id => n.add(String(id))); return n; });
       setCart([]); setPurchaseSuccess(true); onPurchaseComplete?.(result);
     } catch (err) { setPurchaseError(err.message); }
     finally { setPurchasing(false); }
   };
 
-  const cartTotal = cart.length;
-  const canAffordCoins = coins >= cartTotal;
-  const canAffordGems = gems >= cartTotal;
+  const cartTotal     = cart.length;
+  const totalCoinCost = cart.filter(i => i.chosenCurrency === "coins").reduce((s, i) => s + (i.coinPrice || 0), 0);
+  const totalGemCost  = cart.filter(i => i.chosenCurrency === "gems").reduce((s, i) => s + (i.gemPrice  || 0), 0);
+  const canAfford = coins >= totalCoinCost && gems >= totalGemCost;
 
   const isNewItems = view === "items" && !selectedCategory && sortBy === "newest";
 
@@ -280,9 +284,12 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                     const selVariant = selectedVariants[key] || first;
                     const selOwned = ownedIds.has(String(selVariant._id));
 
+                    const coinPrice = group.coinPrice ?? null;
+                    const gemPrice  = group.gemPrice  ?? null;
+
                     const handleCardClick = () => {
                       toggleGroup(key);
-                      if (!ownedIds.has(String(first._id))) previewItem(first);
+                      if (!selOwned) previewItem(selVariant);
                     };
 
                     return (
@@ -306,25 +313,28 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                             ) : (
                               <>
                                 <CardPricePanel>
-                                  {hasLevel && (
-                                    <LevelBadge $met={meetsLevel}>
-                                      Level {lvlReq}
-                                    </LevelBadge>
+                                  {coinPrice !== null && (
+                                    <>
+                                      <LevelBadge $met={meetsLevel}>
+                                        {hasLevel ? `Level ${lvlReq}` : "No Level"}
+                                      </LevelBadge>
+                                      <BadgeAndPrice>
+                                        <CoinImg src="/icons/Nectar.png" alt="coins" />
+                                        <CardPriceAmt>{coinPrice}</CardPriceAmt>
+                                      </BadgeAndPrice>
+                                    </>
                                   )}
-                                  <BadgeAndPrice>
-                                    <CoinImg
-                                      src="/icons/Nectar.png"
-                                      alt="coins"
-                                    />
-                                    <CardPriceAmt>1</CardPriceAmt>
-                                  </BadgeAndPrice>
                                 </CardPricePanel>
                                 <CardPricePanel>
-                                  <LevelBadge $met={true}>No Level</LevelBadge>
-                                  <BadgeAndPrice>
-                                    <GemImg src="/icons/Lis.png" alt="gems" />
-                                    <CardPriceAmt $gem>1</CardPriceAmt>
-                                  </BadgeAndPrice>
+                                  {gemPrice !== null && (
+                                    <>
+                                      <LevelBadge $met={true}>No Level</LevelBadge>
+                                      <BadgeAndPrice>
+                                        <GemImg src="/icons/Lis.png" alt="gems" />
+                                        <CardPriceAmt $gem>{gemPrice}</CardPriceAmt>
+                                      </BadgeAndPrice>
+                                    </>
+                                  )}
                                 </CardPricePanel>
                               </>
                             )}
@@ -397,28 +407,32 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                           </ExpandedArea>
                         )}
 
-                        {expanded && !allOwned && (
+                        {expanded && !allOwned && (coinPrice !== null || gemPrice !== null) && (
                           <AddButtonsBar>
                             <ButtonsGroup>
-                            <AddVariantBtn
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!selOwned) addToCart(selVariant);
-                              }}
-                            >
-                              <CoinImg src="/icons/Nectar.png" alt="coins" />
-                              <span>ADD</span>
-                            </AddVariantBtn>
-                            <AddVariantBtn
-                              $gem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!selOwned) addToCart(selVariant);
-                              }}
-                            >
-                              <GemImg src="/icons/Lis.png" alt="gems" />
-                              <span>ADD</span>
-                            </AddVariantBtn>
+                              {coinPrice !== null && (
+                                <AddVariantBtn
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!selOwned) addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "coins" });
+                                  }}
+                                >
+                                  <CoinImg src="/icons/Nectar.png" alt="coins" />
+                                  <span>ADD</span>
+                                </AddVariantBtn>
+                              )}
+                              {gemPrice !== null && (
+                                <AddVariantBtn
+                                  $gem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!selOwned) addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "gems" });
+                                  }}
+                                >
+                                  <GemImg src="/icons/Lis.png" alt="gems" />
+                                  <span>ADD</span>
+                                </AddVariantBtn>
+                              )}
                             </ButtonsGroup>
                           </AddButtonsBar>
                         )}
@@ -461,21 +475,28 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                       <CartLine key={item._id}>
                         <CartImg src={item.thumbnailUrl || item.imageUrl} alt={item.name} crossOrigin="anonymous" />
                         <CartName>{item.name}</CartName>
+                        <CartCurrency>
+                          <BalImg src={item.chosenCurrency === "coins" ? "/icons/Nectar.png" : "/icons/Lis.png"} />
+                          <CartPrice $gem={item.chosenCurrency === "gems"}>
+                            {item.chosenCurrency === "coins" ? item.coinPrice : item.gemPrice}
+                          </CartPrice>
+                        </CartCurrency>
                         <CartRm onClick={() => removeFromCart(item)}>✕</CartRm>
                       </CartLine>
                     ))}
                   </CartItems>
                   {cart.length > 0 && (
                     <>
-                      <CartTotal>Total: <strong>{cartTotal}</strong> coin{cartTotal !== 1 ? "s" : ""} or gem{cartTotal !== 1 ? "s" : ""}</CartTotal>
+                      <CartTotal>
+                        {totalCoinCost > 0 && <CartTotalChunk><BalImg src="/icons/Nectar.png" /><strong>{totalCoinCost}</strong></CartTotalChunk>}
+                        {totalCoinCost > 0 && totalGemCost > 0 && <span style={{ color: "inherit", opacity: 0.5 }}>+</span>}
+                        {totalGemCost > 0 && <CartTotalChunk $gem><BalImg src="/icons/Lis.png" /><strong>{totalGemCost}</strong></CartTotalChunk>}
+                      </CartTotal>
                       {purchaseError && <ErrTxt>{purchaseError}</ErrTxt>}
                       {purchaseSuccess && <OkTxt>Purchased!</OkTxt>}
                       <BuyBtns>
-                        <BuyBtn onClick={() => handleBuy("coins")} disabled={purchasing || !canAffordCoins}>
-                          <BalImg src="/icons/Nectar.png" />{purchasing ? "…" : `Buy · ${cartTotal} coin${cartTotal !== 1 ? "s" : ""}`}
-                        </BuyBtn>
-                        <BuyBtn $gem onClick={() => handleBuy("gems")} disabled={purchasing || !canAffordGems}>
-                          <BalImg src="/icons/Lis.png" />{purchasing ? "…" : `Buy · ${cartTotal} gem${cartTotal !== 1 ? "s" : ""}`}
+                        <BuyBtn onClick={handlePurchase} disabled={purchasing || !canAfford}>
+                          {purchasing ? "…" : "Purchase"}
                         </BuyBtn>
                       </BuyBtns>
                     </>
@@ -955,6 +976,7 @@ const AddButtonsBar = styled.div`
   
   const ButtonsGroup = styled.div`
   display: flex;
+  justify-content: flex-end;
   width: 35%;
   gap: 5px;
 `;
@@ -1057,7 +1079,20 @@ const CartRm = styled.button`
   &:hover{color:#ef4444;}
 `;
 
-const CartTotal = styled.div`font-size:12px;color:${C.txt2};strong{color:${C.txt};}`;
+const CartCurrency = styled.div`display:flex;align-items:center;gap:3px;flex-shrink:0;`;
+const CartPrice = styled.span`font-size:12px;font-weight:700;color:${p => p.$gem ? C.gem : C.coin};`;
+
+const CartTotal = styled.div`
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:${C.txt2};
+  strong{color:${C.txt};}
+`;
+const CartTotalChunk = styled.div`
+  display:flex;align-items:center;gap:4px;
+  font-size:13px;font-weight:700;
+  color:${p => p.$gem ? C.gem : C.coin};
+  img{width:16px;height:16px;}
+`;
 const ErrTxt = styled.div`font-size:12px;color:#dc2626;`;
 const OkTxt = styled.div`font-size:12px;color:#059669;font-weight:600;`;
 
@@ -1065,9 +1100,9 @@ const BuyBtns = styled.div`display:flex;gap:8px;`;
 const BuyBtn = styled.button`
   flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
   padding:9px 8px;border-radius:9px;
-  border:1px solid ${p => p.$gem ? "rgba(14,116,144,0.3)" : "rgba(180,83,9,0.3)"};
-  background:${p => p.$gem ? "rgba(14,116,144,0.08)" : "rgba(180,83,9,0.08)"};
-  color:${p => p.$gem ? C.gem : C.coin};
+  border:1px solid rgba(124,58,237,0.3);
+  background:rgba(124,58,237,0.1);
+  color:${C.accent};
   font-size:12px;font-weight:600;cursor:pointer;transition:opacity .13s;
   &:disabled{opacity:0.3;cursor:not-allowed;}
   &:not(:disabled):hover{opacity:0.7;}
