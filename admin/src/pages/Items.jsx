@@ -256,8 +256,10 @@ function EditForm({ item, busy, onSave, onClose }) {
   const [name, setName]           = useState(item.name);
   const [category, setCategory]   = useState(item.category);
   const [subcategory, setSub]     = useState(item.subcategory);
-  const [storeType, setStoreType] = useState(item.storeType || "");
-  const [rarity, setRarity]       = useState(item.rarity || "");
+  const [storeType, setStoreType]       = useState(item.storeType || "");
+  const [rarity, setRarity]             = useState(item.rarity || "");
+  const [notes, setNotes]               = useState(item.notes || "");
+  const [levelRequirement, setLevelReq] = useState(item.levelRequirement ?? "");
   const subs = CATEGORY_SUBCATEGORIES[category] || [];
 
   return (
@@ -294,9 +296,30 @@ function EditForm({ item, busy, onSave, onClose }) {
           <option value="normal">Normal Store</option>
         </FieldSelect>
       </FieldRow>
+      <FieldRow>
+        <FieldLabel>Level Requirement</FieldLabel>
+        <FieldInput
+          type="number"
+          min="1"
+          max="999"
+          value={levelRequirement}
+          onChange={(e) => setLevelReq(e.target.value)}
+          placeholder="No requirement"
+        />
+      </FieldRow>
+      <FieldRow>
+        <FieldLabel>Notes</FieldLabel>
+        <FieldTextarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          maxLength={500}
+          placeholder="Optional store notes shown to players…"
+          rows={3}
+        />
+      </FieldRow>
       <Actions style={{ marginTop: 20 }}>
         <Btn onClick={onClose}>Cancel</Btn>
-        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory, rarity: rarity || null, storeType: storeType || null })}>{busy ? "Saving…" : "Save"}</Btn>
+        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory, rarity: rarity || null, storeType: storeType || null, notes, levelRequirement: levelRequirement !== "" ? Number(levelRequirement) : null })}>{busy ? "Saving…" : "Save"}</Btn>
       </Actions>
     </>
   );
@@ -359,6 +382,12 @@ const FieldInput = styled.input`
 const FieldSelect = styled.select`
   padding:8px 10px;border-radius:7px;border:1px solid #ffffff18;
   background:#1c1c22;color:#fff;font-size:13px;outline:none;
+  &:focus{border-color:#7b2ff7;}
+`;
+const FieldTextarea = styled.textarea`
+  padding:8px 10px;border-radius:7px;border:1px solid #ffffff18;
+  background:rgba(255,255,255,0.04);color:#fff;font-size:13px;outline:none;
+  resize:vertical;font-family:inherit;
   &:focus{border-color:#7b2ff7;}
 `;
 const StoreBadge = styled.span`

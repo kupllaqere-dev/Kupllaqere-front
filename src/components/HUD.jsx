@@ -9,7 +9,7 @@ import MailModal from "./MailModal";
 import { lookupUser } from "../api/auth";
 import { fetchUnreadCount } from "../api/mail";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, onPurchaseComplete }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
@@ -133,6 +133,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         gender={gender}
         coins={coins ?? 0}
         gems={gems ?? 0}
+        level={level ?? 1}
         currentOutfit={outfit}
         onPurchaseComplete={onPurchaseComplete}
       />
@@ -140,8 +141,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
     <S.Container>
       <S.Bar>
         <div className="orb-wrapper">
-          <div className="orb-pulse"></div>
-          <img src="/gate.png" className="orb-icon" />
+          <img src="/Logo.png" className="orb-icon" />
         </div>
 
         <S.ButtonGroup>
@@ -219,11 +219,11 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
             </S.LevelTrack>
           </S.LevelBar>
           <S.Currency>
-            <img src="/icons/coin.png" alt="coins" />
+            <img src="/icons/Nectar.png" alt="coins" />
             <span>{(coins ?? 0).toLocaleString()}</span>
           </S.Currency>
           <S.Currency>
-            <img src="/icons/gem.png" alt="gems" />
+            <img src="/icons/Lis.png" alt="gems" />
             <span>{(gems ?? 0).toLocaleString()}</span>
           </S.Currency>
           <S.AngelButton>Become an Angel</S.AngelButton>

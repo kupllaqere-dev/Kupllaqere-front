@@ -67,7 +67,7 @@ const RARITY = {
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
-function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseComplete }) {
+function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurchaseComplete }) {
   const [view, setView] = useState("home");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
@@ -78,6 +78,7 @@ function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseCom
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [selectedVariants, setSelectedVariants] = useState({});
   const [previewOutfit, setPreviewOutfit] = useState(currentOutfit || {});
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -136,9 +137,12 @@ function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseCom
 
   const toggleGroup = key => setExpandedGroup(prev => prev === key ? null : key);
 
-  const selectVariant = item => {
-    if (ownedIds.has(String(item._id))) return;
+  const previewItem = item => {
     setPreviewOutfit(prev => ({ ...prev, [item.category]: { imageUrl: item.imageUrl } }));
+  };
+
+  const addToCart = item => {
+    if (ownedIds.has(String(item._id))) return;
     setCart(prev => [...prev.filter(c => c.category !== item.category), item]);
     setPurchaseError(null); setPurchaseSuccess(false);
   };
@@ -269,60 +273,156 @@ function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseCom
                     const expanded = expandedGroup === key;
                     const first = group.variants[0];
                     const allOwned = group.variants.every(v => ownedIds.has(String(v._id)));
-                    const rarity = group.rarity || first?.rarity;
+                    const rarity = group.rarity;
+                    const lvlReq = group.levelRequirement ?? null;
+                    const hasLevel = lvlReq !== null;
+                    const meetsLevel = !hasLevel || (level ?? 1) >= lvlReq;
+                    const selVariant = selectedVariants[key] || first;
+                    const selOwned = ownedIds.has(String(selVariant._id));
+
+                    const handleCardClick = () => {
+                      toggleGroup(key);
+                      if (!ownedIds.has(String(first._id))) previewItem(first);
+                    };
 
                     return (
-                      <ItemRow key={key} $owned={allOwned}>
-                        <ItemThumb
-                          src={first.thumbnailUrl || first.imageUrl}
-                          alt={group.name}
-                          crossOrigin="anonymous"
-                        />
-                        <ItemInfo onClick={() => group.variants.length > 1 ? toggleGroup(key) : selectVariant(first)}>
-                          <ItemNameRow>
+                      <ItemGroup key={key}>
+                        <ItemCard
+                          $owned={allOwned}
+                          $expanded={expanded}
+                          onClick={handleCardClick}
+                        >
+                          <CardThumbImg
+                            src={selVariant.thumbnailUrl || selVariant.imageUrl}
+                            alt={group.name}
+                            crossOrigin="anonymous"
+                          />
+                          <CardMidSection>
                             <ItemName>{group.name}</ItemName>
-                            {rarity && RARITY[rarity] && (
-                              <RarityTag $r={rarity}>{RARITY[rarity].label}</RarityTag>
+                          </CardMidSection>
+                          <CardPricesArea>
+                            {allOwned ? (
+                              <CardOwnedPanel>Owned</CardOwnedPanel>
+                            ) : (
+                              <>
+                                <CardPricePanel>
+                                  {hasLevel && (
+                                    <LevelBadge $met={meetsLevel}>
+                                      Level {lvlReq}
+                                    </LevelBadge>
+                                  )}
+                                  <BadgeAndPrice>
+                                    <CoinImg
+                                      src="/icons/Nectar.png"
+                                      alt="coins"
+                                    />
+                                    <CardPriceAmt>1</CardPriceAmt>
+                                  </BadgeAndPrice>
+                                </CardPricePanel>
+                                <CardPricePanel>
+                                  <LevelBadge $met={true}>No Level</LevelBadge>
+                                  <BadgeAndPrice>
+                                    <GemImg src="/icons/Lis.png" alt="gems" />
+                                    <CardPriceAmt $gem>1</CardPriceAmt>
+                                  </BadgeAndPrice>
+                                </CardPricePanel>
+                              </>
                             )}
-                          </ItemNameRow>
-                          <ItemMeta>
-                            {CATEGORY_LABELS[group.category]}
-                            {group.variants.length > 1 && (
-                              <VariantPill>{group.variants.length} colors {expanded ? "▲" : "▼"}</VariantPill>
-                            )}
-                          </ItemMeta>
-                        </ItemInfo>
-                        <ItemRight>
-                          {allOwned ? (
-                            <OwnedTag>Owned</OwnedTag>
-                          ) : (
-                            <PriceCol>
-                              <PriceLine><CoinImg src="/icons/coin.png" alt="c" />1</PriceLine>
-                              <PriceOr>or</PriceOr>
-                              <PriceLine><GemImg src="/icons/gem.png" alt="g" />1</PriceLine>
-                            </PriceCol>
-                          )}
-                        </ItemRight>
+                          </CardPricesArea>
+                        </ItemCard>
 
                         {expanded && (
-                          <VariantStrip>
-                            {group.variants.map(v => {
-                              const owned = ownedIds.has(String(v._id));
-                              const inCart = cart.some(c => c._id === v._id);
-                              return (
-                                <VThumb key={v._id} $owned={owned} $sel={inCart}
-                                  onClick={() => !owned && selectVariant(v)}
-                                  title={owned ? "Owned" : v.name}
-                                >
-                                  <img src={v.thumbnailUrl || v.imageUrl} alt={v.name} crossOrigin="anonymous" />
-                                  {owned && <VOverlay>✓</VOverlay>}
-                                  {inCart && !owned && <VSelOverlay>✓</VSelOverlay>}
-                                </VThumb>
-                              );
-                            })}
-                          </VariantStrip>
+                          <ExpandedArea>
+                            {((rarity && RARITY[rarity]) || group.notes) && (
+                              <ExpandInfoBox>
+                                {rarity && RARITY[rarity] && (
+                                  <ExpandInfoRow>
+                                    <ExpandLabel>Rarity</ExpandLabel>
+                                    <RarityRect $r={rarity}>
+                                      {RARITY[rarity].label}
+                                    </RarityRect>
+                                  </ExpandInfoRow>
+                                )}
+                                {rarity && RARITY[rarity] && group.notes && (
+                                  <ExpandDivider />
+                                )}
+                                {group.notes && (
+                                  <ExpandInfoRow>
+                                    <ExpandLabel>Notes</ExpandLabel>
+                                    <ExpandNotesTxt>
+                                      {group.notes}
+                                    </ExpandNotesTxt>
+                                  </ExpandInfoRow>
+                                )}
+                              </ExpandInfoBox>
+                            )}
+
+                            {group.variants.length > 1 && (
+                              <ExpandInfoBox>
+                                <ExpandInfoRow>
+                                  <ExpandVariantsRow>
+                                    {group.variants.map((v) => {
+                                      const owned = ownedIds.has(String(v._id));
+                                      return (
+                                        <ExpandVImg
+                                          key={v._id}
+                                          $owned={owned}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!owned) {
+                                              setSelectedVariants((prev) => ({
+                                                ...prev,
+                                                [key]: v,
+                                              }));
+                                              previewItem(v);
+                                            }
+                                          }}
+                                          title={owned ? "Owned" : v.name}
+                                        >
+                                          <img
+                                            src={v.thumbnailUrl || v.imageUrl}
+                                            alt={v.name}
+                                            crossOrigin="anonymous"
+                                          />
+                                          {owned && (
+                                            <ExpandVOverlay>✓</ExpandVOverlay>
+                                          )}
+                                        </ExpandVImg>
+                                      );
+                                    })}
+                                  </ExpandVariantsRow>
+                                </ExpandInfoRow>
+                              </ExpandInfoBox>
+                            )}
+                          </ExpandedArea>
                         )}
-                      </ItemRow>
+
+                        {expanded && !allOwned && (
+                          <AddButtonsBar>
+                            <ButtonsGroup>
+                            <AddVariantBtn
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!selOwned) addToCart(selVariant);
+                              }}
+                            >
+                              <CoinImg src="/icons/Nectar.png" alt="coins" />
+                              <span>ADD</span>
+                            </AddVariantBtn>
+                            <AddVariantBtn
+                              $gem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!selOwned) addToCart(selVariant);
+                              }}
+                            >
+                              <GemImg src="/icons/Lis.png" alt="gems" />
+                              <span>ADD</span>
+                            </AddVariantBtn>
+                            </ButtonsGroup>
+                          </AddButtonsBar>
+                        )}
+                      </ItemGroup>
                     );
                   })}
                 </ItemList>
@@ -339,8 +439,8 @@ function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseCom
             </AvatarArea>
             <AvatarBottom>
               <Balance>
-                <Bal><BalImg src="/icons/coin.png" />{(coins ?? 0).toLocaleString()}</Bal>
-                <Bal><BalImg src="/icons/gem.png" />{(gems ?? 0).toLocaleString()}</Bal>
+                <Bal><BalImg src="/icons/Nectar.png" />{(coins ?? 0).toLocaleString()}</Bal>
+                <Bal><BalImg src="/icons/Lis.png" />{(gems ?? 0).toLocaleString()}</Bal>
               </Balance>
               <CartButton onClick={() => setCartOpen(true)}>
                 Cart{cartTotal > 0 ? ` (${cartTotal})` : ""}
@@ -372,10 +472,10 @@ function StoreModal({ onClose, gender, coins, gems, currentOutfit, onPurchaseCom
                       {purchaseSuccess && <OkTxt>Purchased!</OkTxt>}
                       <BuyBtns>
                         <BuyBtn onClick={() => handleBuy("coins")} disabled={purchasing || !canAffordCoins}>
-                          <BalImg src="/icons/coin.png" />{purchasing ? "…" : `Buy · ${cartTotal} coin${cartTotal !== 1 ? "s" : ""}`}
+                          <BalImg src="/icons/Nectar.png" />{purchasing ? "…" : `Buy · ${cartTotal} coin${cartTotal !== 1 ? "s" : ""}`}
                         </BuyBtn>
                         <BuyBtn $gem onClick={() => handleBuy("gems")} disabled={purchasing || !canAffordGems}>
-                          <BalImg src="/icons/gem.png" />{purchasing ? "…" : `Buy · ${cartTotal} gem${cartTotal !== 1 ? "s" : ""}`}
+                          <BalImg src="/icons/Lis.png" />{purchasing ? "…" : `Buy · ${cartTotal} gem${cartTotal !== 1 ? "s" : ""}`}
                         </BuyBtn>
                       </BuyBtns>
                     </>
@@ -692,7 +792,7 @@ const CatSubItem = styled.div`
 
 /* ITEMS */
 const ItemScroll = styled.div`
-  flex:1;overflow-y:auto;padding:20px 20px 12px;display:flex;flex-direction:column;gap:0;
+  flex:1;overflow-y:auto;padding: 6px;display:flex;flex-direction:column;gap:0;
   background:linear-gradient(160deg,#fdfbff 0%,#f8f3ff 100%);
   ${thinScrollbar}
 `;
@@ -708,76 +808,169 @@ const LoadMsg = styled.div`text-align:center;color:${C.txt3};padding:16px;font-s
 
 const ItemList = styled.div`display:flex;flex-direction:column;gap:6px;`;
 
-const ItemRow = styled.div`
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:10px 14px;
-  background:${p => p.$owned ? "rgba(120,80,220,0.03)" : C.surface};
+const ItemGroup = styled.div`display:flex;flex-direction:column;gap:0;`;
+
+const ItemCard = styled.div`
+  display:flex;align-items:center;gap:5px;padding:5px;
+  border-radius:${p => p.$expanded ? "14px 14px 0 0" : "14px"};
+  background:linear-gradient(to top,#ddd0f8,#f8f3ff);
   border:1px solid ${C.border};
-  border-radius:12px;opacity:${p => p.$owned ? 0.6 : 1};
-  transition:border-color .13s,background .13s;
-  &:hover{border-color:rgba(124,58,237,0.3);background:${p => p.$owned ? "rgba(120,80,220,0.04)" : C.card};}
+  border-bottom:${p => p.$expanded ? `1px solid transparent` : `1px solid ${C.border}`};
+  min-height:88px;cursor:pointer;
+  opacity:${p => p.$owned ? 0.6 : 1};
+  transition:border-color .15s,box-shadow .15s;
+  &:hover{border-color:${C.border2};box-shadow:0 2px 10px rgba(120,60,220,0.1);}
 `;
 
-const ItemThumb = styled.img`
-  width:64px;height:64px;object-fit:contain;
-  border-radius:10px;background:rgba(120,80,220,0.06);flex-shrink:0;
+const CardThumbImg = styled.img`
+  flex-shrink:0;width:76px;height:76px;object-fit:contain;
 `;
 
-const ItemInfo = styled.div`flex:1;min-width:0;cursor:pointer;`;
-
-const ItemNameRow = styled.div`display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;`;
+const CardMidSection = styled.div`
+  flex:1;min-width:0;border-radius:10px;
+  background:linear-gradient(to top,#ede5ff,#ffffff);
+  display:flex;align-items:center;
+  padding:8px 12px;align-self:stretch;
+`;
 
 const ItemName = styled.div`
-  font-size:13px;font-weight:600;color:${C.txt};
+  font-size:13px;font-weight:700;color:${C.txt};
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 `;
 
-const RarityTag = styled.span`
-  font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
-  white-space:nowrap;text-transform:uppercase;letter-spacing:0.4px;
+const CardPricesArea = styled.div`
+  display:flex;flex-direction:row;gap:5px;flex-shrink:0;align-self:stretch;
+  width:35%;
+`;
+
+const CardPricePanel = styled.div`
+  border-radius:10px;overflow:hidden;
+  background:linear-gradient(to top,#ede5ff,#ffffff);
+  display:flex;flex-direction:column;align-items:center;
+  gap:6px;padding:12px 24px;
+  width: 50%;
+`;
+
+const BadgeAndPrice = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+`;
+
+const CardPriceAmt = styled.div`
+  font-size:13px;font-weight:700;
+  color:${p => p.$gem ? C.gem : C.coin};
+`;
+
+const CardOwnedPanel = styled.div`
+  border-radius:10px;
+  background:linear-gradient(to top,#ede5ff,#ffffff);
+  display:flex;align-items:center;justify-content:center;
+  padding:8px 12px;align-self:stretch;
+  font-size:11px;font-weight:600;color:${C.txt3};
+`;
+
+const CoinImg = styled.img`width:32px;height:32px;object-fit:contain;`;
+const GemImg = styled.img`width:32px;height:32px;object-fit:contain;`;
+
+const LevelBadge = styled.div`
+  font-size:14px;font-weight:700;line-height:1.2;
+  padding:4px 12px;border-radius:4px;
+  align-self:stretch;text-align:center;
+  background:${p => p.$met ? "rgba(100,100,120,0.1)" : "rgba(220,38,38,0.1)"};
+  color:${p => p.$met ? "#888" : "#dc2626"};
+  border:1px solid ${p => p.$met ? "rgba(100,100,120,0.2)" : "rgba(220,38,38,0.3)"};
+  text-wrap: nowrap;
+`;
+
+/* ── expanded area ── */
+const ExpandedArea = styled.div`
+  border:1px solid ${C.border};border-top:none;
+  border-radius:0 0 0 14px;
+  background:linear-gradient(to top,#e8dcff,#f8f3ff);
+  /* padding:10px 12px 12px; */
+  display:flex;flex-direction:column;gap:10px;
+`;
+
+const ExpandInfoBox = styled.div`
+  /* background:linear-gradient(to top,#ede5ff,#ffffff); */
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 9px 12px;
+
+  &:nth-child(2) {
+    padding: 0;
+    border-radius: 0 0 10px 10px;
+  }
+`;
+const ExpandInfoRow = styled.div`
+  display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;
+`;
+const ExpandDivider = styled.div`height:1px;background:${C.border};margin: 10px 0`;
+const ExpandLabel = styled.div`
+  font-size:10px;font-weight:700;color:${C.txt3};
+  text-transform:uppercase;letter-spacing:0.5px;flex-shrink:0;
+`;
+
+const RarityRect = styled.div`
+  display:inline-flex;align-items:center;padding:4px 12px;border-radius:6px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;
   background:${p => RARITY[p.$r]?.bg};
   border:1px solid ${p => RARITY[p.$r]?.border};
   color:${p => RARITY[p.$r]?.color};
 `;
 
-const ItemMeta = styled.div`font-size:11px;color:${C.txt2};display:flex;align-items:center;gap:8px;`;
+const ExpandNotesTxt = styled.div`font-size:12px;color:${C.txt2};line-height:1.5;flex:1;`;
 
-const VariantPill = styled.span`
-  background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.22);
-  color:${C.accent};font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;
+const ExpandVariantsRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #ded1fd;
+  width: 100%;
+  /* border-radius: 8px; */
+  padding: 12px 8px;
 `;
 
-const ItemRight = styled.div`flex-shrink:0;`;
-
-const OwnedTag = styled.div`font-size:11px;font-weight:600;color:${C.txt3};`;
-
-const PriceCol = styled.div`display:flex;flex-direction:column;align-items:flex-end;gap:2px;`;
-const PriceLine = styled.div`display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:${C.txt};`;
-const PriceOr = styled.div`font-size:9px;color:${C.txt3};text-align:right;`;
-const CoinImg = styled.img`width:14px;height:14px;object-fit:contain;`;
-const GemImg = styled.img`width:14px;height:14px;object-fit:contain;`;
-
-const VariantStrip = styled.div`
-  width:100%;display:flex;gap:8px;padding:8px 0 2px 78px;flex-wrap:wrap;
-`;
-
-const VThumb = styled.div`
-  position:relative;width:46px;height:46px;border-radius:8px;overflow:hidden;
+const ExpandVImg = styled.div`
+  position:relative;width:70px;height:70px;
   cursor:${p => p.$owned ? "default" : "pointer"};
-  border:2px solid ${p => p.$sel ? C.accent : p.$owned ? "transparent" : C.border};
-  background:rgba(120,80,220,0.06);
-  transition:border-color .12s;opacity:${p => p.$owned ? 0.45 : 1};
-  &:hover{border-color:${p => p.$owned ? "transparent" : C.accent};}
-  img{width:100%;height:100%;object-fit:contain;}
+  opacity:${p => p.$owned ? 0.4 : 1};
+  border-radius:6px;overflow:hidden;
+  transition:transform .12s;
+  &:hover{transform:${p => p.$owned ? "none" : "scale(1.12)"};}
+  img{width:100%;height:100%;object-fit:contain;display:block;}
 `;
 
-const VOverlay = styled.div`
-  position:absolute;inset:0;background:rgba(240,235,255,0.6);
-  display:flex;align-items:center;justify-content:center;font-size:14px;color:${C.txt3};
+const ExpandVOverlay = styled.div`
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:${C.txt3};background:rgba(240,235,255,0.5);
 `;
-const VSelOverlay = styled.div`
-  position:absolute;inset:0;background:rgba(124,58,237,0.22);
-  display:flex;align-items:center;justify-content:center;font-size:14px;color:${C.accent};
+
+const AddButtonsBar = styled.div`
+  display:flex;justify-content:flex-end;
+  width:100%;
+  `;
+  
+  const ButtonsGroup = styled.div`
+  display: flex;
+  width: 35%;
+  gap: 5px;
+`;
+
+const AddVariantBtn = styled.button`
+  width:50%;border-radius:0 0 10px 10px;padding:7px 0;
+  font-size:12px;font-weight:700;cursor:pointer;
+  background:linear-gradient(to top,#ede5ff,#ffffff);
+  color:${p => p.$gem ? C.gem : C.coin};
+  border:1px solid ${C.border};
+  transition:border-color .13s,background .13s;
+  &:hover{border-color:${C.border2};background:${C.card};}
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 `;
 
 /* ─── avatar panel ─── */

@@ -335,7 +335,7 @@ export default function Login({ onLogin }) {
     <Page>
       <Card>
         <Logo>
-          <img src="/gate.png" alt="logo" />
+          <img src="/Logo.png" alt="logo" />
           <h1>FV Game</h1>
           <p>Enter the world</p>
         </Logo>

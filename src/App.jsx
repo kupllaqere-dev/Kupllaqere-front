@@ -100,6 +100,7 @@ function App() {
         socket={gameSocket}
         coins={user?.coins ?? 0}
         gems={user?.gems ?? 0}
+        level={user?.level ?? 1}
         onPurchaseComplete={handlePurchaseComplete}
       />
       <Game
