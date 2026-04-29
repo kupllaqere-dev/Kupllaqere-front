@@ -315,18 +315,19 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     if (!scene || !lp || !lm) return;
 
     // Equip locally on the Phaser sprite
-    lm.equip(scene, lp.sprite, "local", item.category, item.imageUrl, item._id);
+    const effectiveId = item.itemId ?? item._id;
+    lm.equip(scene, lp.sprite, "local", item.category, item.imageUrl, effectiveId);
 
     // Update equipped state
-    const next = { ...equippedRef.current, [item.category]: item._id };
+    const next = { ...equippedRef.current, [item.category]: item._id ?? effectiveId };
     equippedRef.current = next;
     onEquippedChange(next);
 
-    const nextOutfit = { ...outfitRef.current, [item.category]: { itemId: item._id, imageUrl: item.imageUrl } };
+    const nextOutfit = { ...outfitRef.current, [item.category]: { itemId: effectiveId, imageUrl: item.imageUrl } };
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
-    const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: item._id, imageUrl: item.imageUrl } };
+    const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: effectiveId, imageUrl: item.imageUrl } };
 
     mp.sendOutfitChange(changePayload);
     updateOutfit(changePayload).catch(() => {});

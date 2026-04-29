@@ -21,6 +21,19 @@ export async function fetchInventory() {
   return res.json(); // { items }
 }
 
+export async function sellItem({ inventoryId }) {
+  const res = await fetch(`${API}/api/store/sell`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ inventoryId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Sell failed");
+  }
+  return res.json();
+}
+
 // items: [{ id, currency: "coins"|"gems" }]
 export async function purchaseItems({ items }) {
   const res = await fetch(`${API}/api/store/purchase`, {

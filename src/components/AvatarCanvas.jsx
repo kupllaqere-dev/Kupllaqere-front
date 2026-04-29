@@ -2,8 +2,11 @@ import { useEffect, useRef } from "react";
 
 const LAYER_ORDER = ["bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
 
-// First idle frame: x=0, y=0, w=510, h=900. Crop to show full body.
-const CROP = { sx: 60, sy: 0, sw: 390, sh: 880 };
+// Sprite sheet: 6 columns × 510px wide, first row = idle poses (sy=0, sh=880)
+const FRAME_W = 510;
+const CROP_X_OFFSET = 60;
+const CROP_W = 390;
+const CROP_H = 880;
 
 const BASE_SPRITES = {
   female: "/assets/character-bases/females_new.png",
@@ -26,7 +29,7 @@ function loadImage(url) {
 }
 
 // outfit: { category: { imageUrl } } — same shape as App.jsx outfit state
-export default function AvatarCanvas({ gender, outfit, width = 156, height = 352 }) {
+export default function AvatarCanvas({ gender, outfit, width = 156, height = 352, pose = 0 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +40,10 @@ export default function AvatarCanvas({ gender, outfit, width = 156, height = 352
       .filter((cat) => outfit?.[cat]?.imageUrl)
       .map((cat) => outfit[cat].imageUrl);
 
+    const FRAME_REMAP = [0, 1, 2, 3, 5, 4];
+    const frameIndex = FRAME_REMAP[pose] ?? pose;
+    const sx = frameIndex * FRAME_W + CROP_X_OFFSET;
+
     Promise.all([base, ...layerUrls].map(loadImage)).then((images) => {
       if (cancelled) return;
       const canvas = canvasRef.current;
@@ -45,19 +52,19 @@ export default function AvatarCanvas({ gender, outfit, width = 156, height = 352
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const img of images) {
         if (!img) continue;
-        ctx.drawImage(img, CROP.sx, CROP.sy, CROP.sw, CROP.sh, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, sx, 0, CROP_W, CROP_H, 0, 0, canvas.width, canvas.height);
       }
     });
 
     return () => { cancelled = true; };
-  }, [gender, outfit]);
+  }, [gender, outfit, pose]);
 
   return (
     <canvas
       ref={canvasRef}
       width={width}
       height={height}
-      style={{ width, height, display: "block", imageRendering: "pixelated" }}
+      style={{ width, height, display: "block", imageRendering: "pixelated", position: "relative", zIndex: 1 }}
     />
   );
 }

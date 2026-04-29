@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import styled, { css, keyframes } from "styled-components";
 import AvatarCanvas from "./AvatarCanvas";
+import { POSE_COUNT } from "../constants/poses";
 import { fetchStoreItems, purchaseItems } from "../api/store";
 
 const CATEGORY_LABELS = {
@@ -35,7 +36,7 @@ const CATEGORY_DECO = {
 const SUBCATEGORY_LABELS = {
   longSleeve: "Long Sleeve", shortSleeve: "Short Sleeve",
   sleeveless: "Sleeveless", baggy: "Baggy",
-  pants: "Pants", skinny: "Skinny", shorts: "Shorts",
+  pants: "Pants", skinny: "Skinny", shorts: "Shorts", skirt: "Skirt",
   overall: "Overall", dress: "Dress",
   jackets: "Jackets", vests: "Vests", hoodie: "Hoodie",
   hats: "Hats", sunglasses: "Sunglasses", decorations: "Decorations",
@@ -49,7 +50,7 @@ const SUBCATEGORY_LABELS = {
 
 const CATEGORY_SUBCATEGORIES = {
   tops: ["longSleeve", "shortSleeve", "sleeveless", "baggy"],
-  bottoms: ["pants", "skinny", "shorts"],
+  bottoms: ["pants", "skinny", "shorts", "skirt"],
   onePiece: ["overall", "dress"],
   coats: ["jackets", "vests", "hoodie"],
   head: ["hats", "sunglasses", "decorations", "horns", "halos"],
@@ -73,7 +74,6 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [sortBy, setSortBy] = useState(null);
   const [groups, setGroups] = useState([]);
-  const [ownedIds, setOwnedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -85,8 +85,10 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [pose, setPose] = useState(0);
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
+  const maxPose = (POSE_COUNT[gender] ?? 5) - 1;
 
   const loadItems = useCallback(async (cat, sub, pg, reset, sort) => {
     if (loadingRef.current) return;
@@ -95,11 +97,6 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
     try {
       const data = await fetchStoreItems({ category: cat || "", subcategory: sub || "", page: pg, sort: sort || "" });
       setGroups(prev => reset ? data.groups : [...prev, ...data.groups]);
-      setOwnedIds(prev => {
-        const base = reset ? new Set() : new Set(prev);
-        data.ownedIds.forEach(id => base.add(String(id)));
-        return base;
-      });
       setHasMore(data.hasMore);
     } catch { /* ignore */ }
     finally { setLoading(false); loadingRef.current = false; }
@@ -142,14 +139,13 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   };
 
   const addToCart = item => {
-    if (ownedIds.has(String(item._id))) return;
-    setCart(prev => prev.some(c => String(c._id) === String(item._id)) ? prev : [...prev, item]);
+    setCart(prev => [...prev, { ...item, cartId: crypto.randomUUID() }]);
     setPurchaseError(null); setPurchaseSuccess(false);
     previewItem(item);
   };
 
   const removeFromCart = item => {
-    setCart(prev => prev.filter(c => c._id !== item._id));
+    setCart(prev => { const i = prev.findIndex(c => c.cartId === item.cartId); return i === -1 ? prev : [...prev.slice(0, i), ...prev.slice(i + 1)]; });
     setPreviewOutfit(prev => {
       const next = { ...prev };
       if (currentOutfit?.[item.category]) next[item.category] = currentOutfit[item.category];
@@ -165,7 +161,6 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
       const result = await purchaseItems({
         items: cart.map(i => ({ id: i._id, currency: i.chosenCurrency })),
       });
-      setOwnedIds(prev => { const n = new Set(prev); result.purchasedIds.forEach(id => n.add(String(id))); return n; });
       setCart([]); setPurchaseSuccess(true); onPurchaseComplete?.(result);
     } catch (err) { setPurchaseError(err.message); }
     finally { setPurchasing(false); }
@@ -276,26 +271,23 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                     const key = `${group.name}__${group.category}`;
                     const expanded = expandedGroup === key;
                     const first = group.variants[0];
-                    const allOwned = group.variants.every(v => ownedIds.has(String(v._id)));
                     const rarity = group.rarity;
                     const lvlReq = group.levelRequirement ?? null;
                     const hasLevel = lvlReq !== null;
                     const meetsLevel = !hasLevel || (level ?? 1) >= lvlReq;
                     const selVariant = selectedVariants[key] || first;
-                    const selOwned = ownedIds.has(String(selVariant._id));
 
                     const coinPrice = group.coinPrice ?? null;
                     const gemPrice  = group.gemPrice  ?? null;
 
                     const handleCardClick = () => {
                       toggleGroup(key);
-                      if (!selOwned) previewItem(selVariant);
+                      previewItem(selVariant);
                     };
 
                     return (
                       <ItemGroup key={key}>
                         <ItemCard
-                          $owned={allOwned}
                           $expanded={expanded}
                           onClick={handleCardClick}
                         >
@@ -308,36 +300,30 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                             <ItemName>{group.name}</ItemName>
                           </CardMidSection>
                           <CardPricesArea>
-                            {allOwned ? (
-                              <CardOwnedPanel>Owned</CardOwnedPanel>
-                            ) : (
-                              <>
-                                <CardPricePanel>
-                                  {coinPrice !== null && (
-                                    <>
-                                      <LevelBadge $met={meetsLevel}>
-                                        {hasLevel ? `Level ${lvlReq}` : "No Level"}
-                                      </LevelBadge>
-                                      <BadgeAndPrice>
-                                        <CoinImg src="/icons/Nectar.png" alt="coins" />
-                                        <CardPriceAmt>{coinPrice}</CardPriceAmt>
-                                      </BadgeAndPrice>
-                                    </>
-                                  )}
-                                </CardPricePanel>
-                                <CardPricePanel>
-                                  {gemPrice !== null && (
-                                    <>
-                                      <LevelBadge $met={true}>No Level</LevelBadge>
-                                      <BadgeAndPrice>
-                                        <GemImg src="/icons/Lis.png" alt="gems" />
-                                        <CardPriceAmt $gem>{gemPrice}</CardPriceAmt>
-                                      </BadgeAndPrice>
-                                    </>
-                                  )}
-                                </CardPricePanel>
-                              </>
-                            )}
+                            <CardPricePanel>
+                              {coinPrice !== null && (
+                                <>
+                                  <LevelBadge $met={meetsLevel}>
+                                    {hasLevel ? `Level ${lvlReq}` : "No Level"}
+                                  </LevelBadge>
+                                  <BadgeAndPrice>
+                                    <CoinImg src="/icons/Nectar.png" alt="coins" />
+                                    <CardPriceAmt>{coinPrice}</CardPriceAmt>
+                                  </BadgeAndPrice>
+                                </>
+                              )}
+                            </CardPricePanel>
+                            <CardPricePanel>
+                              {gemPrice !== null && (
+                                <>
+                                  <LevelBadge $met={true}>No Level</LevelBadge>
+                                  <BadgeAndPrice>
+                                    <GemImg src="/icons/Lis.png" alt="gems" />
+                                    <CardPriceAmt $gem>{gemPrice}</CardPriceAmt>
+                                  </BadgeAndPrice>
+                                </>
+                              )}
+                            </CardPricePanel>
                           </CardPricesArea>
                         </ItemCard>
 
@@ -371,35 +357,23 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                               <ExpandInfoBox>
                                 <ExpandInfoRow>
                                   <ExpandVariantsRow>
-                                    {group.variants.map((v) => {
-                                      const owned = ownedIds.has(String(v._id));
-                                      return (
-                                        <ExpandVImg
-                                          key={v._id}
-                                          $owned={owned}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!owned) {
-                                              setSelectedVariants((prev) => ({
-                                                ...prev,
-                                                [key]: v,
-                                              }));
-                                              previewItem(v);
-                                            }
-                                          }}
-                                          title={owned ? "Owned" : v.name}
-                                        >
-                                          <img
-                                            src={v.thumbnailUrl || v.imageUrl}
-                                            alt={v.name}
-                                            crossOrigin="anonymous"
-                                          />
-                                          {owned && (
-                                            <ExpandVOverlay>✓</ExpandVOverlay>
-                                          )}
-                                        </ExpandVImg>
-                                      );
-                                    })}
+                                    {group.variants.map((v) => (
+                                      <ExpandVImg
+                                        key={v._id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedVariants((prev) => ({ ...prev, [key]: v }));
+                                          previewItem(v);
+                                        }}
+                                        title={v.name}
+                                      >
+                                        <img
+                                          src={v.thumbnailUrl || v.imageUrl}
+                                          alt={v.name}
+                                          crossOrigin="anonymous"
+                                        />
+                                      </ExpandVImg>
+                                    ))}
                                   </ExpandVariantsRow>
                                 </ExpandInfoRow>
                               </ExpandInfoBox>
@@ -407,14 +381,14 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                           </ExpandedArea>
                         )}
 
-                        {expanded && !allOwned && (coinPrice !== null || gemPrice !== null) && (
+                        {expanded && (coinPrice !== null || gemPrice !== null) && (
                           <AddButtonsBar>
                             <ButtonsGroup>
                               {coinPrice !== null && (
                                 <AddVariantBtn
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!selOwned) addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "coins" });
+                                    addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "coins" });
                                   }}
                                 >
                                   <CoinImg src="/icons/Nectar.png" alt="coins" />
@@ -426,7 +400,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                                   $gem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!selOwned) addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "gems" });
+                                    addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "gems" });
                                   }}
                                 >
                                   <GemImg src="/icons/Lis.png" alt="gems" />
@@ -449,8 +423,16 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
           <AvatarPanel>
             <AvatarArea>
-              <AvatarCanvas gender={gender} outfit={previewOutfit} width={320} height={722} />
+              <AvatarBg src="/store-background.png" alt="" />
+              <AvatarCanvas gender={gender} outfit={previewOutfit} width={320} height={722} pose={pose} />
             </AvatarArea>
+            <PoseBar>
+              <PoseArrow onClick={() => setPose(p => p === maxPose ? 0 : p + 1)}>‹</PoseArrow>
+              {Array.from({ length: maxPose + 1 }).map((_, i) => (
+                <PoseDot key={i} $active={i === pose} onClick={() => setPose(i)} />
+              ))}
+              <PoseArrow onClick={() => setPose(p => p === 0 ? maxPose : p - 1)}>›</PoseArrow>
+            </PoseBar>
             <AvatarBottom>
               <Balance>
                 <Bal><BalImg src="/icons/Nectar.png" />{(coins ?? 0).toLocaleString()}</Bal>
@@ -472,7 +454,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                   {cart.length === 0 && <CartEmpty>Cart is empty</CartEmpty>}
                   <CartItems>
                     {cart.map(item => (
-                      <CartLine key={item._id}>
+                      <CartLine key={item.cartId}>
                         <CartImg src={item.thumbnailUrl || item.imageUrl} alt={item.name} crossOrigin="anonymous" />
                         <CartName>{item.name}</CartName>
                         <CartCurrency>
@@ -838,7 +820,6 @@ const ItemCard = styled.div`
   border:1px solid ${C.border};
   border-bottom:${p => p.$expanded ? `1px solid transparent` : `1px solid ${C.border}`};
   min-height:88px;cursor:pointer;
-  opacity:${p => p.$owned ? 0.6 : 1};
   transition:border-color .15s,box-shadow .15s;
   &:hover{border-color:${C.border2};box-shadow:0 2px 10px rgba(120,60,220,0.1);}
 `;
@@ -956,11 +937,10 @@ const ExpandVariantsRow = styled.div`
 
 const ExpandVImg = styled.div`
   position:relative;width:70px;height:70px;
-  cursor:${p => p.$owned ? "default" : "pointer"};
-  opacity:${p => p.$owned ? 0.4 : 1};
+  cursor:pointer;
   border-radius:6px;overflow:hidden;
   transition:transform .12s;
-  &:hover{transform:${p => p.$owned ? "none" : "scale(1.12)"};}
+  &:hover{transform:scale(1.12);}
   img{width:100%;height:100%;object-fit:contain;display:block;}
 `;
 
@@ -1006,7 +986,39 @@ const AvatarPanel = styled.div`
 
 const AvatarArea = styled.div`
   flex:1;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;padding:12px 0 4px;
+  overflow:hidden;position:relative;
+`;
+
+const AvatarBg = styled.img`
+  position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  pointer-events:none;user-select:none;
+  opacity: 60%;
+`;
+
+const PoseBar = styled.div`
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:8px 12px;border-top:1px solid ${C.border};
+  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
+  flex-shrink:0;
+`;
+
+const PoseArrow = styled.button`
+  background:rgba(124,58,237,0.08);border:1px solid ${C.border};
+  color:${C.txt2};font-size:18px;line-height:1;
+  width:28px;height:28px;border-radius:7px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .13s;
+  &:hover{background:rgba(124,58,237,0.16);color:${C.txt};}
+`;
+
+const PoseDot = styled.button`
+  width:${p => p.$active ? 18 : 8}px;
+  height:8px;
+  border-radius:4px;
+  border:none;cursor:pointer;padding:0;
+  background:${p => p.$active ? C.accent : "rgba(124,58,237,0.2)"};
+  transition:all .18s;
+  &:hover{background:${p => p.$active ? C.accent : "rgba(124,58,237,0.4)"};}
 `;
 
 const AvatarBottom = styled.div`

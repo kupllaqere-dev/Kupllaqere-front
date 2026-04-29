@@ -125,6 +125,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         equipped={equipped}
         currentOutfit={outfit}
         gender={gender}
+        level={level}
+        coins={coins ?? 0}
+        gems={gems ?? 0}
+        onSellComplete={onPurchaseComplete}
       />
     )}
     {showStore && (
