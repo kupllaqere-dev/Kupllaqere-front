@@ -5,7 +5,7 @@ import styled from "styled-components";
 const CATEGORY_SUBCATEGORIES = {
   tops:       ["longSleeve", "shortSleeve", "sleeveless", "baggy"],
   bottoms:    ["pants", "skinny", "shorts"],
-  onePiece:   ["overall, dress"],
+  onePiece:   ["overall", "dress"],
   coats:      ["jackets", "vests", "hoodie"],
   head:       ["hats", "sunglasses", "decorations", "horns", "halos"],
   hair:       ["short", "medium", "long", "facial"],
@@ -15,6 +15,13 @@ const CATEGORY_SUBCATEGORIES = {
 };
 const CATEGORIES = Object.keys(CATEGORY_SUBCATEGORIES);
 const LIMIT = 20;
+
+const RARITY_LABELS = { nonRare: "Common", rare: "Rare", superRare: "Super Rare" };
+const RARITY_COLORS = {
+  nonRare: { bg: "rgba(100,100,120,0.25)", border: "rgba(140,140,160,0.4)", color: "#aaa" },
+  rare:    { bg: "rgba(40,90,255,0.2)",    border: "rgba(60,120,255,0.5)",   color: "#7ab4ff" },
+  superRare: { bg: "rgba(255,160,0,0.2)", border: "rgba(255,180,0,0.55)",  color: "#ffc940" },
+};
 
 export default function Items() {
   const [data, setData]         = useState({ items: [], total: 0 });
@@ -86,6 +93,7 @@ export default function Items() {
               <Th>Name</Th>
               <Th>Category</Th>
               <Th>Subcategory</Th>
+              <Th>Rarity</Th>
               <Th>Store</Th>
               <Th>Uploaded by</Th>
               <Th>Date</Th>
@@ -93,9 +101,9 @@ export default function Items() {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={8}><Center>Loading…</Center></td></tr>}
+            {loading && <tr><td colSpan={9}><Center>Loading…</Center></td></tr>}
             {!loading && data.items.length === 0 && (
-              <tr><td colSpan={8}><Center>No items found.</Center></td></tr>
+              <tr><td colSpan={9}><Center>No items found.</Center></td></tr>
             )}
             {data.items.map((item) => (
               <tr key={item.id}>
@@ -105,6 +113,7 @@ export default function Items() {
                 <Td><strong>{item.name}</strong></Td>
                 <Td><Gray>{item.category}</Gray></Td>
                 <Td><Gray>{item.subcategory}</Gray></Td>
+                <Td>{item.rarity ? <RarityBadge $rarity={item.rarity}>{RARITY_LABELS[item.rarity] || item.rarity}</RarityBadge> : <Gray>—</Gray>}</Td>
                 <Td>{item.storeType ? <StoreBadge>{item.storeType}</StoreBadge> : <Gray>—</Gray>}</Td>
                 <Td><Gray>{item.uploadedBy?.name || item.uploadedBy?.email || "—"}</Gray></Td>
                 <Td><Gray>{new Date(item.createdAt).toLocaleDateString()}</Gray></Td>
@@ -173,6 +182,7 @@ function CreateForm({ busy, setBusy, onDone, onClose }) {
   const [name, setName]           = useState("");
   const [category, setCategory]   = useState(CATEGORIES[0]);
   const [subcategory, setSub]     = useState(CATEGORY_SUBCATEGORIES[CATEGORIES[0]][0]);
+  const [rarity, setRarity]       = useState("");
   const [file, setFile]           = useState(null);
   const [preview, setPreview]     = useState(null);
   const fileRef = useRef();
@@ -194,6 +204,7 @@ function CreateForm({ busy, setBusy, onDone, onClose }) {
     fd.append("name", name.trim());
     fd.append("category", category);
     fd.append("subcategory", subcategory);
+    if (rarity) fd.append("rarity", rarity);
     fd.append("image", file);
     setBusy(true);
     try { await createItem(fd); onDone(); }
@@ -220,6 +231,15 @@ function CreateForm({ busy, setBusy, onDone, onClose }) {
         </FieldSelect>
       </FieldRow>
       <FieldRow>
+        <FieldLabel>Rarity</FieldLabel>
+        <FieldSelect value={rarity} onChange={(e) => setRarity(e.target.value)}>
+          <option value="">No rarity</option>
+          <option value="nonRare">Common</option>
+          <option value="rare">Rare</option>
+          <option value="superRare">Super Rare</option>
+        </FieldSelect>
+      </FieldRow>
+      <FieldRow>
         <FieldLabel>Image (PNG)</FieldLabel>
         <input ref={fileRef} type="file" accept="image/png" onChange={pickFile} style={{ color: "#aaa", fontSize: 13 }} />
         {preview && <img src={preview} alt="preview" style={{ marginTop: 8, width: 80, height: 80, objectFit: "contain", background: "#111", borderRadius: 8 }} />}
@@ -237,6 +257,7 @@ function EditForm({ item, busy, onSave, onClose }) {
   const [category, setCategory]   = useState(item.category);
   const [subcategory, setSub]     = useState(item.subcategory);
   const [storeType, setStoreType] = useState(item.storeType || "");
+  const [rarity, setRarity]       = useState(item.rarity || "");
   const subs = CATEGORY_SUBCATEGORIES[category] || [];
 
   return (
@@ -258,6 +279,15 @@ function EditForm({ item, busy, onSave, onClose }) {
         </FieldSelect>
       </FieldRow>
       <FieldRow>
+        <FieldLabel>Rarity</FieldLabel>
+        <FieldSelect value={rarity} onChange={(e) => setRarity(e.target.value)}>
+          <option value="">No rarity</option>
+          <option value="nonRare">Common</option>
+          <option value="rare">Rare</option>
+          <option value="superRare">Super Rare</option>
+        </FieldSelect>
+      </FieldRow>
+      <FieldRow>
         <FieldLabel>Store Type</FieldLabel>
         <FieldSelect value={storeType} onChange={(e) => setStoreType(e.target.value)}>
           <option value="">Not in store</option>
@@ -266,7 +296,7 @@ function EditForm({ item, busy, onSave, onClose }) {
       </FieldRow>
       <Actions style={{ marginTop: 20 }}>
         <Btn onClick={onClose}>Cancel</Btn>
-        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory, storeType: storeType || null })}>{busy ? "Saving…" : "Save"}</Btn>
+        <Btn $primary disabled={busy} onClick={() => onSave({ name, category, subcategory, rarity: rarity || null, storeType: storeType || null })}>{busy ? "Saving…" : "Save"}</Btn>
       </Actions>
     </>
   );
@@ -334,4 +364,11 @@ const FieldSelect = styled.select`
 const StoreBadge = styled.span`
   background:rgba(123,47,247,0.25);border:1px solid rgba(123,47,247,0.5);
   color:#c4a1ff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:capitalize;
+`;
+const RarityBadge = styled.span`
+  font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:0.4px;
+  background:${(p)=>RARITY_COLORS[p.$rarity]?.bg||"transparent"};
+  border:1px solid ${(p)=>RARITY_COLORS[p.$rarity]?.border||"transparent"};
+  color:${(p)=>RARITY_COLORS[p.$rarity]?.color||"#aaa"};
 `;

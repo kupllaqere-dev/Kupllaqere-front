@@ -5,9 +5,11 @@ function authHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function fetchStoreItems({ category = "", page = 1 } = {}) {
+export async function fetchStoreItems({ category = "", subcategory = "", page = 1, sort = "" } = {}) {
   const params = new URLSearchParams({ page });
   if (category) params.set("category", category);
+  if (subcategory) params.set("subcategory", subcategory);
+  if (sort) params.set("sort", sort);
   const res = await fetch(`${API}/api/store?${params}`, { headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to fetch store items");
   return res.json(); // { groups, total, page, hasMore, ownedIds }
