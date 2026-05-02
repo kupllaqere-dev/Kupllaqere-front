@@ -42,6 +42,19 @@ function extractFrame(img, frameIndex, cols) {
   return { sx: col * FRAME_W, sy: row * FRAME_H };
 }
 
+function formatRelativeTime(dateString) {
+  if (!dateString) return "";
+  const diff = Date.now() - new Date(dateString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
 function bioToHtml(text) {
   return text
     .replace(/&/g, "&amp;")
@@ -607,10 +620,52 @@ export default function PlayerProfile({
 
           {/* ── Guest Book Expanded Overlay ── */}
           <GuestBookOverlay $open={gbOpen} onClick={(e) => e.stopPropagation()}>
-            <GBOverlayHeader>
-              <GBOverlayTitle>Guest Book</GBOverlayTitle>
-              <GBOverlayClose onClick={() => setGbOpen(false)}>&times;</GBOverlayClose>
-            </GBOverlayHeader>
+            <GBOverlayClose onClick={() => setGbOpen(false)}>&times;</GBOverlayClose>
+
+            <GBHeader>
+              <GBTitle>✦ GUEST BOOK ✦</GBTitle>
+              <GBSubtitle>Leave a message for the owner. Be kind, be iconic.</GBSubtitle>
+              <GBHeaderControls>
+                <GBSortBtn>Recent <span style={{ fontSize: 10 }}>▾</span></GBSortBtn>
+                <GBPinnedBtn>📌 Pinned (0)</GBPinnedBtn>
+              </GBHeaderControls>
+            </GBHeader>
+
+            {canComment && (
+              <GBComposeArea>
+                <GBComposeRow>
+                  <GBAvatarPlaceholder />
+                  <GBComposeInputWrap>
+                    <GBInput
+                      value={gbInput}
+                      maxLength={COMMENT_MAX}
+                      onChange={(e) => setGbInput(e.target.value)}
+                      placeholder="Write a message..."
+                      disabled={gbSubmitting}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
+                    />
+                    <GBEmojiBtn title="Emoji">☺</GBEmojiBtn>
+                  </GBComposeInputWrap>
+                  <GBPostBtn onClick={handleSubmitComment} disabled={gbSubmitting || !gbInput.trim()}>
+                    {gbSubmitting ? "…" : "Post"}
+                  </GBPostBtn>
+                </GBComposeRow>
+                <GBComposeTools>
+                  <GBToolBtn>Āa Style</GBToolBtn>
+                  <GBToolBtn>☺ Sticker</GBToolBtn>
+                  <GBToolBtn>🌙 Mood</GBToolBtn>
+                  <GBCounter $warn={gbInput.length > 90} style={{ marginLeft: "auto" }}>
+                    {gbInput.length}/{COMMENT_MAX}
+                  </GBCounter>
+                </GBComposeTools>
+              </GBComposeArea>
+            )}
+
+            <GBOrnamentDivider>
+              <GBDividerLine />
+              <GBDividerGem>✦</GBDividerGem>
+              <GBDividerLine />
+            </GBOrnamentDivider>
 
             <GBOverlayScroll>
               {gbLoading ? (
@@ -619,46 +674,60 @@ export default function PlayerProfile({
                 <GBEmpty $large>No comments yet. Be the first!</GBEmpty>
               ) : (
                 gbComments.map((c) => (
-                  <CommentCard key={c._id} $expanded>
-                    <CommentSenderTag>
-                      <PlayerThumbnail playerName={c.authorName} size={28} />
-                      <CommentAuthorName>{c.authorName}</CommentAuthorName>
-                    </CommentSenderTag>
-                    <CommentMessage $expanded>{c.message}</CommentMessage>
-                    {isSelfView && (
-                      <CommentDeleteBtn
-                        onClick={() => handleDeleteComment(c._id)}
-                        title="Delete comment"
-                      >
-                        &times;
-                      </CommentDeleteBtn>
-                    )}
-                  </CommentCard>
+                  <GBCommentCard key={c._id}>
+                    <GBCommentInner>
+                      <GBCommentAvatarCol>
+                        <PlayerThumbnail playerName={c.authorName} size={44} />
+                      </GBCommentAvatarCol>
+                      <GBCommentBody>
+                        <GBCommentMeta>
+                          <GBCommentName>{c.authorName}</GBCommentName>
+                          {c.createdAt && (
+                            <GBCommentTime>• {formatRelativeTime(c.createdAt)}</GBCommentTime>
+                          )}
+                        </GBCommentMeta>
+                        <GBCommentText>{c.message}</GBCommentText>
+                        <GBReactions>
+                          <GBReactionBtn>♥ 0</GBReactionBtn>
+                          <GBReactionBtn>🔥 0</GBReactionBtn>
+                          <GBReactionBtn>✨ 0</GBReactionBtn>
+                          <GBReactionBtn>💬 0</GBReactionBtn>
+                        </GBReactions>
+                      </GBCommentBody>
+                      <GBCommentActions>
+                        {isSelfView && (
+                          <CommentDeleteBtn
+                            onClick={() => handleDeleteComment(c._id)}
+                            title="Delete comment"
+                          >
+                            &times;
+                          </CommentDeleteBtn>
+                        )}
+                        <GBMenuDot>⋮</GBMenuDot>
+                      </GBCommentActions>
+                    </GBCommentInner>
+                  </GBCommentCard>
                 ))
               )}
             </GBOverlayScroll>
 
-            {canComment && (
-              <GBInputArea $overlay>
-                <GBInput
-                  value={gbInput}
-                  maxLength={COMMENT_MAX}
-                  onChange={(e) => setGbInput(e.target.value)}
-                  placeholder="Write a comment…"
-                  disabled={gbSubmitting}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
-                />
-                <GBInputFooter>
-                  <GBCounter $warn={gbInput.length > 90}>{gbInput.length}/{COMMENT_MAX}</GBCounter>
-                  <PrimaryBtn
-                    onClick={handleSubmitComment}
-                    disabled={gbSubmitting || !gbInput.trim()}
-                  >
-                    {gbSubmitting ? "…" : "Post"}
-                  </PrimaryBtn>
-                </GBInputFooter>
-              </GBInputArea>
-            )}
+            <GBStatsFooter>
+              <GBStat>
+                <GBStatLabel>Total Messages</GBStatLabel>
+                <GBStatValue>{gbComments.length}</GBStatValue>
+              </GBStat>
+              <GBStatDivider />
+              <GBStat>
+                <GBStatLabel>Visitors</GBStatLabel>
+                <GBStatValue>—</GBStatValue>
+              </GBStat>
+              <GBStatDivider />
+              <GBStat>
+                <GBStatLabel>Most Active</GBStatLabel>
+                <GBStatValue>—</GBStatValue>
+              </GBStat>
+              <GBLeaveGiftBtn>🎁 Leave a Gift</GBLeaveGiftBtn>
+            </GBStatsFooter>
           </GuestBookOverlay>
 
         </ProfileWrapper>
@@ -1462,19 +1531,19 @@ const GBInputArea = styled.div`
 const GBInput = styled.textarea`
   width: 100%;
   resize: none;
-  height: 54px;
+  height: 44px;
   background: rgba(255,255,255,0.05);
   border: 1px solid #ffffff20;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #fff;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
-  padding: 7px 9px;
+  padding: 10px 36px 10px 12px;
   box-sizing: border-box;
   outline: none;
   &:focus { border-color: #7b2ff7; }
-  &::placeholder { color: #555; }
+  &::placeholder { color: #4a3d5e; }
 `;
 
 const GBInputFooter = styled.div`
@@ -1559,57 +1628,339 @@ const GuestBookOverlay = styled.div`
   top: 0;
   bottom: 0;
   right: 0;
-  /* leave the avatar column visible — approx 30% from the left of the wrapper */
   left: 30%;
   z-index: 20;
-  background: rgba(36, 28, 54, 0.97);
+  background: linear-gradient(160deg, #130b24 0%, #0e0918 100%);
   border-radius: 0 14px 14px 0;
-  border: 1px solid rgba(124,58,237,0.18);
+  border: 1px solid rgba(124,58,237,0.28);
+  box-shadow: inset 0 0 80px rgba(124,58,237,0.04);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* expand from bottom-right corner toward top-left */
   transform-origin: right bottom;
   transform: ${p => p.$open ? "scale(1)" : "scale(0)"};
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: ${p => p.$open ? "auto" : "none"};
 `;
 
-const GBOverlayHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid #ffffff12;
+const GBOverlayClose = styled.button`
+  all: unset;
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: #555;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  z-index: 2;
+  &:hover { color: #fff; }
+`;
+
+const GBHeader = styled.div`
+  padding: 22px 24px 0;
   flex-shrink: 0;
 `;
 
-const GBOverlayTitle = styled.div`
-  font-size: 11px;
-  font-weight: 700;
-  color: #c4a1ff;
+const GBTitle = styled.h2`
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #e4d0ff;
+  text-align: center;
+  letter-spacing: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
 `;
 
-const GBOverlayClose = styled.button`
+const GBSubtitle = styled.p`
+  margin: 5px 0 14px;
+  font-size: 11px;
+  color: #5a4870;
+  text-align: center;
+  letter-spacing: 0.3px;
+`;
+
+const GBHeaderControls = styled.div`
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+`;
+
+const GBSortBtn = styled.button`
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #ffffff15;
+  color: #bbb;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  &:hover { background: rgba(124,58,237,0.15); border-color: #7b2ff7; color: #fff; }
+`;
+
+const GBPinnedBtn = styled.button`
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #ffffff15;
+  color: #bbb;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: rgba(124,58,237,0.15); border-color: #7b2ff7; color: #fff; }
+`;
+
+const GBComposeArea = styled.div`
+  margin: 0 16px 4px;
+  padding: 12px 14px 8px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid #ffffff0d;
+  border-radius: 14px;
+  flex-shrink: 0;
+`;
+
+const GBComposeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const GBAvatarPlaceholder = styled.div`
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(124,58,237,0.18);
+  border: 2px solid rgba(124,58,237,0.28);
+  flex-shrink: 0;
+`;
+
+const GBComposeInputWrap = styled.div`
+  flex: 1;
+  position: relative;
+`;
+
+const GBEmojiBtn = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  &:hover { color: #c4a1ff; }
+`;
+
+const GBPostBtn = styled.button`
+  background: #6b2fd6;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: #7b3ff5; }
+`;
+
+const GBComposeTools = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 8px;
+`;
+
+const GBToolBtn = styled.button`
+  background: none;
+  border: none;
+  color: #6a5880;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  &:hover { background: rgba(255,255,255,0.06); color: #bbb; }
+`;
+
+const GBOrnamentDivider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  flex-shrink: 0;
+`;
+
+const GBDividerLine = styled.div`
+  flex: 1;
+  height: 1px;
+  background: #ffffff0f;
+`;
+
+const GBDividerGem = styled.span`
+  color: rgba(124,58,237,0.45);
+  font-size: 11px;
+`;
+
+const GBCommentCard = styled.div`
+  background: rgba(255,255,255,0.025);
+  border: 1px solid #ffffff0d;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+  &:hover { border-color: rgba(124,58,237,0.22); }
+`;
+
+const GBCommentInner = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+`;
+
+const GBCommentAvatarCol = styled.div`
+  flex-shrink: 0;
+`;
+
+const GBCommentBody = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const GBCommentMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const GBCommentName = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: #c4a1ff;
+`;
+
+const GBCommentTime = styled.span`
+  font-size: 11px;
+  color: #4a3d5e;
+`;
+
+const GBCommentText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: #c0b8d0;
+  line-height: 1.55;
+  word-break: break-word;
+`;
+
+const GBReactions = styled.div`
+  display: flex;
+  gap: 14px;
+  margin-top: 2px;
+`;
+
+const GBReactionBtn = styled.button`
   all: unset;
-  color: #666;
-  font-size: 20px;
+  font-size: 12px;
+  color: #5a4d70;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+  &:hover { color: #c4a1ff; }
+`;
+
+const GBCommentActions = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+`;
+
+const GBMenuDot = styled.button`
+  all: unset;
+  color: #3d3252;
+  font-size: 18px;
   cursor: pointer;
   line-height: 1;
-  &:hover { color: #fff; }
+  transition: color 0.15s;
+  &:hover { color: #bbb; }
+`;
+
+const GBStatsFooter = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid #ffffff0d;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.18);
+`;
+
+const GBStat = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 16px;
+  &:first-child { padding-left: 0; }
+`;
+
+const GBStatLabel = styled.div`
+  font-size: 10px;
+  color: #4a3d5e;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const GBStatValue = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: #ddd;
+`;
+
+const GBStatDivider = styled.div`
+  width: 1px;
+  height: 32px;
+  background: #ffffff0f;
+  flex-shrink: 0;
+`;
+
+const GBLeaveGiftBtn = styled.button`
+  margin-left: auto;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.3);
+  color: #c4a1ff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: rgba(124,58,237,0.28); border-color: #7b2ff7; color: #fff; }
 `;
 
 const GBOverlayScroll = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 4px 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.25); border-radius: 2px; }
 `;
