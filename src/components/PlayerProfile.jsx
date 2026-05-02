@@ -30,10 +30,9 @@ const POSE_ORDER = [0, 4, 5, 3, 2, 1];
 const POSE_LABELS = ["Front", "Front Right", "Right", "Back", "Left", "Front Left"];
 const LAYER_ORDER = ["bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
 const BADGES = ["diamond", "flame", "medal", "paint", "verified"];
+const BADGE_RARITY = { diamond: "legendary", flame: "legendary", medal: "rare", paint: "rare", verified: "common" };
 const BIO_MAX = 150;
 const SHOWCASE_SLOTS = 5;
-const DRAWER_W = 220;
-const BIO_DRAWER_W = 320;
 const COMMENT_MAX = 100;
 
 function extractFrame(img, frameIndex, cols) {
@@ -117,11 +116,8 @@ export default function PlayerProfile({
 
   const [composing, setComposing] = useState(false);
 
-  const [leftOpen, setLeftOpen] = useState(isSelfView);
-
   const [showcaseItems] = useState(Array(SHOWCASE_SLOTS).fill(null));
 
-  // Guest book state
   const [gbOpen, setGbOpen] = useState(false);
   const [gbComments, setGbComments] = useState([]);
   const [gbLoading, setGbLoading] = useState(false);
@@ -130,7 +126,6 @@ export default function PlayerProfile({
 
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
-  // Soul mate
   const loadSm = useCallback(async () => {
     if (!currentUserId) { setSmState(null); return; }
     try {
@@ -166,7 +161,6 @@ export default function PlayerProfile({
   const smCancel = () => runSm(() => cancelSoulMateRequest());
   const smRemove = () => runSm(() => removeSoulMate());
 
-  // Friends (other-view)
   const loadFriendStatus = useCallback(async () => {
     if (!currentUserId || isSelfView || !targetUserId) return;
     try {
@@ -207,7 +201,6 @@ export default function PlayerProfile({
     return "…";
   };
 
-  // Badge
   const handleBadgeClick = async (name) => {
     if (!onSaveBadge || badgeSaving) return;
     const next = selectedBadge === name ? null : name;
@@ -217,7 +210,6 @@ export default function PlayerProfile({
     finally { setBadgeSaving(false); }
   };
 
-  // Avatar canvas
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -286,11 +278,8 @@ export default function PlayerProfile({
   const zoomOut = () => setZoomIndex((i) => Math.max(i - 1, 0));
   const zoomIn = () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1));
 
-  const toggleLeft = () => setLeftOpen((v) => !v);
-
   const visibleBadges = badgesExpanded ? BADGES : BADGES.slice(0, 6);
 
-  // Guest book
   const loadGbComments = useCallback(async () => {
     if (!targetUserId) return;
     setGbLoading(true);
@@ -331,6 +320,8 @@ export default function PlayerProfile({
 
   const canComment = !isSelfView && !!currentUserId;
 
+  const hasOutfit = outfit && Object.values(outfit).some((v) => v?.imageUrl);
+
   return (
     <>
       {composing && !isSelfView && (
@@ -340,282 +331,435 @@ export default function PlayerProfile({
           onClose={() => setComposing(false)}
         />
       )}
+
       <Overlay onClick={onClose}>
         <ProfileWrapper onClick={(e) => e.stopPropagation()}>
 
-          {/* ── Left Drawer ── */}
-          <DrawerShell $side="left">
-            <DrawerBody $open={leftOpen} $side="left">
-              <DrawerInner $autoWidth>
-                {isSelfView ? (
-                  <DrawerNav>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenInventory?.(); }}>Inventory</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenMail?.(); }}>Mail</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenAppearance?.(); }}>Appearance</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenFriends?.(); }}>Friends</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenAlbum?.(); }}>Album</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenStats?.(); }}>Stats</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenWishlist?.(); }}>Wishlist</DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => { onClose(); onOpenMarketplace?.(); }}>Market</DrawerNavBtn>
-                  </DrawerNav>
-                ) : (
-                  <DrawerNav>
-                    <DrawerNavBtn
+          {/* ── Sidebar ── */}
+          <Sidebar>
+            <SidebarLogoWrap>
+              <SidebarLogoMark>✦</SidebarLogoMark>
+              <SidebarLogoText>NW</SidebarLogoText>
+            </SidebarLogoWrap>
+
+            <SidebarNav>
+              {isSelfView ? (
+                <>
+                  <SidebarItem>
+                    <SidebarBtn $active>
+                      <SidebarIcon $active>◈</SidebarIcon>
+                      <SidebarLabel $active>Profile</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenMail?.(); }}>
+                      <SidebarIcon>✉</SidebarIcon>
+                      <SidebarLabel>Mail</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenAppearance?.(); }}>
+                      <SidebarIcon>✦</SidebarIcon>
+                      <SidebarLabel>Look</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenFriends?.(); }}>
+                      <SidebarIcon>♡</SidebarIcon>
+                      <SidebarLabel>Friends</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenAlbum?.(); }}>
+                      <SidebarIcon>▦</SidebarIcon>
+                      <SidebarLabel>Album</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenStats?.(); }}>
+                      <SidebarIcon>◉</SidebarIcon>
+                      <SidebarLabel>Stats</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenWishlist?.(); }}>
+                      <SidebarIcon>☆</SidebarIcon>
+                      <SidebarLabel>Wishlist</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => { onClose(); onOpenMarketplace?.(); }}>
+                      <SidebarIcon>◇</SidebarIcon>
+                      <SidebarLabel>Market</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                </>
+              ) : (
+                <>
+                  <SidebarItem>
+                    <SidebarBtn
                       onClick={handleFriendBtn}
                       disabled={friendBusy || friendStatus === null}
-                      $danger={friendStatus === "friends"}
                     >
-                      {friendBtnLabel()}
-                    </DrawerNavBtn>
-                    <DrawerNavBtn onClick={() => setComposing(true)}>Mail</DrawerNavBtn>
-                    <DrawerNavBtn>Wishlist</DrawerNavBtn>
-                    <DrawerNavBtn>Gift</DrawerNavBtn>
-                    <DrawerNavBtn>Trade</DrawerNavBtn>
-                    <DrawerNavBtn $danger onClick={() => {}}>Report</DrawerNavBtn>
-                  </DrawerNav>
-                )}
-              </DrawerInner>
-            </DrawerBody>
-          </DrawerShell>
+                      <SidebarIcon>♡</SidebarIcon>
+                      <SidebarLabel>{friendBtnLabel()}</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn onClick={() => setComposing(true)}>
+                      <SidebarIcon>✉</SidebarIcon>
+                      <SidebarLabel>Mail</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn>
+                      <SidebarIcon>☆</SidebarIcon>
+                      <SidebarLabel>Wishlist</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn>
+                      <SidebarIcon>🎁</SidebarIcon>
+                      <SidebarLabel>Gift</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn>
+                      <SidebarIcon>⇄</SidebarIcon>
+                      <SidebarLabel>Trade</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem $danger>
+                    <SidebarBtn $danger>
+                      <SidebarIcon>⚑</SidebarIcon>
+                      <SidebarLabel>Report</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                </>
+              )}
+            </SidebarNav>
 
-          {/* ── Main Panel ── */}
-          <MainPanel $leftOpen={leftOpen}>
+            <SidebarFooter>
+              <SidebarAvatarThumb />
+              <SidebarOnlinePip />
+            </SidebarFooter>
+          </Sidebar>
+
+          {/* ── Avatar Stage ── */}
+          <AvatarStageCol>
+            <OutfitLabel>
+              <OutfitGem>✦</OutfitGem>
+              <span>Outfit: {hasOutfit ? "Current Outfit" : "Default"}</span>
+              <OutfitGem>✦</OutfitGem>
+            </OutfitLabel>
+
+            <StageContainer>
+              <StageHalo />
+              <StageHaloOuter />
+              <AvatarViewport>
+                <AvatarCanvas
+                  ref={canvasRef}
+                  width={FRAME_W}
+                  height={FRAME_H}
+                  style={{
+                    transform: `scale(${ZOOM_LEVELS[zoomIndex]})`,
+                    transformOrigin: "top center",
+                  }}
+                />
+              </AvatarViewport>
+              <AvatarPlatform />
+            </StageContainer>
+
+            <StatusCard>
+              <StatusCardTop>
+                <OnlineDot />
+                <OnlineLabel>Online</OnlineLabel>
+                <StatusSep>·</StatusSep>
+                <StatusLoc>Neclis Plaza</StatusLoc>
+              </StatusCardTop>
+              <StatusText>"living in a dream sequence ✨"</StatusText>
+            </StatusCard>
+
+            <Controls>
+              <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>−</ArrowBtn>
+              <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
+              <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel>
+              <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
+              <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
+            </Controls>
+          </AvatarStageCol>
+
+          {/* ── Profile Content ── */}
+          <ProfileContent>
             <CloseBtn onClick={onClose}>&times;</CloseBtn>
-            <DrawerToggleBtn $side="left" onClick={toggleLeft} title={leftOpen ? "Close" : "Open menu"}>
-              {leftOpen ? "‹" : "›"}
-            </DrawerToggleBtn>
-            <PanelContent>
 
-              {/* Avatar column */}
-              <AvatarSide>
-                <AvatarViewport>
-                  <AvatarCanvas
-                    ref={canvasRef}
-                    width={FRAME_W}
-                    height={FRAME_H}
-                    style={{
-                      transform: `scale(${ZOOM_LEVELS[zoomIndex]})`,
-                      transformOrigin: "top center",
-                    }}
-                  />
-                </AvatarViewport>
-                <Controls>
-                  <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>−</ArrowBtn>
-                  <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
-                  <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
-                  <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel>
-                  <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
-                </Controls>
-              </AvatarSide>
+            {/* Header */}
+            <ProfileHeader>
+              <HeaderLeft>
+                <ProfileEmblem>
+                  <EmblemDiamond>◆</EmblemDiamond>
+                </ProfileEmblem>
+                <HeaderTitles>
+                  <PlayerName>
+                    {playerName || "Player"}
+                    <PlayerNameMark> ✦</PlayerNameMark>
+                  </PlayerName>
+                  <ProfileMetaRow>
+                    <LevelBadge>Lv. 78</LevelBadge>
+                    <MetaSep>•</MetaSep>
+                    <RankBadgeDiamond>◆ Diamond Tier</RankBadgeDiamond>
+                  </ProfileMetaRow>
+                </HeaderTitles>
+              </HeaderLeft>
+              <ProfileStats>
+                <ProfileStat>
+                  <ProfileStatVal>1,204</ProfileStatVal>
+                  <ProfileStatLbl>Followers</ProfileStatLbl>
+                </ProfileStat>
+                <ProfileStat>
+                  <ProfileStatVal>348</ProfileStatVal>
+                  <ProfileStatLbl>Following</ProfileStatLbl>
+                </ProfileStat>
+                <ProfileStat>
+                  <ProfileStatVal>89</ProfileStatVal>
+                  <ProfileStatLbl>Days</ProfileStatLbl>
+                </ProfileStat>
+              </ProfileStats>
+            </ProfileHeader>
 
-              {/* Info column */}
-              <InfoSide>
-                <PlayerName>{playerName || "Player"}</PlayerName>
-
-                <StatRow>
-                  <StatBox>
-                    <StatLabel>Level</StatLabel>
-                    <StatValue>78</StatValue>
-                  </StatBox>
-                  <StatBox>
-                    <StatLabel>Class</StatLabel>
-                    <StatValue $muted>—</StatValue>
-                  </StatBox>
-                </StatRow>
-
-                {/* Badges */}
-                <SectionBlock>
-                  <SectionLabel>Badges</SectionLabel>
-                  <BadgeGrid>
-                    {visibleBadges.map((name) => (
-                      <BadgePlaceholder
-                        key={name}
-                        $selected={selectedBadge === name}
-                        $clickable={!!onSaveBadge}
-                        $saving={badgeSaving}
-                        onClick={() => handleBadgeClick(name)}
-                        title={
-                          onSaveBadge
-                            ? selectedBadge === name ? "Click to unselect" : "Click to display this badge"
-                            : name
-                        }
-                      >
+            {/* Badges */}
+            <SectionBlock>
+              <SectionHeaderRow>
+                <SectionTitle>Badges</SectionTitle>
+                <SectionCountPill>{visibleBadges.length}</SectionCountPill>
+              </SectionHeaderRow>
+              <BadgesScrollWrap>
+                <BadgesRow>
+                  {visibleBadges.map((name) => (
+                    <BadgeCard
+                      key={name}
+                      $selected={selectedBadge === name}
+                      $clickable={!!onSaveBadge}
+                      $saving={badgeSaving}
+                      $rarity={BADGE_RARITY[name] || "common"}
+                      onClick={() => handleBadgeClick(name)}
+                      title={
+                        onSaveBadge
+                          ? selectedBadge === name ? "Click to unselect" : "Click to display this badge"
+                          : name
+                      }
+                    >
+                      <BadgeCardIconWrap>
                         <BadgeImg src={`/assets/badges/${name}.png`} alt={name} />
-                      </BadgePlaceholder>
-                    ))}
-                  </BadgeGrid>
-                  {BADGES.length > 6 && (
-                    <BadgeExpandBtn onClick={() => setBadgesExpanded((v) => !v)}>
-                      {badgesExpanded ? "Show less ▲" : "Show all ▼"}
-                    </BadgeExpandBtn>
-                  )}
-                </SectionBlock>
+                      </BadgeCardIconWrap>
+                      <BadgeCardName>{name.charAt(0).toUpperCase() + name.slice(1)}</BadgeCardName>
+                      <BadgeCardRarity $rarity={BADGE_RARITY[name] || "common"}>
+                        {BADGE_RARITY[name] || "common"}
+                      </BadgeCardRarity>
+                    </BadgeCard>
+                  ))}
+                </BadgesRow>
+              </BadgesScrollWrap>
+              {BADGES.length > 6 && (
+                <BadgeExpandBtn onClick={() => setBadgesExpanded((v) => !v)}>
+                  {badgesExpanded ? "Show less ▲" : "Show all ▼"}
+                </BadgeExpandBtn>
+              )}
+            </SectionBlock>
 
-                {/* Soul Mate */}
-                <SectionBlock>
-                  <SectionLabel>Soul Mate</SectionLabel>
-                  <SoulMateBox>
-                    {renderSoulMate({
-                      smState, isSelfView, targetUserId, currentUserId,
-                      smBusy, smError, smSendRequest, smAccept, smDecline, smCancel, smRemove,
-                    })}
-                  </SoulMateBox>
-                </SectionBlock>
+            {/* Soul Mate */}
+            <SectionBlock>
+              <SectionHeaderRow>
+                <SectionTitle>Soulmate</SectionTitle>
+              </SectionHeaderRow>
+              {renderSoulMate({
+                smState, isSelfView, targetUserId, currentUserId,
+                smBusy, smError, smSendRequest, smAccept, smDecline, smCancel, smRemove,
+                playerName,
+              })}
+            </SectionBlock>
 
-                {/* Showcase */}
-                <SectionBlock>
-                  <SectionLabel>Showcase</SectionLabel>
-                  <ShowcaseRow>
-                    {showcaseItems.map((item, i) => (
-                      <ShowcaseSlot
-                        key={i}
-                        $clickable={isSelfView}
-                        onClick={isSelfView ? () => {} : undefined}
-                        title={isSelfView ? "Click to select item" : ""}
-                      >
-                        {item
-                          ? <ShowcaseItemImg src={item.imageUrl} alt={item.name} />
-                          : isSelfView
-                            ? <ShowcaseAdd>+</ShowcaseAdd>
-                            : null}
-                      </ShowcaseSlot>
-                    ))}
-                  </ShowcaseRow>
-                </SectionBlock>
+            {/* Showcase */}
+            <SectionBlock>
+              <SectionHeaderRow>
+                <SectionTitle>Showcase</SectionTitle>
+                {isSelfView && <SectionEditBtn>Edit</SectionEditBtn>}
+              </SectionHeaderRow>
+              <ShowcaseScrollWrap>
+                <ShowcaseRow>
+                  {showcaseItems.map((item, i) => (
+                    <ShowcaseCard
+                      key={i}
+                      $clickable={isSelfView}
+                      onClick={isSelfView ? () => {} : undefined}
+                      title={isSelfView ? "Click to select item" : ""}
+                    >
+                      <ShowcaseCardShine />
+                      {item ? (
+                        <>
+                          <ShowcaseItemImg src={item.imageUrl} alt={item.name} />
+                          <ShowcaseCardLabel>{item.name}</ShowcaseCardLabel>
+                          <ShowcaseCardType>Item</ShowcaseCardType>
+                        </>
+                      ) : isSelfView ? (
+                        <>
+                          <ShowcaseAdd>+</ShowcaseAdd>
+                          <ShowcaseCardAddLabel>Add Item</ShowcaseCardAddLabel>
+                        </>
+                      ) : null}
+                    </ShowcaseCard>
+                  ))}
+                </ShowcaseRow>
+              </ShowcaseScrollWrap>
+            </SectionBlock>
 
-                {/* Companion */}
-                <SectionBlock>
-                  <SectionLabel>Companion</SectionLabel>
-                  <CompanionRow>
-                    <CompanionImageBox />
-                    <CompanionInfo>
-                      <StatBox>
-                        <StatLabel>Name</StatLabel>
-                        <StatValue $muted>—</StatValue>
-                      </StatBox>
-                      <StatBox>
-                        <StatLabel>Level</StatLabel>
-                        <StatValue $muted>—</StatValue>
-                      </StatBox>
-                    </CompanionInfo>
-                  </CompanionRow>
-                </SectionBlock>
-              </InfoSide>
-            </PanelContent>
-          </MainPanel>
+            {/* Companion */}
+            <SectionBlock>
+              <SectionHeaderRow>
+                <SectionTitle>Companion</SectionTitle>
+              </SectionHeaderRow>
+              <CompanionCard>
+                <CompanionPetWrap>
+                  <CompanionPetAura />
+                  <CompanionPetEmoji>🐱</CompanionPetEmoji>
+                </CompanionPetWrap>
+                <CompanionInfoBlock>
+                  <CompanionNameRow>
+                    <CompanionNameText>Companion</CompanionNameText>
+                    <CompanionMoodText>😺 Playful</CompanionMoodText>
+                  </CompanionNameRow>
+                  <CompanionLevelText>Level — Familiar</CompanionLevelText>
+                  <CompanionXPWrap>
+                    <XPBarOuter>
+                      <XPBarFill style={{ "--xp": "0%" }} />
+                    </XPBarOuter>
+                    <XPLabelsRow>
+                      <span>XP — / —</span>
+                      <span>—%</span>
+                    </XPLabelsRow>
+                  </CompanionXPWrap>
+                </CompanionInfoBlock>
+              </CompanionCard>
+            </SectionBlock>
 
-          {/* ── Right Panel (About + Guest Book preview) ── */}
+          </ProfileContent>
+
+          {/* ── Right Panel ── */}
           <RightPanel>
-            <DrawerInner $width={BIO_DRAWER_W} $split>
 
-              {/* Top half: About / Bio */}
-              <RightSection>
-                <BioDrawerHeader>
-                  <SectionLabel>About</SectionLabel>
-                  {onSaveBio && !editingBio && (
-                    <EditBtn onClick={() => { setBioDraft(bio); setBioError(null); setEditingBio(true); }}>
-                      Edit
-                    </EditBtn>
-                  )}
-                </BioDrawerHeader>
-                {editingBio ? (
-                  <>
-                    <FormatToolbar>
-                      <FormatBtn title="Bold" onMouseDown={(e) => { e.preventDefault(); applyFormat("**"); }}><b>B</b></FormatBtn>
-                      <FormatBtn title="Italic" onMouseDown={(e) => { e.preventDefault(); applyFormat("*"); }}><i>I</i></FormatBtn>
-                      <FormatBtn title="Underline" onMouseDown={(e) => { e.preventDefault(); applyFormat("_"); }}><u>U</u></FormatBtn>
-                    </FormatToolbar>
-                    <BioTextarea
-                      ref={textareaRef}
-                      value={bioDraft}
-                      maxLength={BIO_MAX}
-                      onChange={(e) => setBioDraft(e.target.value)}
-                      placeholder="Tell others about yourself…"
-                      disabled={bioSaving}
-                    />
-                    <BioFooter>
-                      <BioCounter>{bioDraft.length}/{BIO_MAX}</BioCounter>
-                      <BioActions>
-                        <SecondaryBtn
-                          disabled={bioSaving}
-                          onClick={() => { setEditingBio(false); setBioError(null); setBioDraft(bio); }}
-                        >
-                          Cancel
-                        </SecondaryBtn>
-                        <PrimaryBtn
-                          disabled={bioSaving || bioDraft === bio}
-                          onClick={async () => {
-                            setBioSaving(true);
-                            setBioError(null);
-                            try { await onSaveBio(bioDraft.trim()); setEditingBio(false); }
-                            catch (err) { setBioError(err.message || "Failed to save"); }
-                            finally { setBioSaving(false); }
-                          }}
-                        >
-                          {bioSaving ? "Saving…" : "Save"}
-                        </PrimaryBtn>
-                      </BioActions>
-                    </BioFooter>
-                    {bioError && <BioErrorMsg>{bioError}</BioErrorMsg>}
-                  </>
-                ) : (
-                  bio?.trim()
-                    ? <Description dangerouslySetInnerHTML={{ __html: bioToHtml(bio) }} />
-                    : <Description><EmptyText>No bio yet.</EmptyText></Description>
+            {/* About */}
+            <RightSection>
+              <SectionHeaderRow>
+                <SectionTitle>About</SectionTitle>
+                {onSaveBio && !editingBio && (
+                  <SectionEditBtn onClick={() => { setBioDraft(bio); setBioError(null); setEditingBio(true); }}>
+                    Edit
+                  </SectionEditBtn>
                 )}
-              </RightSection>
-
-              <RightDrawerDivider />
-
-              {/* Bottom half: Guest Book preview */}
-              <RightSection $noScroll>
-                <GuestBookLabelBtn onClick={() => setGbOpen((v) => !v)} $active={gbOpen}>
-                  Guest Book
-                  <GBToggleArrow $open={gbOpen}>▲</GBToggleArrow>
-                </GuestBookLabelBtn>
-
-                <GBPreviewList>
-                  {gbLoading ? (
-                    <GBEmpty>Loading…</GBEmpty>
-                  ) : gbComments.length === 0 ? (
-                    <GBEmpty>No comments yet.</GBEmpty>
-                  ) : (
-                    gbComments.slice(0, 3).map((c) => (
-                      <CommentCard key={c._id}>
-                        <CommentSenderTag>
-                          <PlayerThumbnail playerName={c.authorName} size={22} />
-                          <CommentAuthorName>{c.authorName}</CommentAuthorName>
-                        </CommentSenderTag>
-                        <CommentMessage>{c.message}</CommentMessage>
-                      </CommentCard>
-                    ))
-                  )}
-                </GBPreviewList>
-
-                {canComment && (
-                  <GBInputArea>
-                    <GBInput
-                      value={gbInput}
-                      maxLength={COMMENT_MAX}
-                      onChange={(e) => setGbInput(e.target.value)}
-                      placeholder="Write a comment…"
-                      disabled={gbSubmitting}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
-                    />
-                    <GBInputFooter>
-                      <GBCounter $warn={gbInput.length > 90}>{gbInput.length}/{COMMENT_MAX}</GBCounter>
-                      <PrimaryBtn
-                        onClick={handleSubmitComment}
-                        disabled={gbSubmitting || !gbInput.trim()}
+              </SectionHeaderRow>
+              {editingBio ? (
+                <>
+                  <FormatToolbar>
+                    <FormatBtn title="Bold" onMouseDown={(e) => { e.preventDefault(); applyFormat("**"); }}><b>B</b></FormatBtn>
+                    <FormatBtn title="Italic" onMouseDown={(e) => { e.preventDefault(); applyFormat("*"); }}><i>I</i></FormatBtn>
+                    <FormatBtn title="Underline" onMouseDown={(e) => { e.preventDefault(); applyFormat("_"); }}><u>U</u></FormatBtn>
+                  </FormatToolbar>
+                  <BioTextarea
+                    ref={textareaRef}
+                    value={bioDraft}
+                    maxLength={BIO_MAX}
+                    onChange={(e) => setBioDraft(e.target.value)}
+                    placeholder="Tell others about yourself…"
+                    disabled={bioSaving}
+                  />
+                  <BioFooter>
+                    <BioCounter>{bioDraft.length}/{BIO_MAX}</BioCounter>
+                    <BioActions>
+                      <SecondaryBtn
+                        disabled={bioSaving}
+                        onClick={() => { setEditingBio(false); setBioError(null); setBioDraft(bio); }}
                       >
-                        {gbSubmitting ? "…" : "Post"}
+                        Cancel
+                      </SecondaryBtn>
+                      <PrimaryBtn
+                        disabled={bioSaving || bioDraft === bio}
+                        onClick={async () => {
+                          setBioSaving(true);
+                          setBioError(null);
+                          try { await onSaveBio(bioDraft.trim()); setEditingBio(false); }
+                          catch (err) { setBioError(err.message || "Failed to save"); }
+                          finally { setBioSaving(false); }
+                        }}
+                      >
+                        {bioSaving ? "Saving…" : "Save"}
                       </PrimaryBtn>
-                    </GBInputFooter>
-                  </GBInputArea>
-                )}
-              </RightSection>
+                    </BioActions>
+                  </BioFooter>
+                  {bioError && <BioErrorMsg>{bioError}</BioErrorMsg>}
+                </>
+              ) : bio?.trim() ? (
+                <Description dangerouslySetInnerHTML={{ __html: bioToHtml(bio) }} />
+              ) : (
+                <Description><EmptyText>No bio yet.</EmptyText></Description>
+              )}
+            </RightSection>
 
-            </DrawerInner>
+            <OrnamentDivider>
+              <OrnamentLine /><OrnamentGem>✦</OrnamentGem><OrnamentLine />
+            </OrnamentDivider>
+
+            {/* Guestbook preview */}
+            <RightSection $flex>
+              <SectionHeaderRow>
+                <SectionTitle>Guestbook</SectionTitle>
+                <GBToggleBtn onClick={() => setGbOpen((v) => !v)} $active={gbOpen}>
+                  <GBCountPill>{gbComments.length}</GBCountPill>
+                  <GBToggleArrow $open={gbOpen}>▲</GBToggleArrow>
+                </GBToggleBtn>
+              </SectionHeaderRow>
+
+              <GBPreviewList>
+                {gbLoading ? (
+                  <GBEmpty>Loading…</GBEmpty>
+                ) : gbComments.length === 0 ? (
+                  <GBEmpty>No comments yet.</GBEmpty>
+                ) : (
+                  gbComments.slice(0, 3).map((c) => (
+                    <GBPreviewCard key={c._id}>
+                      <GBPreviewAvatarWrap>
+                        <PlayerThumbnail playerName={c.authorName} size={28} />
+                      </GBPreviewAvatarWrap>
+                      <GBPreviewBody>
+                        <GBPreviewMeta>
+                          <GBPreviewName>{c.authorName}</GBPreviewName>
+                          {c.createdAt && <GBPreviewTime>{formatRelativeTime(c.createdAt)}</GBPreviewTime>}
+                        </GBPreviewMeta>
+                        <GBPreviewText>{c.message}</GBPreviewText>
+                      </GBPreviewBody>
+                    </GBPreviewCard>
+                  ))
+                )}
+              </GBPreviewList>
+
+              {canComment && (
+                <GBInputArea>
+                  <GBInput
+                    value={gbInput}
+                    maxLength={COMMENT_MAX}
+                    onChange={(e) => setGbInput(e.target.value)}
+                    placeholder="Write a comment…"
+                    disabled={gbSubmitting}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
+                  />
+                  <GBInputFooter>
+                    <GBCounter $warn={gbInput.length > 90}>{gbInput.length}/{COMMENT_MAX}</GBCounter>
+                    <PrimaryBtn onClick={handleSubmitComment} disabled={gbSubmitting || !gbInput.trim()}>
+                      {gbSubmitting ? "…" : "Post"}
+                    </PrimaryBtn>
+                  </GBInputFooter>
+                </GBInputArea>
+              )}
+            </RightSection>
           </RightPanel>
 
           {/* ── Guest Book Expanded Overlay ── */}
@@ -662,9 +806,7 @@ export default function PlayerProfile({
             )}
 
             <GBOrnamentDivider>
-              <GBDividerLine />
-              <GBDividerGem>✦</GBDividerGem>
-              <GBDividerLine />
+              <GBDividerLine /><GBDividerGem>✦</GBDividerGem><GBDividerLine />
             </GBOrnamentDivider>
 
             <GBOverlayScroll>
@@ -737,24 +879,37 @@ export default function PlayerProfile({
 }
 
 /* ── Soul Mate renderer ── */
-function renderSoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, smError, smSendRequest, smAccept, smDecline, smCancel, smRemove }) {
-  if (!currentUserId) return <SmEmpty>Sign in to use soul mates.</SmEmpty>;
-  if (!smState) return <SmEmpty>Loading…</SmEmpty>;
+function renderSoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, smError,
+  smSendRequest, smAccept, smDecline, smCancel, smRemove, playerName }) {
+
+  if (!currentUserId) return <SoulmateEmptyBox><SmEmpty>Sign in to use soul mates.</SmEmpty></SoulmateEmptyBox>;
+  if (!smState) return <SoulmateEmptyBox><SmEmpty>Loading…</SmEmpty></SoulmateEmptyBox>;
 
   const { mine, sent, received = [], target, relationship } = smState;
 
+  const FullCard = ({ name, sub, onBreakUp }) => (
+    <SoulmateCard>
+      <SoulmateHeartBg>♥</SoulmateHeartBg>
+      <SoulmateAvatarWrap>
+        <PlayerThumbnail playerName={name} size={44} />
+        <SoulmateSpinRing />
+      </SoulmateAvatarWrap>
+      <SoulmateInfoBlock>
+        <SoulmateName>{name} <SoulmateMark>♥</SoulmateMark></SoulmateName>
+        <SoulmateDuration>{sub}</SoulmateDuration>
+        <SoulmateMoodTag>Obsessed 💜</SoulmateMoodTag>
+      </SoulmateInfoBlock>
+      <SoulmateCardActions>
+        <SmDangerBtn disabled={smBusy} onClick={onBreakUp}>Break Up</SmDangerBtn>
+      </SoulmateCardActions>
+      {smError && <SmError style={{ width: "100%", marginTop: 4 }}>{smError}</SmError>}
+    </SoulmateCard>
+  );
+
   if (isSelfView || !targetUserId) {
-    if (mine) return (
-      <SmContent>
-        <SmName><PlayerThumbnail playerName={mine.name} />{mine.name}</SmName>
-        <SmActions>
-          <SmDangerBtn disabled={smBusy} onClick={smRemove}>Break Up</SmDangerBtn>
-        </SmActions>
-        {smError && <SmError>{smError}</SmError>}
-      </SmContent>
-    );
+    if (mine) return <FullCard name={mine.name} sub="Your Soul Mate" onBreakUp={smRemove} />;
     if (received.length > 0) return (
-      <SmContent>
+      <SoulmateEmptyBox>
         <SmSub>Incoming requests</SmSub>
         {received.map((r) => (
           <SmRow key={r.id}>
@@ -766,284 +921,293 @@ function renderSoulMate({ smState, isSelfView, targetUserId, currentUserId, smBu
           </SmRow>
         ))}
         {smError && <SmError>{smError}</SmError>}
-      </SmContent>
+      </SoulmateEmptyBox>
     );
     if (sent) return (
-      <SmContent>
-        <SmSub>Pending</SmSub>
-        <SmName>{sent.name}</SmName>
-        <SmActions>
-          <SmSecBtn disabled={smBusy} onClick={smCancel}>Cancel</SmSecBtn>
-        </SmActions>
+      <SoulmateEmptyBox>
+        <SmContent>
+          <SmSub>Pending request to {sent.name}</SmSub>
+          <SmActions><SmSecBtn disabled={smBusy} onClick={smCancel}>Cancel</SmSecBtn></SmActions>
+        </SmContent>
         {smError && <SmError>{smError}</SmError>}
-      </SmContent>
+      </SoulmateEmptyBox>
     );
-    return <SmEmpty>No soul mate yet.</SmEmpty>;
+    return <SoulmateEmptyBox><SmEmpty>No soul mate yet.</SmEmpty></SoulmateEmptyBox>;
   }
 
-  if (relationship === "soulmate") return (
-    <SmContent>
-      <SmHeart>♥</SmHeart>
-      <SmSub>Your Soul Mate</SmSub>
-      <SmActions>
-        <SmDangerBtn disabled={smBusy} onClick={smRemove}>Break Up</SmDangerBtn>
-      </SmActions>
-      {smError && <SmError>{smError}</SmError>}
-    </SmContent>
-  );
+  if (relationship === "soulmate") return <FullCard name={playerName || "Player"} sub="Your Soul Mate" onBreakUp={smRemove} />;
   if (relationship === "i_sent") return (
-    <SmContent>
-      <SmSub>Request sent</SmSub>
-      <SmActions><SmSecBtn disabled={smBusy} onClick={smCancel}>Cancel</SmSecBtn></SmActions>
+    <SoulmateEmptyBox>
+      <SmContent>
+        <SmSub>Request sent</SmSub>
+        <SmActions><SmSecBtn disabled={smBusy} onClick={smCancel}>Cancel</SmSecBtn></SmActions>
+      </SmContent>
       {smError && <SmError>{smError}</SmError>}
-    </SmContent>
+    </SoulmateEmptyBox>
   );
   if (relationship === "they_sent") return (
-    <SmContent>
-      <SmSub>Wants to be your soul mate</SmSub>
-      <SmActions>
-        <SmPrimaryBtn disabled={smBusy} onClick={() => smAccept(targetUserId)}>Accept</SmPrimaryBtn>
-        <SmSecBtn disabled={smBusy} onClick={() => smDecline(targetUserId)}>Decline</SmSecBtn>
-      </SmActions>
+    <SoulmateEmptyBox>
+      <SmContent>
+        <SmSub>Wants to be your soul mate</SmSub>
+        <SmActions>
+          <SmPrimaryBtn disabled={smBusy} onClick={() => smAccept(targetUserId)}>Accept</SmPrimaryBtn>
+          <SmSecBtn disabled={smBusy} onClick={() => smDecline(targetUserId)}>Decline</SmSecBtn>
+        </SmActions>
+      </SmContent>
       {smError && <SmError>{smError}</SmError>}
-    </SmContent>
+    </SoulmateEmptyBox>
   );
   if (target?.soulMate) return (
-    <SmContent>
-      <SmSub>Soul mate</SmSub>
-      <SmName>{target.soulMate.name}</SmName>
+    <SoulmateEmptyBox>
+      <SmContent>
+        <SmSub>Soul mate</SmSub>
+        <SmName>{target.soulMate.name}</SmName>
+      </SmContent>
       {smError && <SmError>{smError}</SmError>}
-    </SmContent>
+    </SoulmateEmptyBox>
   );
-  if (mine) return (
-    <SmContent>
-      <SmEmpty>You already have a soul mate.</SmEmpty>
-      {smError && <SmError>{smError}</SmError>}
-    </SmContent>
-  );
+  if (mine) return <SoulmateEmptyBox><SmEmpty>You already have a soul mate.</SmEmpty>{smError && <SmError>{smError}</SmError>}</SoulmateEmptyBox>;
   return (
-    <SmContent>
-      <SmPrimaryBtn disabled={smBusy} onClick={smSendRequest}>Send Soul Mate Request</SmPrimaryBtn>
+    <SoulmateEmptyBox>
+      <SmContent>
+        <SmPrimaryBtn disabled={smBusy} onClick={smSendRequest}>Send Soul Mate Request</SmPrimaryBtn>
+      </SmContent>
       {smError && <SmError>{smError}</SmError>}
-    </SmContent>
+    </SoulmateEmptyBox>
   );
 }
 
-/* ── Styles ── */
+/* ══════════════════════════════════════════════
+   STYLES
+══════════════════════════════════════════════ */
 
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0,0,0,0.72);
-  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  `;
+`;
 
 const ProfileWrapper = styled.div`
   position: relative;
-  max-height: 92vh;
   height: 92vh;
+  max-height: 92vh;
   display: flex;
   flex-direction: row;
-  filter: drop-shadow(0 8px 40px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 20px 60px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(124,58,237,0.18));
 `;
 
-/* ── Drawers ── */
+/* ── Sidebar ── */
 
-const DrawerShell = styled.div`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  ${p => p.$side === "left"
-    ? "right: 100%;"
-    : "left: 100%;"}
+const Sidebar = styled.nav`
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
-`;
-
-const DrawerBody = styled.div`
-  ${(p) =>
-    p.$side === "left"
-      ? `width: fit-content; max-width: ${p.$open ? "400px" : "0"};`
-      : `width: ${p.$open ? (p.$width ?? DRAWER_W) : 0}px;`}
-  overflow: hidden;
-  transition: ${(p) => (p.$side === "left" ? "max-width" : "width")} 0.28s ease;
-  border-top-left-radius: 14px;
-  border-bottom-left-radius: 14px;
-  background: rgba(128, 128, 128, 0.5);
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 20px;
+  width: 74px;
   flex-shrink: 0;
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    ${(p) => (p.$side === "left" ? "right: 0;" : "left: 0;")}
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: #ffffff18;
-  }
+  background: rgba(8,5,16,0.97);
+  backdrop-filter: blur(28px);
+  border-right: 1px solid rgba(255,255,255,0.055);
+  border-radius: 14px 0 0 14px;
+  z-index: 2;
 `;
 
-const DrawerInner = styled.div`
-  width: ${p => p.$autoWidth ? "fit-content" : `${p.$width ?? DRAWER_W}px`};
-  height: 100%;
-  ${p => !p.$split && "padding: 0 16px;"}
-  box-sizing: ${p => p.$autoWidth ? "content-box" : "border-box"};
-  overflow-y: ${p => p.$split ? "hidden" : "auto"};
+const SidebarLogoWrap = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 18px;
 `;
 
-const DrawerNav = styled.div`
+const SidebarLogoMark = styled.span`
+  font-size: 16px;
+  color: #c084fc;
+  text-shadow: 0 0 14px rgba(192,132,252,0.7);
+`;
+
+const SidebarLogoText = styled.span`
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: rgba(255,255,255,0.22);
+  text-transform: uppercase;
+`;
+
+const SidebarNav = styled.ul`
+  list-style: none;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0 8px;
   flex: 1;
-  gap: 8px;
-  padding: 8px;
 `;
 
-const DrawerNavBtn = styled.button`
-  flex: 1;
-  aspect-ratio: 1;
-  align-self: center;
-  padding: 8px 4px;
-  border-radius: 10px;
-  border: 1px solid ${p => p.$danger ? "rgba(255,80,80,0.3)" : "#ffffff18"};
-  background: ${p => p.$danger ? "rgba(255,80,80,0.08)" : "rgba(255,255,255,0.04)"};
-  color: ${p => p.$danger ? "#ff8a8a" : "#ccc"};
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: center;
+const SidebarItem = styled.li``;
+
+const SidebarBtn = styled.button`
+  all: unset;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1.3;
-  transition: all 0.15s;
+  width: 100%;
+  padding: 9px 4px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  gap: 4px;
+  position: relative;
+  transition: background 0.2s, box-shadow 0.2s;
+  background: ${p => p.$active ? "rgba(124,58,237,0.18)" : "transparent"};
+  box-shadow: ${p => p.$active ? "inset 0 0 0 1px rgba(124,58,237,0.4), 0 0 12px rgba(124,58,237,0.1)" : "none"};
+  ${p => p.$active && `
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 22%; bottom: 22%;
+      width: 2.5px;
+      background: #a855f7;
+      border-radius: 0 2px 2px 0;
+      box-shadow: 0 0 8px #a855f7;
+    }
+  `}
   &:hover:not(:disabled) {
-    background: ${p => p.$danger ? "rgba(255,80,80,0.18)" : "rgba(124,58,237,0.2)"};
-    border-color: ${p => p.$danger ? "rgba(255,80,80,0.6)" : "#7b2ff7"};
-    color: #fff;
+    background: ${p => p.$danger ? "rgba(255,80,80,0.1)" : p.$active ? "rgba(124,58,237,0.22)" : "rgba(124,58,237,0.1)"};
   }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
 `;
 
-const BioDrawerHeader = styled.div`
+const SidebarIcon = styled.span`
+  font-size: 15px;
+  color: ${p => p.$active ? "#c084fc" : p.$danger ? "rgba(255,130,130,0.7)" : "rgba(255,255,255,0.32)"};
+  line-height: 1;
+  transition: color 0.2s, text-shadow 0.2s;
+  text-shadow: ${p => p.$active ? "0 0 10px rgba(192,132,252,0.7)" : "none"};
+  ${SidebarBtn}:hover:not(:disabled) & { color: #e4d0ff; }
+`;
+
+const SidebarLabel = styled.span`
+  font-size: 8px;
+  font-weight: 700;
+  color: ${p => p.$active ? "#c084fc" : "rgba(255,255,255,0.25)"};
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  ${SidebarBtn}:hover:not(:disabled) & { color: rgba(255,255,255,0.65); }
+`;
+
+const SidebarFooter = styled.div`
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding-top: 12px;
+`;
+
+const SidebarAvatarThumb = styled.div`
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b21b6, #1e40af);
+  border: 2px solid rgba(124,58,237,0.5);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  &:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(124,58,237,0.55); }
+`;
+
+const SidebarOnlinePip = styled.div`
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: pipBlink 2.4s ease-in-out infinite;
+  @keyframes pipBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+`;
+
+/* ── Avatar Stage ── */
+
+const AvatarStageCol = styled.section`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 14px 14px;
+  width: 260px;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(7,4,14,0.94) 100%);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255,255,255,0.055);
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+`;
+
+const OutfitLabel = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #c084fc;
+  letter-spacing: 0.6px;
+  background: rgba(124,58,237,0.1);
+  border: 1px solid rgba(124,58,237,0.28);
+  padding: 5px 13px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  text-shadow: 0 0 8px rgba(192,132,252,0.5);
 `;
 
-/* ── Right Drawer sections ── */
+const OutfitGem = styled.span`
+  font-size: 7px;
+  opacity: 0.65;
+`;
 
-const RightSection = styled.div`
+const StageContainer = styled.div`
   flex: 1;
   min-height: 0;
-  padding: 20px 16px;
-  overflow-y: ${p => p.$noScroll ? "hidden" : "auto"};
+  width: 100%;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-sizing: border-box;
+  align-items: center;
+  justify-content: flex-end;
+  background: radial-gradient(ellipse 80% 45% at 50% 38%, rgba(124,58,237,0.1) 0%, transparent 68%);
 `;
 
-const RightDrawerDivider = styled.div`
-  height: 1px;
-  background: #ffffff15;
-  flex-shrink: 0;
-`;
-
-const RightPanel = styled.div`
-  width: ${BIO_DRAWER_W}px;
-  height: 100%;
-  flex-shrink: 0;
-  background: rgba(128, 128, 128, 0.5);
-  border-radius: 0 14px 14px 0;
-  overflow: hidden;
-  position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: #ffffff18;
+const StageHalo = styled.div`
+  position: absolute;
+  width: 190px; height: 190px;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 68%);
+  animation: haloPulse 3.2s ease-in-out infinite;
+  pointer-events: none;
+  @keyframes haloPulse {
+    0%,100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+    50%      { opacity: 1;    transform: translateX(-50%) scale(1.09); }
   }
 `;
 
-/* ── Main Panel ── */
-
-const MainPanel = styled.div`
-  position: relative;
-  background: #49494d;
-  border-radius: ${(p) => (p.$leftOpen ? "0" : "14px 0 0 14px")};
-  transition: border-radius 0.28s ease;
-  padding: 28px 28px 24px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  width: min(60vw);
-  max-height: 92vh;
-  height: 92vh;
-  overflow: hidden;
-  background: rgba(128, 128, 128, 0.5);
-`;
-
-const CloseBtn = styled.button`
+const StageHaloOuter = styled.div`
   position: absolute;
-  top: 12px;
-  right: 14px;
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 24px;
-  cursor: pointer;
-  z-index: 2;
-  &:hover { color: #fff; }
-`;
-
-const DrawerToggleBtn = styled.button`
-  position: absolute;
-  ${p => p.$side === "left" ? "left: 8px;" : "right: 8px;"}
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 52px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #ffffff15;
-  border-radius: 6px;
-  color: #777;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  &:hover { background: rgba(124,58,237,0.2); border-color: #7b2ff7; color: #fff; }
-`;
-
-const PanelContent = styled.div`
-  display: flex;
-  gap: 24px;
-  height: 100%;
-  overflow: hidden;
-`;
-
-/* ── Avatar ── */
-
-const AvatarSide = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 40%;
+  width: 280px; height: 280px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 60%);
+  animation: haloPulse 3.2s ease-in-out infinite;
+  animation-delay: -1.6s;
+  pointer-events: none;
 `;
 
 const AvatarViewport = styled.div`
@@ -1052,7 +1216,11 @@ const AvatarViewport = styled.div`
   aspect-ratio: ${FRAME_W} / ${FRAME_H};
   overflow: hidden;
   border-radius: 14px;
-  border: 1px solid #ffffff15;
+  border: 1px solid rgba(124,58,237,0.28);
+  box-shadow: 0 0 22px rgba(124,58,237,0.12), inset 0 0 28px rgba(124,58,237,0.06);
+  background: radial-gradient(ellipse at 50% 95%, rgba(124,58,237,0.1) 0%, transparent 55%);
+  position: relative;
+  z-index: 2;
 `;
 
 const AvatarCanvas = styled.canvas`
@@ -1062,122 +1230,373 @@ const AvatarCanvas = styled.canvas`
   pointer-events: none;
 `;
 
+const AvatarPlatform = styled.div`
+  width: 64%;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(124,58,237,0.95) 0%, rgba(59,130,246,0.55) 38%, transparent 72%);
+  filter: blur(6px);
+  margin-top: 2px;
+  flex-shrink: 0;
+  opacity: 0.75;
+  animation: platformPulse 2.8s ease-in-out infinite alternate;
+  @keyframes platformPulse {
+    from { opacity: 0.55; transform: scaleX(0.94); }
+    to   { opacity: 0.9;  transform: scaleX(1.06); }
+  }
+`;
+
+const StatusCard = styled.div`
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 9px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+`;
+
+const StatusCardTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+const OnlineDot = styled.span`
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 7px #22c55e;
+  flex-shrink: 0;
+  animation: pipBlink 2.4s ease-in-out infinite;
+`;
+
+const OnlineLabel = styled.span`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+`;
+
+const StatusSep = styled.span`color: rgba(255,255,255,0.2); font-size: 11px;`;
+
+const StatusLoc = styled.span`
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.3);
+  font-weight: 500;
+`;
+
+const StatusText = styled.div`
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  line-height: 1.4;
+`;
+
 const Controls = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 5px;
+  flex-shrink: 0;
 `;
 
 const ArrowBtn = styled.button`
-  width: 30px;
-  height: 30px;
+  width: 28px; height: 28px;
   border-radius: 8px;
-  border: 1px solid #ffffff22;
-  background: rgba(255,255,255,0.05);
-  color: #ccc;
-  font-size: 15px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.3); border-color: #7b2ff7; color: #fff; }
-  &:disabled { opacity: 0.3; cursor: not-allowed; }
+  transition: all 0.18s;
+  font-family: inherit;
+  &:hover:not(:disabled) {
+    background: rgba(124,58,237,0.25);
+    border-color: rgba(124,58,237,0.6);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(124,58,237,0.25);
+  }
+  &:active:not(:disabled) { transform: scale(0.9); }
+  &:disabled { opacity: 0.25; cursor: not-allowed; }
 `;
 
 const PoseLabel = styled.span`
-  font-size: 10px;
-  color: #888;
-  min-width: 70px;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.28);
+  min-width: 48px;
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-/* ── Info Side ── */
+/* ── Profile Content ── */
 
-const InfoSide = styled.div`
+const ProfileContent = styled.main`
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  padding: 22px 22px 22px 20px;
   overflow-y: auto;
-  padding-right: 4px;
+  background: linear-gradient(160deg, rgba(12,8,24,0.97) 0%, rgba(8,5,16,0.94) 100%);
+  backdrop-filter: blur(24px);
+  position: relative;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
 `;
+
+const CloseBtn = styled.button`
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  width: 28px; height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.35);
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.15s;
+  &:hover {
+    background: rgba(255,80,80,0.12);
+    border-color: rgba(255,80,80,0.35);
+    color: #ff8a8a;
+  }
+`;
+
+/* Profile Header */
+
+const ProfileHeader = styled.header`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+`;
+
+const HeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+`;
+
+const ProfileEmblem = styled.div`
+  width: 50px; height: 50px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.38), rgba(59,130,246,0.18));
+  border: 1px solid rgba(124,58,237,0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 22px rgba(124,58,237,0.28);
+  flex-shrink: 0;
+`;
+
+const EmblemDiamond = styled.span`
+  font-size: 24px;
+  color: #a78bfa;
+  animation: emblemPulse 3s ease-in-out infinite;
+  @keyframes emblemPulse {
+    0%,100% { text-shadow: 0 0 10px rgba(167,139,250,0.7); }
+    50%      { text-shadow: 0 0 22px rgba(167,139,250,1), 0 0 36px rgba(124,58,237,0.5); }
+  }
+`;
+
+const HeaderTitles = styled.div`display: flex; flex-direction: column; gap: 5px;`;
 
 const PlayerName = styled.h2`
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.2;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #ffffff 0%, #d4b8ff 55%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 10px rgba(168,85,247,0.3));
 `;
 
-const StatRow = styled.div`
+const PlayerNameMark = styled.span`
+  -webkit-text-fill-color: #a855f7;
+  text-shadow: 0 0 12px rgba(168,85,247,0.8);
+  font-size: 20px;
+`;
+
+const ProfileMetaRow = styled.div`
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 7px;
 `;
 
-const StatBox = styled.div`
-  flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid #ffffff18;
-  border-radius: 10px;
-  padding: 8px 12px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 10px;
-  font-weight: 600;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-`;
-
-const StatValue = styled.div`
-  font-size: 16px;
+const LevelBadge = styled.span`
+  font-size: 11px;
   font-weight: 700;
-  color: ${p => p.$muted ? "#555" : "#fff"};
+  color: #c084fc;
+  background: rgba(124,58,237,0.14);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(124,58,237,0.32);
 `;
+
+const MetaSep = styled.span`color: rgba(255,255,255,0.2); font-size: 11px;`;
+
+const RankBadgeDiamond = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.35);
+  padding: 2px 9px;
+  border-radius: 6px;
+  text-shadow: 0 0 8px rgba(147,197,253,0.45);
+`;
+
+const ProfileStats = styled.div`
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  padding-top: 4px;
+`;
+
+const ProfileStat = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+`;
+
+const ProfileStatVal = styled.div`
+  font-size: 17px;
+  font-weight: 800;
+  color: #f0eaff;
+  line-height: 1;
+`;
+
+const ProfileStatLbl = styled.div`
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+/* Sections */
 
 const SectionBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 `;
 
-const SectionLabel = styled.div`
-  font-size: 10px;
-  font-weight: 600;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-`;
-
-/* ── Badges ── */
-
-const BadgeGrid = styled.div`
+const SectionHeaderRow = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-`;
-
-const BadgePlaceholder = styled.div`
-  display: flex;
-  justify-content: center;
   align-items: center;
-  height: 46px;
-  width: 46px;
+  gap: 7px;
+`;
+
+const SectionTitle = styled.div`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.32);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+`;
+
+const SectionCountPill = styled.span`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #9333ea;
+  background: rgba(124,58,237,0.14);
+  padding: 1px 6px;
+  border-radius: 10px;
+`;
+
+const SectionEditBtn = styled.button`
+  all: unset;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #7c3aed;
+  cursor: pointer;
+  margin-left: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  transition: color 0.2s;
+  &:hover { color: #c084fc; }
+`;
+
+/* Badges */
+
+const BadgesScrollWrap = styled.div`
+  overflow-x: auto;
+  padding-bottom: 5px;
+  &::-webkit-scrollbar { height: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const BadgesRow = styled.div`
+  display: flex;
+  gap: 9px;
+  width: max-content;
+`;
+
+const BadgeCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 12px 9px;
   border-radius: 12px;
+  border: 1px solid ${p => {
+    if (p.$selected) return "#c4a1ff";
+    if (p.$rarity === "legendary") return "rgba(234,179,8,0.38)";
+    if (p.$rarity === "rare") return "rgba(59,130,246,0.32)";
+    return "rgba(255,255,255,0.08)";
+  }};
+  background: rgba(255,255,255,0.04);
   cursor: ${p => p.$clickable ? (p.$saving ? "wait" : "pointer") : "default"};
-  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-  background: ${p => p.$selected ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)"};
-  border: 1px solid ${p => p.$selected ? "#c4a1ff" : "#ffffff15"};
-  box-shadow: ${p => p.$selected ? "0 0 12px rgba(124,58,237,0.5)" : "none"};
+  min-width: 72px;
+  position: relative;
+  overflow: hidden;
   opacity: ${p => p.$saving ? 0.6 : 1};
-  &:hover { transform: ${p => p.$clickable && !p.$saving ? "scale(1.1)" : "none"}; }
+  box-shadow: ${p => {
+    if (p.$selected) return "0 0 14px rgba(124,58,237,0.55)";
+    if (p.$rarity === "legendary") return "0 0 8px rgba(234,179,8,0.22)";
+    if (p.$rarity === "rare") return "0 0 7px rgba(59,130,246,0.18)";
+    return "none";
+  }};
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  &:hover {
+    transform: ${p => p.$clickable && !p.$saving ? "translateY(-3px) scale(1.05)" : "none"};
+    box-shadow: ${p => {
+      if (!p.$clickable || p.$saving) return "none";
+      if (p.$rarity === "legendary") return "0 0 18px rgba(234,179,8,0.5)";
+      if (p.$rarity === "rare") return "0 0 16px rgba(59,130,246,0.45)";
+      return "0 0 12px rgba(124,58,237,0.35)";
+    }};
+  }
+`;
+
+const BadgeCardIconWrap = styled.div`
+  width: 32px; height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const BadgeImg = styled.img`
@@ -1188,44 +1607,561 @@ const BadgeImg = styled.img`
   pointer-events: none;
 `;
 
-const BadgeExpandBtn = styled.button`
-  align-self: flex-end;
-  background: none;
-  border: none;
-  color: #7b6aaa;
-  font-size: 11px;
+const BadgeCardName = styled.div`
+  font-size: 8.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+`;
+
+const BadgeCardRarity = styled.div`
+  font-size: 7.5px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: ${p => {
+    if (p.$rarity === "legendary") return "#fbbf24";
+    if (p.$rarity === "rare") return "#60a5fa";
+    return "rgba(255,255,255,0.25)";
+  }};
+`;
+
+const BadgeExpandBtn = styled.button`
+  all: unset;
+  align-self: flex-end;
+  font-size: 10px;
+  font-weight: 600;
+  color: #7b6aaa;
   cursor: pointer;
   padding: 0;
   &:hover { color: #c4a1ff; }
 `;
 
-/* ── Soul Mate ── */
+/* Soulmate */
 
-const SoulMateBox = styled.div`
-  background: rgba(124,58,237,0.06);
-  border: 1px solid #ffffff18;
-  border-radius: 10px;
-  padding: 10px 12px;
-  min-height: 48px;
-  width: 40%;
+const SoulmateCard = styled.div`
+  background: linear-gradient(135deg, rgba(236,72,153,0.06) 0%, rgba(124,58,237,0.1) 100%);
+  border: 1px solid rgba(236,72,153,0.22);
+  border-radius: 14px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  position: relative;
+  overflow: hidden;
+  flex-wrap: wrap;
+  box-shadow: 0 0 16px rgba(236,72,153,0.06), inset 0 0 14px rgba(124,58,237,0.04);
 `;
 
-const SmContent = styled.div`
+const SoulmateHeartBg = styled.span`
+  position: absolute;
+  right: -8px;
+  top: -14px;
+  font-size: 80px;
+  opacity: 0.04;
+  color: #ec4899;
+  pointer-events: none;
+  line-height: 1;
+  animation: smHeartPulse 1.8s ease-in-out infinite;
+  @keyframes smHeartPulse {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+  }
+`;
+
+const SoulmateAvatarWrap = styled.div`position: relative; flex-shrink: 0;`;
+
+const SoulmateSpinRing = styled.div`
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #ec4899;
+  border-right-color: #a855f7;
+  animation: spinRing 3.2s linear infinite;
+  @keyframes spinRing { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+`;
+
+const SoulmateInfoBlock = styled.div`flex: 1; min-width: 0;`;
+
+const SoulmateName = styled.div`font-size: 15px; font-weight: 800; color: #f0d0ff;`;
+
+const SoulmateMark = styled.span`
+  color: #ec4899;
+  text-shadow: 0 0 8px rgba(236,72,153,0.8);
+`;
+
+const SoulmateDuration = styled.div`
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  margin: 3px 0 6px;
+`;
+
+const SoulmateMoodTag = styled.div`
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c084fc;
+  background: rgba(192,132,252,0.1);
+  border: 1px solid rgba(192,132,252,0.24);
+  padding: 2px 8px;
+  border-radius: 10px;
+`;
+
+const SoulmateCardActions = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+`;
+
+const SoulmateEmptyBox = styled.div`
+  background: rgba(124,58,237,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 `;
 
-const SmEmpty = styled.div`
-  font-size: 12px;
-  color: #666;
+/* Showcase */
+
+const ShowcaseScrollWrap = styled.div`
+  overflow-x: auto;
+  padding-bottom: 5px;
+  &::-webkit-scrollbar { height: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
 `;
 
-const SmSub = styled.div`
+const ShowcaseRow = styled.div`
+  display: flex;
+  gap: 10px;
+  width: max-content;
+`;
+
+const ShowcaseCard = styled.div`
+  width: 98px; height: 116px;
+  border-radius: 12px;
+  border: 1px solid ${p => p.$clickable ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.06)"};
+  border-style: ${p => p.$clickable ? "dashed" : "dashed"};
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: ${p => p.$clickable ? "pointer" : "default"};
+  position: relative;
+  overflow: hidden;
+  padding: 8px;
+  transition: transform 0.22s, box-shadow 0.22s, border-color 0.2s;
+  transform-style: preserve-3d;
+  &:hover {
+    ${p => p.$clickable && `
+      border-style: solid;
+      border-color: rgba(124,58,237,0.45);
+      box-shadow: 0 8px 26px rgba(124,58,237,0.2), 0 0 0 1px rgba(124,58,237,0.15);
+    `}
+  }
+`;
+
+const ShowcaseCardShine = styled.div`
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 10%, rgba(124,58,237,0.18), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.22s;
+  pointer-events: none;
+  ${ShowcaseCard}:hover & { opacity: 1; }
+`;
+
+const ShowcaseItemImg = styled.img`
+  width: 80%; height: 80%;
+  object-fit: contain;
+`;
+
+const ShowcaseCardLabel = styled.div`
+  font-size: 8.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+`;
+
+const ShowcaseCardType = styled.div`
+  font-size: 7.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
+const ShowcaseAdd = styled.div`
+  font-size: 22px;
+  color: rgba(255,255,255,0.12);
+  line-height: 1;
+  ${ShowcaseCard}:hover & { color: rgba(124,58,237,0.55); }
+`;
+
+const ShowcaseCardAddLabel = styled.div`
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
+/* Companion */
+
+const CompanionCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(59,130,246,0.04));
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 14px 16px;
+`;
+
+const CompanionPetWrap = styled.div`position: relative; flex-shrink: 0;`;
+
+const CompanionPetAura = styled.div`
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,0.28) 0%, transparent 70%);
+  animation: auraBreath 3.2s ease-in-out infinite;
+  @keyframes auraBreath { 0%,100% { transform: scale(1); opacity: 0.48; } 50% { transform: scale(1.18); opacity: 0.9; } }
+`;
+
+const CompanionPetEmoji = styled.span`
+  font-size: 40px;
+  line-height: 1;
+  display: block;
+  position: relative;
+  z-index: 1;
+  animation: petBounce 2.6s ease-in-out infinite;
+  @keyframes petBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+`;
+
+const CompanionInfoBlock = styled.div`
+  flex: 1; min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const CompanionNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const CompanionNameText = styled.span`font-size: 14px; font-weight: 800; color: #e4d0ff;`;
+
+const CompanionMoodText = styled.span`font-size: 11px; color: rgba(255,255,255,0.4);`;
+
+const CompanionLevelText = styled.div`
   font-size: 10px;
-  color: #888;
+  font-weight: 600;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.3px;
+`;
+
+const CompanionXPWrap = styled.div`display: flex; flex-direction: column; gap: 4px;`;
+
+const XPBarOuter = styled.div`
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+`;
+
+const XPBarFill = styled.div`
+  height: 100%;
+  width: var(--xp, 0%);
+  background: linear-gradient(90deg, #5b21b6, #a855f7, #ec4899);
+  border-radius: 3px;
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.36) 50%, transparent 100%);
+    background-size: 60px 100%;
+    animation: xpShimmer 2s linear infinite;
+    @keyframes xpShimmer { from { background-position: -60px 0; } to { background-position: 200px 0; } }
+  }
+`;
+
+const XPLabelsRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  font-weight: 600;
+`;
+
+/* ── Right Panel ── */
+
+const RightPanel = styled.aside`
+  display: flex;
+  flex-direction: column;
+  width: 290px;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(6,3,14,0.94) 100%);
+  backdrop-filter: blur(24px);
+  border-left: 1px solid rgba(124,58,237,0.2);
+  border-radius: 0 14px 14px 0;
+  overflow: hidden;
+`;
+
+const RightSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 20px 17px;
+  flex: ${p => p.$flex ? "1" : "0 0 auto"};
+  min-height: 0;
+  overflow-y: ${p => p.$flex ? "hidden" : "auto"};
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const OrnamentDivider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 17px;
+  flex-shrink: 0;
+`;
+
+const OrnamentLine = styled.div`flex: 1; height: 1px; background: rgba(255,255,255,0.06);`;
+
+const OrnamentGem = styled.span`font-size: 9px; color: rgba(124,58,237,0.38);`;
+
+/* Guestbook preview */
+
+const GBToggleBtn = styled.button`
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  cursor: pointer;
+`;
+
+const GBCountPill = styled.span`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #7c3aed;
+  background: rgba(124,58,237,0.14);
+  padding: 1px 7px;
+  border-radius: 10px;
+`;
+
+const GBToggleArrow = styled.span`
+  font-size: 8px;
+  color: rgba(255,255,255,0.3);
+  transition: transform 0.25s ease;
+  transform: ${p => p.$open ? "rotate(0deg)" : "rotate(180deg)"};
+  display: inline-block;
+`;
+
+const GBPreviewList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const GBPreviewCard = styled.div`
+  display: flex;
+  gap: 9px;
+  padding: 9px 11px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.065);
+  border-radius: 10px;
+  transition: border-color 0.18s, background 0.18s;
+  &:hover { background: rgba(124,58,237,0.06); border-color: rgba(124,58,237,0.22); }
+`;
+
+const GBPreviewAvatarWrap = styled.div`
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+`;
+
+const GBPreviewBody = styled.div`flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;`;
+
+const GBPreviewMeta = styled.div`display: flex; align-items: center; gap: 6px;`;
+
+const GBPreviewName = styled.span`font-size: 11px; font-weight: 700; color: #c084fc;`;
+
+const GBPreviewTime = styled.span`font-size: 9.5px; color: rgba(255,255,255,0.2);`;
+
+const GBPreviewText = styled.p`
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const GBEmpty = styled.div`
+  font-size: ${p => p.$large ? "13px" : "11.5px"};
+  color: rgba(255,255,255,0.22);
+  ${p => p.$large && "text-align: center; padding: 20px 0;"}
+`;
+
+const GBInputArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+`;
+
+const GBInput = styled.textarea`
+  width: 100%;
+  resize: none;
+  height: 44px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px 36px 10px 12px;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: #c084fc;
+  &:focus { border-color: rgba(124,58,237,0.5); }
+  &::placeholder { color: rgba(255,255,255,0.2); }
+`;
+
+const GBInputFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const GBCounter = styled.span`
+  font-size: 10px;
+  color: ${p => p.$warn ? "#e4a060" : "rgba(255,255,255,0.22)"};
+`;
+
+/* Shared buttons */
+
+const PrimaryBtn = styled.button`
+  background: rgba(124,58,237,0.6);
+  border: 1px solid rgba(124,58,237,0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.85); box-shadow: 0 0 12px rgba(124,58,237,0.4); transform: translateY(-1px); }
+  &:active:not(:disabled) { transform: translateY(0); }
+`;
+
+const SecondaryBtn = styled.button`
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.2); }
+`;
+
+/* Bio editing */
+
+const FormatToolbar = styled.div`display: flex; gap: 4px; margin-bottom: 4px;`;
+
+const FormatBtn = styled.button`
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: rgba(124,58,237,0.3); border-color: #7b2ff7; color: #fff; }
+`;
+
+const BioTextarea = styled.textarea`
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: #c084fc;
+  &:focus { border-color: rgba(124,58,237,0.5); }
+`;
+
+const BioFooter = styled.div`display: flex; align-items: center; justify-content: space-between; margin-top: 6px;`;
+
+const BioCounter = styled.span`font-size: 11px; color: rgba(255,255,255,0.25);`;
+
+const BioActions = styled.div`display: flex; gap: 6px;`;
+
+const Description = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.7;
+  white-space: pre-wrap;
+`;
+
+const EmptyText = styled.span`font-size: 12px; color: rgba(255,255,255,0.2);`;
+
+const BioErrorMsg = styled.div`margin-top: 6px; font-size: 11px; color: #ff7777;`;
+
+/* Soulmate sub-components (action states) */
+
+const SmContent = styled.div`display: flex; flex-wrap: wrap; align-items: center; gap: 8px;`;
+
+const SmEmpty = styled.div`font-size: 12px; color: rgba(255,255,255,0.25);`;
+
+const SmSub = styled.div`
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: 100%;
@@ -1234,23 +2170,13 @@ const SmSub = styled.div`
 const SmName = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: #f0eaff;
   display: flex;
   align-items: center;
   gap: 6px;
 `;
 
-const SmHeart = styled.div`
-  font-size: 16px;
-  color: #ff6b9b;
-`;
-
-const SmActions = styled.div`
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-left: auto;
-`;
+const SmActions = styled.div`display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto;`;
 
 const SmRow = styled.div`
   width: 100%;
@@ -1258,7 +2184,7 @@ const SmRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid #ffffff10;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   &:last-child { border-bottom: none; }
 `;
 
@@ -1271,369 +2197,55 @@ const SmPrimaryBtn = styled.button`
   padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.85); }
+  font-family: inherit;
+  transition: all 0.18s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.85); box-shadow: 0 0 10px rgba(124,58,237,0.4); }
 `;
 
 const SmSecBtn = styled.button`
   background: transparent;
-  border: 1px solid #ffffff22;
-  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: #fff; }
+  font-family: inherit;
+  transition: all 0.18s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: #fff; }
 `;
 
 const SmDangerBtn = styled.button`
   background: transparent;
-  border: 1px solid rgba(255,80,80,0.4);
+  border: 1px solid rgba(255,80,80,0.35);
   color: #ff8a8a;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(255,80,80,0.15); color: #fff; }
-`;
-
-const SmError = styled.div`
-  font-size: 11px;
-  color: #ff7777;
-  width: 100%;
-`;
-
-/* ── Showcase ── */
-
-const ShowcaseRow = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ShowcaseSlot = styled.div`
-  flex: 1;
-  aspect-ratio: 1;
-  background: rgba(255,255,255,0.03);
-  border: 1px dashed ${p => p.$clickable ? "#ffffff30" : "#ffffff18"};
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: ${p => p.$clickable ? "pointer" : "default"};
-  transition: border-color 0.15s, background 0.15s;
-  &:hover { ${p => p.$clickable && `background: rgba(124,58,237,0.1); border-color: #7b2ff7;`} }
-`;
-
-const ShowcaseItemImg = styled.img`
-  width: 80%;
-  height: 80%;
-  object-fit: contain;
-`;
-
-const ShowcaseAdd = styled.div`
-  font-size: 22px;
-  color: #444;
-  line-height: 1;
-`;
-
-/* ── Companion ── */
-
-const CompanionRow = styled.div`
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
-`;
-
-const CompanionImageBox = styled.div`
-  height: 100%;
-  aspect-ratio:1;
-  background: rgba(255,255,255,0.04);
-  border: 1px dashed #ffffff22;
-  border-radius: 10px;
-`;
-
-const CompanionInfo = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-/* ── Bio Drawer ── */
-
-const EditBtn = styled.button`
-  background: none;
-  border: none;
-  color: #c4a1ff;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  padding: 0;
-  &:hover { color: #fff; }
-`;
-
-const FormatToolbar = styled.div`
-  display: flex;
-  gap: 4px;
-  margin-bottom: 4px;
-`;
-
-const FormatBtn = styled.button`
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #ffffff22;
-  color: #ccc;
-  font-size: 12px;
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &:hover { background: rgba(124,58,237,0.3); border-color: #7b2ff7; color: #fff; }
-`;
-
-const BioTextarea = styled.textarea`
-  width: 100%;
-  min-height: 120px;
-  resize: vertical;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid #ffffff22;
-  border-radius: 8px;
-  color: #fff;
   font-family: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 8px 10px;
-  box-sizing: border-box;
-  outline: none;
-  &:focus { border-color: #7b2ff7; }
+  transition: all 0.18s;
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(255,80,80,0.14); border-color: rgba(255,80,80,0.6); }
 `;
 
-const BioFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
-`;
+const SmError = styled.div`font-size: 11px; color: #ff7777;`;
 
-const BioCounter = styled.span`
-  font-size: 11px;
-  color: #666;
-`;
-
-const BioActions = styled.div`
-  display: flex;
-  gap: 6px;
-`;
-
-const Description = styled.p`
-  margin: 0;
-  font-size: 13px;
-  color: #bbb;
-  line-height: 1.6;
-  white-space: pre-wrap;
-`;
-
-const EmptyText = styled.span`
-  font-size: 12px;
-  color: #555;
-`;
-
-const BioErrorMsg = styled.div`
-  margin-top: 6px;
-  font-size: 11px;
-  color: #ff7777;
-`;
-
-const PrimaryBtn = styled.button`
-  background: rgba(124,58,237,0.6);
-  border: 1px solid rgba(124,58,237,0.8);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.85); }
-`;
-
-const SecondaryBtn = styled.button`
-  background: transparent;
-  border: 1px solid #ffffff22;
-  color: #ccc;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: #fff; }
-`;
-
-/* ── Guest Book ── */
-
-const GuestBookLabelBtn = styled.button`
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  font-weight: 600;
-  color: ${p => p.$active ? "#c4a1ff" : "#888"};
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  cursor: pointer;
-  padding: 4px 2px;
-  border-radius: 4px;
-  transition: color 0.15s;
-  flex-shrink: 0;
-  &:hover { color: ${p => p.$active ? "#fff" : "#c4a1ff"}; }
-`;
-
-const GBToggleArrow = styled.span`
-  font-size: 8px;
-  transition: transform 0.25s ease;
-  transform: ${p => p.$open ? "rotate(0deg)" : "rotate(180deg)"};
-  display: inline-block;
-`;
-
-const GBPreviewList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-`;
-
-const GBEmpty = styled.div`
-  font-size: ${p => p.$large ? "13px" : "12px"};
-  color: #555;
-  ${p => p.$large && "text-align: center; padding: 20px 0;"}
-`;
-
-const GBInputArea = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-  ${p => p.$overlay && "padding: 16px; gap: 8px; border-top: 1px solid #ffffff12;"}
-`;
-
-const GBInput = styled.textarea`
-  width: 100%;
-  resize: none;
-  height: 44px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #ffffff20;
-  border-radius: 10px;
-  color: #fff;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 10px 36px 10px 12px;
-  box-sizing: border-box;
-  outline: none;
-  &:focus { border-color: #7b2ff7; }
-  &::placeholder { color: #4a3d5e; }
-`;
-
-const GBInputFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const GBCounter = styled.span`
-  font-size: 10px;
-  color: ${p => p.$warn ? "#e4a060" : "#555"};
-`;
-
-/* ── Comment card ── */
-
-const CommentCard = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${p => p.$expanded ? "10px" : "7px"};
-  background: rgba(255,255,255,0.04);
-  border: 1px solid #ffffff10;
-  border-radius: 8px;
-  padding: ${p => p.$expanded ? "8px 10px" : "5px 8px"};
-  min-width: 0;
-  flex-shrink: 0;
-`;
-
-const CommentSenderTag = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(124,58,237,0.12);
-  border: 1px solid rgba(124,58,237,0.22);
-  border-radius: 20px;
-  padding: 2px 8px 2px 2px;
-  flex-shrink: 0;
-  max-width: 110px;
-`;
-
-const CommentAuthorName = styled.span`
-  font-size: 11px;
-  font-weight: 600;
-  color: #c4a1ff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 72px;
-`;
-
-const CommentMessage = styled.span`
-  font-size: ${p => p.$expanded ? "13px" : "11px"};
-  color: #ccc;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
-`;
-
-const CommentDeleteBtn = styled.button`
-  all: unset;
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: color 0.15s, background 0.15s;
-  &:hover { color: #ff7777; background: rgba(255,80,80,0.12); }
-`;
-
-/* ── Guest Book expanded overlay ── */
+/* ── Guest Book Expanded Overlay ── */
 
 const GuestBookOverlay = styled.div`
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
+  top: 0; bottom: 0; right: 0;
   left: 30%;
   z-index: 20;
-  background: linear-gradient(160deg, #130b24 0%, #0e0918 100%);
+  background: linear-gradient(160deg, rgba(14,8,26,0.99) 0%, rgba(9,5,18,0.99) 100%);
   border-radius: 0 14px 14px 0;
-  border: 1px solid rgba(124,58,237,0.28);
-  box-shadow: inset 0 0 80px rgba(124,58,237,0.04);
+  border: 1px solid rgba(124,58,237,0.32);
+  box-shadow: inset 0 0 80px rgba(124,58,237,0.05), -4px 0 24px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1646,24 +2258,27 @@ const GuestBookOverlay = styled.div`
 const GBOverlayClose = styled.button`
   all: unset;
   position: absolute;
-  top: 12px;
-  right: 14px;
-  color: #555;
-  font-size: 22px;
+  top: 12px; right: 14px;
+  width: 28px; height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.35);
+  font-size: 18px;
   cursor: pointer;
-  line-height: 1;
   z-index: 2;
-  &:hover { color: #fff; }
+  transition: all 0.15s;
+  &:hover { background: rgba(255,80,80,0.12); border-color: rgba(255,80,80,0.35); color: #ff8a8a; }
 `;
 
-const GBHeader = styled.div`
-  padding: 22px 24px 0;
-  flex-shrink: 0;
-`;
+const GBHeader = styled.div`padding: 22px 24px 0; flex-shrink: 0;`;
 
 const GBTitle = styled.h2`
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
   color: #e4d0ff;
   text-align: center;
@@ -1674,7 +2289,7 @@ const GBTitle = styled.h2`
 const GBSubtitle = styled.p`
   margin: 5px 0 14px;
   font-size: 11px;
-  color: #5a4870;
+  color: rgba(255,255,255,0.25);
   text-align: center;
   letter-spacing: 0.3px;
 `;
@@ -1688,13 +2303,14 @@ const GBHeaderControls = styled.div`
 
 const GBSortBtn = styled.button`
   background: rgba(255,255,255,0.05);
-  border: 1px solid #ffffff15;
-  color: #bbb;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
   font-size: 12px;
   font-weight: 500;
   padding: 5px 12px;
   border-radius: 8px;
   cursor: pointer;
+  font-family: inherit;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1704,13 +2320,14 @@ const GBSortBtn = styled.button`
 
 const GBPinnedBtn = styled.button`
   background: rgba(255,255,255,0.05);
-  border: 1px solid #ffffff15;
-  color: #bbb;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
   font-size: 12px;
   font-weight: 500;
   padding: 5px 12px;
   border-radius: 8px;
   cursor: pointer;
+  font-family: inherit;
   transition: all 0.15s;
   &:hover { background: rgba(124,58,237,0.15); border-color: #7b2ff7; color: #fff; }
 `;
@@ -1719,39 +2336,30 @@ const GBComposeArea = styled.div`
   margin: 0 16px 4px;
   padding: 12px 14px 8px;
   background: rgba(255,255,255,0.025);
-  border: 1px solid #ffffff0d;
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 14px;
   flex-shrink: 0;
 `;
 
-const GBComposeRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
+const GBComposeRow = styled.div`display: flex; align-items: center; gap: 10px;`;
 
 const GBAvatarPlaceholder = styled.div`
-  width: 44px;
-  height: 44px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   background: rgba(124,58,237,0.18);
   border: 2px solid rgba(124,58,237,0.28);
   flex-shrink: 0;
 `;
 
-const GBComposeInputWrap = styled.div`
-  flex: 1;
-  position: relative;
-`;
+const GBComposeInputWrap = styled.div`flex: 1; position: relative;`;
 
 const GBEmojiBtn = styled.button`
   position: absolute;
-  right: 8px;
-  top: 50%;
+  right: 8px; top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #555;
+  color: rgba(255,255,255,0.25);
   font-size: 18px;
   cursor: pointer;
   padding: 0;
@@ -1760,7 +2368,7 @@ const GBEmojiBtn = styled.button`
 `;
 
 const GBPostBtn = styled.button`
-  background: #6b2fd6;
+  background: #5b21b6;
   border: none;
   color: #fff;
   font-size: 14px;
@@ -1768,10 +2376,11 @@ const GBPostBtn = styled.button`
   padding: 10px 22px;
   border-radius: 10px;
   cursor: pointer;
+  font-family: inherit;
   flex-shrink: 0;
-  transition: background 0.15s;
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: #7b3ff5; }
+  transition: background 0.15s, box-shadow 0.15s;
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: #6d28d9; box-shadow: 0 0 14px rgba(124,58,237,0.4); }
 `;
 
 const GBComposeTools = styled.div`
@@ -1784,13 +2393,14 @@ const GBComposeTools = styled.div`
 const GBToolBtn = styled.button`
   background: none;
   border: none;
-  color: #6a5880;
+  color: rgba(255,255,255,0.3);
   font-size: 12px;
   cursor: pointer;
+  font-family: inherit;
   padding: 4px 8px;
   border-radius: 6px;
   transition: all 0.15s;
-  &:hover { background: rgba(255,255,255,0.06); color: #bbb; }
+  &:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
 `;
 
 const GBOrnamentDivider = styled.div`
@@ -1801,86 +2411,56 @@ const GBOrnamentDivider = styled.div`
   flex-shrink: 0;
 `;
 
-const GBDividerLine = styled.div`
-  flex: 1;
-  height: 1px;
-  background: #ffffff0f;
-`;
+const GBDividerLine = styled.div`flex: 1; height: 1px; background: rgba(255,255,255,0.06);`;
 
-const GBDividerGem = styled.span`
-  color: rgba(124,58,237,0.45);
-  font-size: 11px;
-`;
+const GBDividerGem = styled.span`color: rgba(124,58,237,0.45); font-size: 11px;`;
 
 const GBCommentCard = styled.div`
   background: rgba(255,255,255,0.025);
-  border: 1px solid #ffffff0d;
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
   padding: 12px 14px;
-  transition: border-color 0.15s;
-  &:hover { border-color: rgba(124,58,237,0.22); }
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  &:hover {
+    border-color: rgba(124,58,237,0.28);
+    background: rgba(124,58,237,0.04);
+    box-shadow: 0 0 14px rgba(124,58,237,0.07);
+  }
 `;
 
-const GBCommentInner = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-`;
+const GBCommentInner = styled.div`display: flex; gap: 12px; align-items: flex-start;`;
 
-const GBCommentAvatarCol = styled.div`
-  flex-shrink: 0;
-`;
+const GBCommentAvatarCol = styled.div`flex-shrink: 0;`;
 
-const GBCommentBody = styled.div`
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-`;
+const GBCommentBody = styled.div`flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px;`;
 
-const GBCommentMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-`;
+const GBCommentMeta = styled.div`display: flex; align-items: center; gap: 8px; flex-wrap: wrap;`;
 
-const GBCommentName = styled.span`
-  font-size: 14px;
-  font-weight: 700;
-  color: #c4a1ff;
-`;
+const GBCommentName = styled.span`font-size: 14px; font-weight: 700; color: #c4a1ff;`;
 
-const GBCommentTime = styled.span`
-  font-size: 11px;
-  color: #4a3d5e;
-`;
+const GBCommentTime = styled.span`font-size: 11px; color: rgba(255,255,255,0.2);`;
 
 const GBCommentText = styled.p`
   margin: 0;
   font-size: 13px;
-  color: #c0b8d0;
+  color: rgba(255,255,255,0.6);
   line-height: 1.55;
   word-break: break-word;
 `;
 
-const GBReactions = styled.div`
-  display: flex;
-  gap: 14px;
-  margin-top: 2px;
-`;
+const GBReactions = styled.div`display: flex; gap: 14px; margin-top: 2px;`;
 
 const GBReactionBtn = styled.button`
   all: unset;
   font-size: 12px;
-  color: #5a4d70;
+  color: rgba(255,255,255,0.22);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: color 0.15s;
-  &:hover { color: #c4a1ff; }
+  transition: color 0.15s, transform 0.15s;
+  &:hover { color: #c4a1ff; transform: scale(1.2); }
+  &:active { transform: scale(0.88); }
 `;
 
 const GBCommentActions = styled.div`
@@ -1891,21 +2471,48 @@ const GBCommentActions = styled.div`
   flex-shrink: 0;
 `;
 
+const CommentDeleteBtn = styled.button`
+  all: unset;
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.2);
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+  &:hover { color: #ff7777; background: rgba(255,80,80,0.12); }
+`;
+
 const GBMenuDot = styled.button`
   all: unset;
-  color: #3d3252;
+  color: rgba(255,255,255,0.15);
   font-size: 18px;
   cursor: pointer;
-  line-height: 1;
   transition: color 0.15s;
-  &:hover { color: #bbb; }
+  &:hover { color: rgba(255,255,255,0.6); }
+`;
+
+const GBOverlayScroll = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.25); border-radius: 2px; }
 `;
 
 const GBStatsFooter = styled.div`
   display: flex;
   align-items: center;
   padding: 12px 20px;
-  border-top: 1px solid #ffffff0d;
+  border-top: 1px solid rgba(255,255,255,0.05);
   flex-shrink: 0;
   background: rgba(0,0,0,0.18);
 `;
@@ -1920,23 +2527,14 @@ const GBStat = styled.div`
 
 const GBStatLabel = styled.div`
   font-size: 10px;
-  color: #4a3d5e;
+  color: rgba(255,255,255,0.2);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
 
-const GBStatValue = styled.div`
-  font-size: 20px;
-  font-weight: 700;
-  color: #ddd;
-`;
+const GBStatValue = styled.div`font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.8);`;
 
-const GBStatDivider = styled.div`
-  width: 1px;
-  height: 32px;
-  background: #ffffff0f;
-  flex-shrink: 0;
-`;
+const GBStatDivider = styled.div`width: 1px; height: 32px; background: rgba(255,255,255,0.06); flex-shrink: 0;`;
 
 const GBLeaveGiftBtn = styled.button`
   margin-left: auto;
@@ -1948,19 +2546,7 @@ const GBLeaveGiftBtn = styled.button`
   padding: 8px 16px;
   border-radius: 10px;
   cursor: pointer;
+  font-family: inherit;
   transition: all 0.15s;
   &:hover { background: rgba(124,58,237,0.28); border-color: #7b2ff7; color: #fff; }
-`;
-
-const GBOverlayScroll = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 16px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.25); border-radius: 2px; }
 `;
