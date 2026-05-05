@@ -87,7 +87,6 @@ export default function PlayerProfile({
   socket = null,
   unreadMailCount = 0,
   onUnreadChange = null,
-  onOpenAppearance = null,
   onOpenAlbum = null,
   onOpenStats = null,
   onOpenWishlist = null,
@@ -462,9 +461,9 @@ export default function PlayerProfile({
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
-                    <SidebarBtn onClick={() => { onClose(); onOpenAppearance?.(); }}>
-                      <SidebarIcon>✦</SidebarIcon>
-                      <SidebarLabel>Look</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "look"} onClick={() => setActiveTab("look")}>
+                      <SidebarIcon $active={activeTab === "look"}>✦</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "look"}>Look</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
@@ -1013,6 +1012,10 @@ export default function PlayerProfile({
             />
           )}
 
+          {activeTab === "look" && isSelfView && (
+            <LookPanelContent />
+          )}
+
         </ProfileWrapper>
       </Overlay>
     </>
@@ -1377,6 +1380,88 @@ function FriendsPanelContent({
           )}
         </FriendsListScroll>
       </FriendsPanelInner>
+    </HubPanelContainer>
+  );
+}
+
+/* ── Look Panel ── */
+
+const LOOK_FEATURES = [
+  { key: "hair",      label: "Hair" },
+  { key: "eyebrows",  label: "Eyebrows" },
+  { key: "eyes",      label: "Eyes" },
+  { key: "nose",      label: "Nose" },
+  { key: "mouth",     label: "Mouth" },
+];
+
+function LookPanelContent() {
+  const [avatarWidth, setAvatarWidth] = useState(50);
+  const [avatarHeight, setAvatarHeight] = useState(50);
+
+  return (
+    <HubPanelContainer>
+      <LookPanelInner>
+        <PanelHeaderRow>
+          <PanelTitle>✦ Look</PanelTitle>
+        </PanelHeaderRow>
+
+        <LookScrollArea>
+          <LookGrid>
+            {/* Skin Color */}
+            <LookFeatureCard>
+              <LookFeatureLabel>Skin Color</LookFeatureLabel>
+              <LookSlotsRow>
+                <LookSlotWrap>
+                  <LookSlot><LookSlotPlus>+</LookSlotPlus></LookSlot>
+                  <LookSlotSubLabel>Color</LookSlotSubLabel>
+                </LookSlotWrap>
+              </LookSlotsRow>
+            </LookFeatureCard>
+
+            {/* Hair, Eyebrows, Eyes, Nose, Mouth */}
+            {LOOK_FEATURES.map(({ key, label }) => (
+              <LookFeatureCard key={key}>
+                <LookFeatureLabel>{label}</LookFeatureLabel>
+                <LookSlotsRow>
+                  <LookSlotWrap>
+                    <LookSlot><LookSlotPlus>+</LookSlotPlus></LookSlot>
+                    <LookSlotSubLabel>Item</LookSlotSubLabel>
+                  </LookSlotWrap>
+                  <LookSlotWrap>
+                    <LookSlot><LookSlotPlus>+</LookSlotPlus></LookSlot>
+                    <LookSlotSubLabel>Color</LookSlotSubLabel>
+                  </LookSlotWrap>
+                </LookSlotsRow>
+              </LookFeatureCard>
+            ))}
+          </LookGrid>
+
+          {/* Body Dimensions */}
+          <LookFeatureCard>
+            <LookFeatureLabel>Body Size</LookFeatureLabel>
+            <LookSliderRow>
+              <LookSliderLabel>Width</LookSliderLabel>
+              <LookSlider
+                type="range"
+                min={0} max={100}
+                value={avatarWidth}
+                onChange={e => setAvatarWidth(Number(e.target.value))}
+              />
+              <LookSliderValue>{avatarWidth}</LookSliderValue>
+            </LookSliderRow>
+            <LookSliderRow>
+              <LookSliderLabel>Height</LookSliderLabel>
+              <LookSlider
+                type="range"
+                min={0} max={100}
+                value={avatarHeight}
+                onChange={e => setAvatarHeight(Number(e.target.value))}
+              />
+              <LookSliderValue>{avatarHeight}</LookSliderValue>
+            </LookSliderRow>
+          </LookFeatureCard>
+        </LookScrollArea>
+      </LookPanelInner>
     </HubPanelContainer>
   );
 }
@@ -3498,4 +3583,129 @@ const FriendInviteActions = styled.div`
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+`;
+
+/* ── Look Panel ── */
+
+const LookPanelInner = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(7,4,14,0.94) 100%);
+  border-radius: 0 14px 14px 0;
+  overflow: hidden;
+`;
+
+const LookScrollArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const LookGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+`;
+
+const LookFeatureCard = styled.div`
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 13px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const LookFeatureLabel = styled.div`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.32);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+`;
+
+const LookSlotsRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const LookSlotWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+`;
+
+const LookSlot = styled.div`
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  position: relative;
+  overflow: hidden;
+  &:hover {
+    border-style: solid;
+    border-color: rgba(124,58,237,0.5);
+    background: rgba(124,58,237,0.07);
+    box-shadow: 0 0 12px rgba(124,58,237,0.14);
+  }
+`;
+
+const LookSlotPlus = styled.span`
+  font-size: 22px;
+  color: rgba(255,255,255,0.12);
+  line-height: 1;
+  pointer-events: none;
+  ${LookSlot}:hover & { color: rgba(124,58,237,0.55); }
+`;
+
+const LookSlotSubLabel = styled.div`
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.18);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const LookSliderRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const LookSliderLabel = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.35);
+  min-width: 42px;
+`;
+
+const LookSlider = styled.input`
+  flex: 1;
+  accent-color: #a855f7;
+  cursor: pointer;
+  height: 4px;
+`;
+
+const LookSliderValue = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.3);
+  min-width: 28px;
+  text-align: right;
 `;
