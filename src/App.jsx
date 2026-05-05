@@ -39,15 +39,18 @@ function App() {
 
   // After Google OAuth redirect, Supabase handles the callback automatically.
   // If there's a session but no stored user, fetch the profile from the backend.
+  // If there's already a user but a Supabase session exists, refresh the stored token.
   useEffect(() => {
-    if (user) return;
-
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      // Clean up the hash Supabase leaves in the URL after OAuth redirect
       if (window.location.hash) {
         window.history.replaceState(null, "", window.location.pathname);
       }
       if (!session) return;
+      if (user) {
+        // Token may be stale — refresh it from the current Supabase session
+        localStorage.setItem("fv_token", session.access_token);
+        return;
+      }
       try {
         const data = await getMe(session.access_token);
         handleLogin(data.user, session.access_token);
@@ -56,6 +59,12 @@ function App() {
         supabase.auth.signOut();
       }
     });
+
+    // Keep fv_token in sync whenever Supabase silently refreshes the access token
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) localStorage.setItem("fv_token", session.access_token);
+    });
+    return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEquip = useCallback((item) => {
