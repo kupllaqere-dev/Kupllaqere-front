@@ -42,7 +42,7 @@ function App() {
   // If there's already a user but a Supabase session exists, refresh the stored token.
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (window.location.hash) {
+      if (window.location.href.includes("#")) {
         window.history.replaceState(null, "", window.location.pathname);
       }
       if (!session) return;
