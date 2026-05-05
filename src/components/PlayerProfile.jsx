@@ -13,6 +13,7 @@ import {
   sendFriendRequest,
   acceptFriendRequest as acceptFriend,
   cancelFriendRequest as cancelFriend,
+  declineFriendRequest as declineFriend,
   removeFriend,
 } from "../api/friends";
 import {
@@ -20,6 +21,13 @@ import {
   postGuestBookComment,
   deleteGuestBookComment,
 } from "../api/guestbook";
+import {
+  fetchInbox,
+  fetchSent,
+  fetchThread,
+  markThreadRead,
+  replyToThread,
+} from "../api/mail";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -77,10 +85,9 @@ export default function PlayerProfile({
   currentUserId = null,
   targetUserId = null,
   socket = null,
-  onOpenMail = null,
-  onOpenInventory = null,
+  unreadMailCount = 0,
+  onUnreadChange = null,
   onOpenAppearance = null,
-  onOpenFriends = null,
   onOpenAlbum = null,
   onOpenStats = null,
   onOpenWishlist = null,
@@ -123,6 +130,24 @@ export default function PlayerProfile({
   const [gbLoading, setGbLoading] = useState(false);
   const [gbInput, setGbInput] = useState("");
   const [gbSubmitting, setGbSubmitting] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("profile");
+
+  const [mailTab, setMailTab] = useState("inbox");
+  const [mailInbox, setMailInbox] = useState([]);
+  const [mailSent, setMailSent] = useState([]);
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailListsLoaded, setMailListsLoaded] = useState(false);
+  const [mailThread, setMailThread] = useState(null);
+  const [mailThreadLoading, setMailThreadLoading] = useState(false);
+  const [mailReplyBody, setMailReplyBody] = useState("");
+  const [mailReplySending, setMailReplySending] = useState(false);
+  const [mailReplyError, setMailReplyError] = useState(null);
+
+  const [friendsTab, setFriendsTab] = useState("friends");
+  const [friendsData, setFriendsData] = useState(null);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsSearch, setFriendsSearch] = useState("");
 
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
@@ -295,6 +320,75 @@ export default function PlayerProfile({
 
   useEffect(() => { loadGbComments(); }, [loadGbComments]);
 
+  const loadMailLists = useCallback(async () => {
+    if (!isSelfView) return;
+    setMailLoading(true);
+    try {
+      const [inboxData, sentData] = await Promise.all([fetchInbox(), fetchSent()]);
+      setMailInbox(inboxData);
+      setMailSent(sentData);
+    } catch { /* ignore */ }
+    finally { setMailLoading(false); setMailListsLoaded(true); }
+  }, [isSelfView]);
+
+  useEffect(() => {
+    if (activeTab === "mail") loadMailLists();
+    if (activeTab !== "mail") { setMailThread(null); setMailReplyBody(""); }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openMailThread = useCallback(async (threadId) => {
+    setMailThreadLoading(true);
+    try {
+      const data = await fetchThread(threadId);
+      setMailThread(data);
+      setMailReplyBody("");
+      setMailReplyError(null);
+      // Zero out this thread's unread count locally — no full list reload
+      setMailInbox(prev => prev.map(t => t.threadId === threadId ? { ...t, unreadCount: 0 } : t));
+      setMailSent(prev => prev.map(t => t.threadId === threadId ? { ...t, unreadCount: 0 } : t));
+      markThreadRead(threadId).then(() => onUnreadChange?.()).catch(() => {});
+    } catch { /* ignore */ }
+    finally { setMailThreadLoading(false); }
+  }, [onUnreadChange]);
+
+  const handleMailReply = useCallback(async () => {
+    if (!mailReplyBody.trim() || mailReplySending || !mailThread) return;
+    setMailReplySending(true);
+    setMailReplyError(null);
+    const bodyText = mailReplyBody.trim();
+    try {
+      await replyToThread(mailThread.threadId, bodyText);
+      setMailReplyBody("");
+      const updated = await fetchThread(mailThread.threadId);
+      setMailThread(updated);
+      // Update the preview in the thread list without reloading everything
+      const newLast = { isFromMe: true, body: bodyText, createdAt: new Date().toISOString() };
+      setMailInbox(prev => prev.map(t => t.threadId === mailThread.threadId ? { ...t, lastMessage: newLast } : t));
+      setMailSent(prev => prev.map(t => t.threadId === mailThread.threadId ? { ...t, lastMessage: newLast } : t));
+    } catch (err) {
+      setMailReplyError(err.message || "Failed to send.");
+    } finally {
+      setMailReplySending(false);
+    }
+  }, [mailReplyBody, mailReplySending, mailThread]);
+
+  const loadFriendsData = useCallback(async () => {
+    if (!isSelfView) return;
+    setFriendsLoading(true);
+    try {
+      const data = await fetchFriends();
+      setFriendsData(data);
+    } catch {
+      setFriendsData({ friends: [], received: [], sent: [] });
+    } finally {
+      setFriendsLoading(false);
+    }
+  }, [isSelfView]);
+
+  useEffect(() => {
+    if (activeTab === "friends") loadFriendsData();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmitComment = async () => {
     if (!gbInput.trim() || gbSubmitting) return;
     setGbSubmitting(true);
@@ -320,20 +414,21 @@ export default function PlayerProfile({
 
   const canComment = !isSelfView && !!currentUserId;
 
-  const hasOutfit = outfit && Object.values(outfit).some((v) => v?.imageUrl);
+  // const hasOutfit = outfit && Object.values(outfit).some((v) => v?.imageUrl);
 
   return (
     <>
-      {composing && !isSelfView && (
+      {composing && (
         <ComposeMailModal
-          targetId={targetUserId}
-          targetName={playerName}
+          targetId={isSelfView ? null : targetUserId}
+          targetName={isSelfView ? null : playerName}
           onClose={() => setComposing(false)}
         />
       )}
 
       <Overlay onClick={onClose}>
         <ProfileWrapper onClick={(e) => e.stopPropagation()}>
+          <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
 
           {/* ── Sidebar ── */}
           <Sidebar>
@@ -346,15 +441,24 @@ export default function PlayerProfile({
               {isSelfView ? (
                 <>
                   <SidebarItem>
-                    <SidebarBtn $active>
-                      <SidebarIcon $active>◈</SidebarIcon>
-                      <SidebarLabel $active>Profile</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
+                      <SidebarIcon $active={activeTab === "profile"}>◈</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "profile"}>Profile</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
-                    <SidebarBtn onClick={() => { onClose(); onOpenMail?.(); }}>
-                      <SidebarIcon>✉</SidebarIcon>
-                      <SidebarLabel>Mail</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "mail"} onClick={() => setActiveTab("mail")}>
+                      <SidebarIcon $active={activeTab === "mail"}>✉</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "mail"}>Mail</SidebarLabel>
+                      {(mailListsLoaded
+                        ? mailInbox.reduce((s, t) => s + (t.unreadCount || 0), 0)
+                        : unreadMailCount) > 0 && (
+                        <SidebarNotifDot>
+                          {mailListsLoaded
+                            ? mailInbox.reduce((s, t) => s + (t.unreadCount || 0), 0)
+                            : unreadMailCount}
+                        </SidebarNotifDot>
+                      )}
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
@@ -364,9 +468,9 @@ export default function PlayerProfile({
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
-                    <SidebarBtn onClick={() => { onClose(); onOpenFriends?.(); }}>
-                      <SidebarIcon>♡</SidebarIcon>
-                      <SidebarLabel>Friends</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "friends"} onClick={() => setActiveTab("friends")}>
+                      <SidebarIcon $active={activeTab === "friends"}>♡</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "friends"}>Friends</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
@@ -439,19 +543,19 @@ export default function PlayerProfile({
               )}
             </SidebarNav>
 
-            <SidebarFooter>
+            {/* <SidebarFooter>
               <SidebarAvatarThumb />
               <SidebarOnlinePip />
-            </SidebarFooter>
+            </SidebarFooter> */}
           </Sidebar>
 
           {/* ── Avatar Stage ── */}
           <AvatarStageCol>
-            <OutfitLabel>
+            {/* <OutfitLabel>
               <OutfitGem>✦</OutfitGem>
               <span>Outfit: {hasOutfit ? "Current Outfit" : "Default"}</span>
               <OutfitGem>✦</OutfitGem>
-            </OutfitLabel>
+            </OutfitLabel> */}
 
             <StageContainer>
               <StageHalo />
@@ -467,8 +571,16 @@ export default function PlayerProfile({
                   }}
                 />
               </AvatarViewport>
-              <AvatarPlatform />
+              {/* <AvatarPlatform /> */}
             </StageContainer>
+
+            <Controls>
+              <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>−</ArrowBtn>
+              <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
+              {/* <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel> */}
+              <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
+              <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
+            </Controls>
 
             <StatusCard>
               <StatusCardTop>
@@ -480,18 +592,12 @@ export default function PlayerProfile({
               <StatusText>"living in a dream sequence ✨"</StatusText>
             </StatusCard>
 
-            <Controls>
-              <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>−</ArrowBtn>
-              <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
-              <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel>
-              <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
-              <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
-            </Controls>
           </AvatarStageCol>
+
+          {activeTab === "profile" && (<>
 
           {/* ── Profile Content ── */}
           <ProfileContent>
-            <CloseBtn onClick={onClose}>&times;</CloseBtn>
 
             {/* Header */}
             <ProfileHeader>
@@ -871,6 +977,41 @@ export default function PlayerProfile({
               <GBLeaveGiftBtn>🎁 Leave a Gift</GBLeaveGiftBtn>
             </GBStatsFooter>
           </GuestBookOverlay>
+          </>)}
+
+          {activeTab === "mail" && isSelfView && (
+            <MailPanelContent
+              mailTab={mailTab}
+              setMailTab={setMailTab}
+              mailInbox={mailInbox}
+              mailSent={mailSent}
+              mailLoading={mailLoading}
+              mailThread={mailThread}
+              mailThreadLoading={mailThreadLoading}
+              mailReplyBody={mailReplyBody}
+              setMailReplyBody={setMailReplyBody}
+              mailReplySending={mailReplySending}
+              mailReplyError={mailReplyError}
+              openMailThread={openMailThread}
+              handleMailReply={handleMailReply}
+              onBack={() => setMailThread(null)}
+              setComposing={setComposing}
+            />
+          )}
+
+          {activeTab === "friends" && isSelfView && (
+            <FriendsPanelContent
+              friendsTab={friendsTab}
+              setFriendsTab={setFriendsTab}
+              friendsData={friendsData}
+              friendsLoading={friendsLoading}
+              friendsSearch={friendsSearch}
+              setFriendsSearch={setFriendsSearch}
+              onRefresh={loadFriendsData}
+              acceptFriend={acceptFriend}
+              declineFriend={declineFriend}
+            />
+          )}
 
         </ProfileWrapper>
       </Overlay>
@@ -977,6 +1118,269 @@ function renderSoulMate({ smState, isSelfView, targetUserId, currentUserId, smBu
   );
 }
 
+/* ── Mail Panel ── */
+
+function MailPanelContent({
+  mailTab, setMailTab, mailInbox, mailSent, mailLoading,
+  mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
+  mailReplySending, mailReplyError, openMailThread, handleMailReply,
+  onBack, setComposing,
+}) {
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (mailThread) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mailThread?.messages?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentList = mailTab === "inbox" ? mailInbox : mailSent;
+  const inboxUnread = mailInbox.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+
+  return (
+    <HubPanelContainer>
+      <MailListCol>
+        <PanelHeaderRow>
+          <PanelTitle>✉ Mail</PanelTitle>
+          <NewMailBtn onClick={() => setComposing(true)}>+ New</NewMailBtn>
+        </PanelHeaderRow>
+        <PanelTabs>
+          <PanelTab $active={mailTab === "inbox"} onClick={() => setMailTab("inbox")}>
+            Inbox
+            {inboxUnread > 0 && <TabUnreadBadge>{inboxUnread > 99 ? "99+" : inboxUnread}</TabUnreadBadge>}
+          </PanelTab>
+          <PanelTab $active={mailTab === "sent"} onClick={() => setMailTab("sent")}>Sent</PanelTab>
+        </PanelTabs>
+        <MailThreadList>
+          {mailLoading ? (
+            <PanelEmpty>Loading…</PanelEmpty>
+          ) : currentList.length === 0 ? (
+            <PanelEmpty>{mailTab === "inbox" ? "Your inbox is empty." : "No sent mail."}</PanelEmpty>
+          ) : (
+            currentList.map((t) => (
+              <MailThreadRow
+                key={t.threadId}
+                $unread={t.unreadCount > 0}
+                $active={mailThread?.threadId === t.threadId}
+                onClick={() => openMailThread(t.threadId)}
+              >
+                <MailThreadThumb>
+                  <PlayerThumbnail playerName={t.otherParticipant.name} size={38} />
+                  {t.unreadCount > 0 && <MailUnreadDot />}
+                </MailThreadThumb>
+                <MailThreadMeta>
+                  <MailThreadMetaTop>
+                    <MailThreadName $unread={t.unreadCount > 0}>{t.otherParticipant.name}</MailThreadName>
+                    <MailThreadTime>{formatRelativeTime(t.lastMessage.createdAt)}</MailThreadTime>
+                  </MailThreadMetaTop>
+                  <MailThreadSubject $unread={t.unreadCount > 0}>{t.subject}</MailThreadSubject>
+                  <MailThreadPreview>
+                    {t.lastMessage.isFromMe ? "You: " : ""}{t.lastMessage.body}
+                  </MailThreadPreview>
+                </MailThreadMeta>
+                {t.unreadCount > 0 && <MailUnreadBadge>{t.unreadCount}</MailUnreadBadge>}
+              </MailThreadRow>
+            ))
+          )}
+        </MailThreadList>
+      </MailListCol>
+
+      <MailDetailCol>
+        {!mailThread ? (
+          <MailPlaceholder>
+            <MailPlaceholderIcon>✉</MailPlaceholderIcon>
+            <MailPlaceholderText>Select a conversation to read</MailPlaceholderText>
+          </MailPlaceholder>
+        ) : mailThreadLoading ? (
+          <MailPlaceholder><MailPlaceholderText>Loading…</MailPlaceholderText></MailPlaceholder>
+        ) : (
+          <>
+            <MailDetailHeader>
+              <MailBackBtn onClick={onBack}>← Back</MailBackBtn>
+              <MailDetailSubject>{mailThread.subject}</MailDetailSubject>
+              <MailDetailWith>
+                <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={26} />
+                <span>{mailThread.otherParticipant.name}</span>
+              </MailDetailWith>
+            </MailDetailHeader>
+            <MailMessageList>
+              {mailThread.messages.map((msg) => (
+                <MailMessageRow key={msg.id} $mine={msg.isFromMe}>
+                  {!msg.isFromMe && (
+                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={32} /></MailMsgThumb>
+                  )}
+                  <MailBubble $mine={msg.isFromMe}>
+                    <MailBubbleBody>{msg.body}</MailBubbleBody>
+                    <MailBubbleTime>{formatRelativeTime(msg.createdAt)}</MailBubbleTime>
+                  </MailBubble>
+                  {msg.isFromMe && (
+                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={32} /></MailMsgThumb>
+                  )}
+                </MailMessageRow>
+              ))}
+              <div ref={messagesEndRef} />
+            </MailMessageList>
+            <MailReplyBox>
+              <MailReplyTextarea
+                value={mailReplyBody}
+                onChange={(e) => setMailReplyBody(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleMailReply(); }}
+                maxLength={2000}
+                placeholder="Write a reply… (Ctrl+Enter to send)"
+                disabled={mailReplySending}
+                rows={3}
+              />
+              {mailReplyError && <MailReplyError>{mailReplyError}</MailReplyError>}
+              <MailReplyFooter>
+                <MailReplyCounter>{mailReplyBody.length}/2000</MailReplyCounter>
+                <PrimaryBtn onClick={handleMailReply} disabled={!mailReplyBody.trim() || mailReplySending}>
+                  {mailReplySending ? "Sending…" : "Send Reply"}
+                </PrimaryBtn>
+              </MailReplyFooter>
+            </MailReplyBox>
+          </>
+        )}
+      </MailDetailCol>
+    </HubPanelContainer>
+  );
+}
+
+/* ── Friends Panel ── */
+
+function FriendsPanelContent({
+  friendsTab, setFriendsTab, friendsData, friendsLoading,
+  friendsSearch, setFriendsSearch, onRefresh, acceptFriend, declineFriend,
+}) {
+  const [friendBusy, setFriendBusy] = useState(null);
+  const [searchSubmitted, setSearchSubmitted] = useState("");
+
+  const friends = friendsData?.friends || [];
+  const received = friendsData?.received || [];
+
+  const handleSearchKey = (e) => {
+    if (e.key === "Enter") setSearchSubmitted(friendsSearch.trim().toLowerCase());
+  };
+
+  const filtered = searchSubmitted
+    ? friends.filter((f) => f.name?.toLowerCase().includes(searchSubmitted))
+    : friends;
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.online && !b.online) return -1;
+    if (!a.online && b.online) return 1;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
+  const onlineFriends = sorted.filter((f) => f.online);
+  const offlineFriends = sorted.filter((f) => !f.online);
+
+  const runAction = async (fn, id) => {
+    if (friendBusy) return;
+    setFriendBusy(id);
+    try { await fn(); await onRefresh(); }
+    catch (err) { console.error(err); }
+    finally { setFriendBusy(null); }
+  };
+
+  return (
+    <HubPanelContainer>
+      <FriendsPanelInner>
+        <FriendsSearchRow>
+          <FriendsSearchInput
+            type="text"
+            value={friendsSearch}
+            onChange={(e) => { setFriendsSearch(e.target.value); if (!e.target.value) setSearchSubmitted(""); }}
+            onKeyDown={handleSearchKey}
+            placeholder="Search friends… (Enter)"
+          />
+          <FriendsSearchIcon>⌕</FriendsSearchIcon>
+        </FriendsSearchRow>
+
+        <PanelTabs>
+          <PanelTab $active={friendsTab === "friends"} onClick={() => setFriendsTab("friends")}>
+            Friends <TabCountBadge>{friends.length}</TabCountBadge>
+          </PanelTab>
+          <PanelTab $active={friendsTab === "invites"} onClick={() => setFriendsTab("invites")}>
+            Invites {received.length > 0 && <TabUnreadBadge>{received.length}</TabUnreadBadge>}
+          </PanelTab>
+        </PanelTabs>
+
+        <FriendsListScroll>
+          {friendsLoading ? (
+            <PanelEmpty>Loading…</PanelEmpty>
+          ) : friendsTab === "friends" ? (
+            filtered.length === 0 ? (
+              <PanelEmpty>
+                {searchSubmitted ? `No friends matching "${searchSubmitted}".` : "You have no friends yet."}
+              </PanelEmpty>
+            ) : (
+              <>
+                {onlineFriends.length > 0 && (
+                  <>
+                    <FriendsGroupLabel>Online — {onlineFriends.length}</FriendsGroupLabel>
+                    {onlineFriends.map((f) => (
+                      <FriendCardRow key={f.id}>
+                        <FriendCardAvatarWrap>
+                          <PlayerThumbnail playerName={f.name} size={42} />
+                          <FriendOnlineDot />
+                        </FriendCardAvatarWrap>
+                        <FriendCardInfo>
+                          <FriendCardName>{f.name}</FriendCardName>
+                          <FriendCardLocation>
+                            <FriendLocationDot $online />
+                            {f.location || "Online"}
+                          </FriendCardLocation>
+                        </FriendCardInfo>
+                      </FriendCardRow>
+                    ))}
+                  </>
+                )}
+                {offlineFriends.length > 0 && (
+                  <>
+                    <FriendsGroupLabel>Offline — {offlineFriends.length}</FriendsGroupLabel>
+                    {offlineFriends.map((f) => (
+                      <FriendCardRow key={f.id}>
+                        <FriendCardAvatarWrap>
+                          <PlayerThumbnail playerName={f.name} size={42} />
+                        </FriendCardAvatarWrap>
+                        <FriendCardInfo>
+                          <FriendCardName>{f.name}</FriendCardName>
+                          <FriendCardLocation>
+                            <FriendLocationDot />
+                            Offline
+                          </FriendCardLocation>
+                        </FriendCardInfo>
+                      </FriendCardRow>
+                    ))}
+                  </>
+                )}
+              </>
+            )
+          ) : (
+            received.length === 0 ? (
+              <PanelEmpty>No pending friend requests.</PanelEmpty>
+            ) : (
+              received.map((f) => (
+                <FriendCardRow key={f.id}>
+                  <FriendCardAvatarWrap>
+                    <PlayerThumbnail playerName={f.name} size={42} />
+                  </FriendCardAvatarWrap>
+                  <FriendCardInfo>
+                    <FriendCardName>{f.name}</FriendCardName>
+                    <FriendCardLocation>Wants to be your friend</FriendCardLocation>
+                  </FriendCardInfo>
+                  <FriendInviteActions>
+                    <SmPrimaryBtn disabled={!!friendBusy} onClick={() => runAction(() => acceptFriend(f.id), f.id)}>Accept</SmPrimaryBtn>
+                    <SmSecBtn disabled={!!friendBusy} onClick={() => runAction(() => declineFriend(f.id), f.id)}>Decline</SmSecBtn>
+                  </FriendInviteActions>
+                </FriendCardRow>
+              ))
+            )
+          )}
+        </FriendsListScroll>
+      </FriendsPanelInner>
+    </HubPanelContainer>
+  );
+}
+
 /* ══════════════════════════════════════════════
    STYLES
 ══════════════════════════════════════════════ */
@@ -994,10 +1398,13 @@ const Overlay = styled.div`
 
 const ProfileWrapper = styled.div`
   position: relative;
+  width: min(96vw, 1400px);
+  max-width: 98vw;
   height: 92vh;
   max-height: 92vh;
   display: flex;
   flex-direction: row;
+  overflow: hidden;
   filter: drop-shadow(0 20px 60px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(124,58,237,0.18));
 `;
 
@@ -1007,8 +1414,8 @@ const Sidebar = styled.nav`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 18px 0 20px;
-  width: 74px;
+  padding: 18px 6px;
+  width: 80px;
   flex-shrink: 0;
   background: rgba(8,5,16,0.97);
   backdrop-filter: blur(28px);
@@ -1049,7 +1456,9 @@ const SidebarNav = styled.ul`
   flex: 1;
 `;
 
-const SidebarItem = styled.li``;
+const SidebarItem = styled.li`
+  aspect-ratio: 1;
+`;
 
 const SidebarBtn = styled.button`
   all: unset;
@@ -1058,7 +1467,8 @@ const SidebarBtn = styled.button`
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 9px 4px 8px;
+  height: 100%;
+  /* padding: 9px 4px 8px; */
   border-radius: 12px;
   cursor: pointer;
   gap: 4px;
@@ -1070,7 +1480,7 @@ const SidebarBtn = styled.button`
     &::before {
       content: '';
       position: absolute;
-      left: 0; top: 22%; bottom: 22%;
+      right: 0; top: 22%; bottom: 22%;
       width: 2.5px;
       background: #a855f7;
       border-radius: 0 2px 2px 0;
@@ -1131,13 +1541,33 @@ const SidebarOnlinePip = styled.div`
   @keyframes pipBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 `;
 
+const SidebarNotifDot = styled.span`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  background: #e03131;
+  border: 1.5px solid rgba(8,5,16,0.97);
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  pointer-events: none;
+  line-height: 1;
+`;
+
 /* ── Avatar Stage ── */
 
 const AvatarStageCol = styled.section`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 18px 14px 14px;
+  padding: 0 14px;
   width: 260px;
   flex-shrink: 0;
   background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(7,4,14,0.94) 100%);
@@ -1216,7 +1646,7 @@ const AvatarViewport = styled.div`
   aspect-ratio: ${FRAME_W} / ${FRAME_H};
   overflow: hidden;
   border-radius: 14px;
-  border: 1px solid rgba(124,58,237,0.28);
+  /* border: 1px solid rgba(124,58,237,0.28); */
   box-shadow: 0 0 22px rgba(124,58,237,0.12), inset 0 0 28px rgba(124,58,237,0.06);
   background: radial-gradient(ellipse at 50% 95%, rgba(124,58,237,0.1) 0%, transparent 55%);
   position: relative;
@@ -1250,7 +1680,7 @@ const StatusCard = styled.div`
   width: 100%;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
+  /* border-radius: 12px; */
   padding: 9px 13px;
   display: flex;
   flex-direction: column;
@@ -1301,6 +1731,7 @@ const Controls = styled.div`
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+  padding: 12px 0;
 `;
 
 const ArrowBtn = styled.button`
@@ -2549,4 +2980,522 @@ const GBLeaveGiftBtn = styled.button`
   font-family: inherit;
   transition: all 0.15s;
   &:hover { background: rgba(124,58,237,0.28); border-color: #7b2ff7; color: #fff; }
+`;
+
+/* ── Global close button (always visible regardless of tab) ── */
+
+const GlobalCloseBtn = styled.button`
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 30;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  width: 28px; height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.35);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  &:hover {
+    background: rgba(255,80,80,0.12);
+    border-color: rgba(255,80,80,0.35);
+    color: #ff8a8a;
+  }
+`;
+
+/* ── Hub panel shared container ── */
+
+const HubPanelContainer = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  border-radius: 0 14px 14px 0;
+`;
+
+const PanelHeaderRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 18px 14px;
+  flex-shrink: 0;
+`;
+
+const PanelTitle = styled.h2`
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #e4d0ff;
+  letter-spacing: 0.2px;
+`;
+
+const PanelTabs = styled.div`
+  display: flex;
+  gap: 2px;
+  padding: 0 14px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.055);
+`;
+
+const PanelTab = styled.button`
+  position: relative;
+  background: ${p => p.$active ? "rgba(124,58,237,0.22)" : "transparent"};
+  border: 1px solid ${p => p.$active ? "rgba(124,58,237,0.45)" : "transparent"};
+  color: ${p => p.$active ? "#c084fc" : "rgba(255,255,255,0.35)"};
+  font-size: 12px;
+  font-weight: ${p => p.$active ? "700" : "500"};
+  padding: 5px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  &:hover { color: #e4d0ff; background: rgba(124,58,237,0.12); }
+`;
+
+const TabUnreadBadge = styled.span`
+  background: rgba(224,49,49,0.85);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 15px; height: 15px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+`;
+
+const TabCountBadge = styled.span`
+  background: rgba(124,58,237,0.22);
+  color: #a78bfa;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 15px; height: 15px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+`;
+
+const PanelEmpty = styled.div`
+  padding: 28px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.22);
+  text-align: center;
+`;
+
+/* ── Mail panel ── */
+
+const MailListCol = styled.div`
+  width: 290px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(7,4,14,0.94) 100%);
+  border-right: 1px solid rgba(255,255,255,0.055);
+  overflow: hidden;
+`;
+
+const NewMailBtn = styled.button`
+  background: rgba(124,58,237,0.18);
+  border: 1px solid rgba(124,58,237,0.45);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  &:hover { background: rgba(124,58,237,0.35); border-color: #7c3aed; color: #fff; }
+`;
+
+const MailThreadList = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 3px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const MailThreadRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: ${p => p.$active ? "rgba(124,58,237,0.16)" : p.$unread ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)"};
+  border: 1px solid ${p => p.$active ? "rgba(124,58,237,0.42)" : "rgba(255,255,255,0.05)"};
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: rgba(124,58,237,0.1); border-color: rgba(124,58,237,0.28); }
+`;
+
+const MailThreadThumb = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+`;
+
+const MailUnreadDot = styled.div`
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 9px; height: 9px;
+  background: #e03131;
+  border-radius: 50%;
+  border: 2px solid rgba(10,6,20,0.97);
+`;
+
+const MailThreadMeta = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const MailThreadMetaTop = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+`;
+
+const MailThreadName = styled.div`
+  font-size: 12px;
+  font-weight: ${p => p.$unread ? "700" : "500"};
+  color: ${p => p.$unread ? "#c4a1ff" : "rgba(255,255,255,0.65)"};
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const MailThreadTime = styled.div`
+  font-size: 10px;
+  color: rgba(255,255,255,0.22);
+  flex-shrink: 0;
+  white-space: nowrap;
+`;
+
+const MailThreadSubject = styled.div`
+  font-size: 11px;
+  font-weight: ${p => p.$unread ? "600" : "400"};
+  color: ${p => p.$unread ? "#f0eaff" : "rgba(255,255,255,0.45)"};
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const MailThreadPreview = styled.div`
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.22);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const MailUnreadBadge = styled.div`
+  flex-shrink: 0;
+  background: rgba(224,49,49,0.85);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+`;
+
+const MailDetailCol = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, rgba(12,8,24,0.97) 0%, rgba(8,5,16,0.94) 100%);
+  border-radius: 0 14px 14px 0;
+  overflow: hidden;
+`;
+
+const MailPlaceholder = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+`;
+
+const MailPlaceholderIcon = styled.div`
+  font-size: 42px;
+  opacity: 0.1;
+  color: #c084fc;
+`;
+
+const MailPlaceholderText = styled.div`
+  font-size: 13px;
+  color: rgba(255,255,255,0.2);
+`;
+
+const MailDetailHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.055);
+  flex-shrink: 0;
+`;
+
+const MailBackBtn = styled.button`
+  all: unset;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  &:hover { color: #c084fc; }
+`;
+
+const MailDetailSubject = styled.div`
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0eaff;
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+`;
+
+const MailDetailWith = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  flex-shrink: 0;
+  padding-right: 42px;
+`;
+
+const MailMessageList = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const MailMessageRow = styled.div`
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  justify-content: ${p => p.$mine ? "flex-end" : "flex-start"};
+`;
+
+const MailMsgThumb = styled.div`flex-shrink: 0;`;
+
+const MailBubble = styled.div`
+  max-width: 68%;
+  background: ${p => p.$mine ? "rgba(124,58,237,0.35)" : "rgba(255,255,255,0.07)"};
+  border: 1px solid ${p => p.$mine ? "rgba(124,58,237,0.55)" : "rgba(255,255,255,0.1)"};
+  border-radius: ${p => p.$mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px"};
+  padding: 10px 13px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const MailBubbleBody = styled.div`
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.5;
+  word-break: break-word;
+`;
+
+const MailBubbleTime = styled.div`
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  text-align: right;
+`;
+
+const MailReplyBox = styled.div`
+  padding: 12px 18px 14px;
+  border-top: 1px solid rgba(255,255,255,0.055);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const MailReplyTextarea = styled.textarea`
+  width: 100%;
+  resize: none;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: #c084fc;
+  &:focus { border-color: rgba(124,58,237,0.5); background: rgba(255,255,255,0.055); }
+  &::placeholder { color: rgba(255,255,255,0.2); }
+  &:disabled { opacity: 0.5; }
+`;
+
+const MailReplyFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const MailReplyCounter = styled.div`font-size: 11px; color: rgba(255,255,255,0.22);`;
+
+const MailReplyError = styled.div`font-size: 11px; color: #ff7777;`;
+
+/* ── Friends panel ── */
+
+const FriendsPanelInner = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 0;
+  gap: 14px;
+  background: linear-gradient(160deg, rgba(12,8,24,0.97) 0%, rgba(8,5,16,0.94) 100%);
+  border-radius: 0 14px 14px 0;
+  overflow: hidden;
+`;
+
+const FriendsSearchRow = styled.div`
+  position: relative;
+  flex-shrink: 0;
+`;
+
+const FriendsSearchInput = styled.input`
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 38px 10px 16px;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: #c084fc;
+  transition: border-color 0.18s, background 0.18s;
+  &:focus { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.06); }
+  &::placeholder { color: rgba(255,255,255,0.2); }
+`;
+
+const FriendsSearchIcon = styled.span`
+  position: absolute;
+  right: 13px; top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,0.25);
+  font-size: 18px;
+  pointer-events: none;
+`;
+
+const FriendsListScroll = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 16px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const FriendsGroupLabel = styled.div`
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 6px 2px 2px;
+`;
+
+const FriendCardRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: all 0.18s;
+  &:hover {
+    background: rgba(124,58,237,0.08);
+    border-color: rgba(124,58,237,0.28);
+    box-shadow: 0 2px 12px rgba(124,58,237,0.1);
+  }
+`;
+
+const FriendCardAvatarWrap = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+`;
+
+const FriendOnlineDot = styled.div`
+  position: absolute;
+  bottom: 1px; right: 1px;
+  width: 10px; height: 10px;
+  background: #22c55e;
+  border-radius: 50%;
+  border: 2px solid rgba(12,8,24,0.97);
+  box-shadow: 0 0 6px #22c55e;
+`;
+
+const FriendCardInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+`;
+
+const FriendCardName = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0eaff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
+
+const FriendCardLocation = styled.div`
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+const FriendLocationDot = styled.span`
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: ${p => p.$online ? "#22c55e" : "rgba(255,255,255,0.18)"};
+  flex-shrink: 0;
+`;
+
+const FriendInviteActions = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
 `;

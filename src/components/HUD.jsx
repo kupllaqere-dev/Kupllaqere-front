@@ -8,6 +8,7 @@ import FriendsModal from "./FriendsModal";
 import MailModal from "./MailModal";
 import { lookupUser } from "../api/auth";
 import { fetchUnreadCount } from "../api/mail";
+import { fetchFriends } from "../api/friends";
 
 function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -18,6 +19,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
   const [showMail, setShowMail] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingFriendCount, setPendingFriendCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [searchStatus, setSearchStatus] = useState(null);
@@ -31,10 +33,19 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
       .catch(() => {});
   }, []);
 
+  const refreshFriendRequests = useCallback(() => {
+    fetchFriends()
+      .then(({ received }) => setPendingFriendCount(received?.length || 0))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!currentUserId) return;
     fetchUnreadCount()
       .then(({ count }) => setUnreadCount(count))
+      .catch(() => {});
+    fetchFriends()
+      .then(({ received }) => setPendingFriendCount(received?.length || 0))
       .catch(() => {});
   }, [currentUserId]);
 
@@ -44,6 +55,12 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
     socket.socket.on("mail:new", handler);
     return () => socket.socket.off("mail:new", handler);
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket?.socket) return;
+    socket.socket.on("friends:refresh", refreshFriendRequests);
+    return () => socket.socket.off("friends:refresh", refreshFriendRequests);
+  }, [socket, refreshFriendRequests]);
 
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
@@ -94,6 +111,8 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onSaveBadge={onSaveBadge}
         currentUserId={currentUserId}
         targetUserId={currentUserId}
+        unreadMailCount={unreadCount}
+        onUnreadChange={refreshUnread}
         onOpenMail={openMail}
         onOpenInventory={() => { setShowProfile(false); setShowInventory(true); }}
         onOpenAppearance={() => { setShowProfile(false); }}
@@ -122,7 +141,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onUnreadChange={refreshUnread}
       />
     )}
-    {showFriends && <FriendsModal onClose={() => setShowFriends(false)} />}
+    {showFriends && <FriendsModal onClose={() => { setShowFriends(false); refreshFriendRequests(); }} />}
     {showUpload && <UploadItemModal onClose={() => setShowUpload(false)} />}
     {showInventory && (
       <InventoryModal
@@ -169,9 +188,14 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
             <img src="/icons/inventory.png" />
           </S.Bubble>
 
-          <S.Bubble onClick={() => setShowFriends(true)}>
-            <img src="/icons/friends.png" />
-          </S.Bubble>
+          <S.BubbleWrapper>
+            <S.Bubble onClick={() => setShowFriends(true)}>
+              <img src="/icons/friends.png" />
+            </S.Bubble>
+            {pendingFriendCount > 0 && (
+              <S.NotifBadge>{pendingFriendCount > 99 ? "99+" : pendingFriendCount}</S.NotifBadge>
+            )}
+          </S.BubbleWrapper>
 
           <S.Bubble onClick={() => setShowUpload(true)} title="Upload Item">
             <img src="/icons/upload.png" />

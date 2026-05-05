@@ -1,6 +1,7 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { sendMail } from "../api/mail";
+import { lookupUser } from "../api/auth";
 
 const SUBJECT_MAX = 100;
 const BODY_MAX = 2000;
@@ -12,14 +13,42 @@ export default function ComposeMailModal({ targetId, targetName, onClose, onSent
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
 
-  const canSend = subject.trim().length > 0 && body.trim().length > 0 && !sending;
+  // When no preset target, allow the user to look one up
+  const [toInput, setToInput] = useState("");
+  const [resolvedId, setResolvedId] = useState(null);
+  const [resolvedName, setResolvedName] = useState(null);
+  const [lookupStatus, setLookupStatus] = useState(null); // "searching" | "found" | "notfound" | "error"
+
+  const needsLookup = !targetId;
+  const effectiveId = targetId || resolvedId;
+  const effectiveName = targetName || resolvedName;
+
+  const canSend = subject.trim().length > 0 && body.trim().length > 0 && !sending && !!effectiveId;
+
+  async function handleLookup() {
+    const name = toInput.trim();
+    if (!name) return;
+    setLookupStatus("searching");
+    setResolvedId(null);
+    setResolvedName(null);
+    setError(null);
+    try {
+      const user = await lookupUser(name);
+      if (!user) { setLookupStatus("notfound"); return; }
+      setResolvedId(user.id);
+      setResolvedName(user.name);
+      setLookupStatus("found");
+    } catch {
+      setLookupStatus("error");
+    }
+  }
 
   async function handleSend() {
     if (!canSend) return;
     setSending(true);
     setError(null);
     try {
-      await sendMail(targetId, subject.trim(), body.trim());
+      await sendMail(effectiveId, subject.trim(), body.trim());
       setSent(true);
       onSent?.();
     } catch (err) {
@@ -33,7 +62,9 @@ export default function ComposeMailModal({ targetId, targetName, onClose, onSent
     <Overlay onClick={onClose}>
       <Box onClick={(e) => e.stopPropagation()}>
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
-        <Title>Mail to <span>{targetName}</span></Title>
+        <Title>
+          {effectiveName ? <>Mail to <span>{effectiveName}</span></> : "New Mail"}
+        </Title>
 
         {sent ? (
           <SentConfirm>
@@ -43,6 +74,26 @@ export default function ComposeMailModal({ targetId, targetName, onClose, onSent
           </SentConfirm>
         ) : (
           <>
+            {needsLookup && (
+              <Field>
+                <Label>To</Label>
+                <ToRow>
+                  <SubjectInput
+                    value={toInput}
+                    onChange={(e) => { setToInput(e.target.value); setLookupStatus(null); setResolvedId(null); setResolvedName(null); }}
+                    placeholder="Player username…"
+                    disabled={sending}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
+                  />
+                  <LookupBtn onClick={handleLookup} disabled={!toInput.trim() || lookupStatus === "searching"}>
+                    {lookupStatus === "searching" ? "…" : "Find"}
+                  </LookupBtn>
+                </ToRow>
+                {lookupStatus === "found" && <LookupHint $ok>Found: {resolvedName}</LookupHint>}
+                {lookupStatus === "notfound" && <LookupHint>No player with that name.</LookupHint>}
+                {lookupStatus === "error" && <LookupHint>Lookup failed. Try again.</LookupHint>}
+              </Field>
+            )}
             <Field>
               <Label>Subject</Label>
               <SubjectInput
@@ -181,6 +232,32 @@ const Counter = styled.div`
 const ErrorMsg = styled.div`
   font-size: 12px;
   color: #ff7777;
+`;
+
+const ToRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const LookupBtn = styled.button`
+  background: rgba(124, 58, 237, 0.35);
+  border: 1px solid rgba(124, 58, 237, 0.6);
+  color: #c084fc;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124, 58, 237, 0.6); color: #fff; }
+`;
+
+const LookupHint = styled.div`
+  font-size: 11px;
+  color: ${({ $ok }) => ($ok ? "#50c878" : "#ff7777")};
+  margin-top: 2px;
 `;
 
 const Footer = styled.div`

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neclis World — Player Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="profile.css">
+</head>
+<body>
+
+  <div class="scene-bg">
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+  </div>
+
+  <div class="profile-shell">
+
+    <!-- ── Left Sidebar Navigation ── -->
+    <nav class="sidebar">
+      <div class="sidebar__logo">
+        <span class="sidebar__logo-mark">✦</span>
+        <span class="sidebar__logo-text">NW</span>
+      </div>
+      <ul class="sidebar__nav">
+        <li class="sidebar__item sidebar__item--active" data-nav="profile">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">◈</span>
+            <span class="sidebar__label">Profile</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="mail">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">✉</span>
+            <span class="sidebar__label">Mail</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="appearance">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">✦</span>
+            <span class="sidebar__label">Look</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="friends">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">♡</span>
+            <span class="sidebar__label">Friends</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="album">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">▦</span>
+            <span class="sidebar__label">Album</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="stats">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">◉</span>
+            <span class="sidebar__label">Stats</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="wishlist">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">☆</span>
+            <span class="sidebar__label">Wishlist</span>
+          </button>
+        </li>
+        <li class="sidebar__item" data-nav="market">
+          <button class="sidebar__btn">
+            <span class="sidebar__icon">◇</span>
+            <span class="sidebar__label">Market</span>
+          </button>
+        </li>
+      </ul>
+      <div class="sidebar__footer">
+        <div class="sidebar__avatar-thumb" title="Your Avatar"></div>
+        <div class="sidebar__online-pip"></div>
+      </div>
+    </nav>
+
+    <!-- ── Avatar Stage ── -->
+    <section class="avatar-stage">
+      <div class="outfit-label">
+        <span class="outfit-label__gem">✦</span>
+        <span>Outfit: Midnight Muse</span>
+        <span class="outfit-label__gem">✦</span>
+      </div>
+
+      <div class="stage-container">
+        <div class="stage-particles" id="particles"></div>
+        <div class="stage-halo"></div>
+        <div class="stage-halo stage-halo--outer"></div>
+        <div class="avatar-display">
+          <div class="avatar-placeholder">
+            <div class="avatar-silhouette"></div>
+          </div>
+        </div>
+        <div class="stage-platform">
+          <div class="platform-ring platform-ring--outer"></div>
+          <div class="platform-ring platform-ring--inner"></div>
+          <div class="platform-ring platform-ring--core"></div>
+        </div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-card__top">
+          <span class="online-dot"></span>
+          <span class="online-label">Online</span>
+          <span class="status-sep">·</span>
+          <span class="status-loc">Neclis Plaza</span>
+        </div>
+        <div class="status-card__text">"living in a dream sequence ✨"</div>
+      </div>
+
+      <div class="avatar-controls">
+        <button class="ctrl-btn" id="zoomOut" title="Zoom out">−</button>
+        <button class="ctrl-btn" id="rotateLeft" title="Rotate left">←</button>
+        <span class="pose-label" id="poseLabel">Front</span>
+        <button class="ctrl-btn" id="rotateRight" title="Rotate right">→</button>
+        <button class="ctrl-btn" id="zoomIn" title="Zoom in">+</button>
+      </div>
+    </section>
+
+    <!-- ── Center Profile Content ── -->
+    <main class="profile-content">
+
+      <!-- Header -->
+      <header class="profile-header">
+        <div class="profile-header__left">
+          <div class="profile-header__emblem">
+            <span class="emblem-diamond">◆</span>
+          </div>
+          <div class="profile-header__titles">
+            <h1 class="username">Crrispo <span class="username__mark">✦</span></h1>
+            <div class="profile-meta">
+              <span class="level-badge">Lv. 78</span>
+              <span class="meta-sep">•</span>
+              <span class="rank-badge rank-badge--diamond">◆ Diamond Tier</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-header__stats">
+          <div class="profile-stat">
+            <span class="profile-stat__val">1,204</span>
+            <span class="profile-stat__lbl">Followers</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat__val">348</span>
+            <span class="profile-stat__lbl">Following</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat__val">89</span>
+            <span class="profile-stat__lbl">Days</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Badges -->
+      <section class="section-block" id="sectionBadges">
+        <div class="section-header">
+          <span class="section-title">Badges</span>
+          <span class="section-count">12</span>
+        </div>
+        <div class="badges-scroll-wrap">
+          <div class="badges-row">
+            <div class="badge-card badge-card--legendary" title="World Builder">
+              <div class="badge-card__icon">🏆</div>
+              <div class="badge-card__name">World Builder</div>
+              <div class="badge-card__rarity">Legendary</div>
+            </div>
+            <div class="badge-card badge-card--rare" title="Diamond Member">
+              <div class="badge-card__icon">◆</div>
+              <div class="badge-card__name">Diamond</div>
+              <div class="badge-card__rarity">Rare</div>
+            </div>
+            <div class="badge-card badge-card--legendary" title="Flame Keeper">
+              <div class="badge-card__icon">🔥</div>
+              <div class="badge-card__name">Flame Keeper</div>
+              <div class="badge-card__rarity">Legendary</div>
+            </div>
+            <div class="badge-card badge-card--common" title="Verified">
+              <div class="badge-card__icon">✓</div>
+              <div class="badge-card__name">Verified</div>
+              <div class="badge-card__rarity">Common</div>
+            </div>
+            <div class="badge-card badge-card--rare" title="Style Icon">
+              <div class="badge-card__icon">✨</div>
+              <div class="badge-card__name">Style Icon</div>
+              <div class="badge-card__rarity">Rare</div>
+            </div>
+            <div class="badge-card badge-card--legendary" title="Art Muse">
+              <div class="badge-card__icon">🎨</div>
+              <div class="badge-card__name">Art Muse</div>
+              <div class="badge-card__rarity">Legendary</div>
+            </div>
+            <div class="badge-card badge-card--common" title="Socialite">
+              <div class="badge-card__icon">♡</div>
+              <div class="badge-card__name">Socialite</div>
+              <div class="badge-card__rarity">Common</div>
+            </div>
+            <div class="badge-card badge-card--rare" title="Night Owl">
+              <div class="badge-card__icon">🌙</div>
+              <div class="badge-card__name">Night Owl</div>
+              <div class="badge-card__rarity">Rare</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Soulmate -->
+      <section class="section-block">
+        <div class="section-header">
+          <span class="section-title">Soulmate</span>
+        </div>
+        <div class="soulmate-card">
+          <div class="soulmate-card__heart-bg">
+            <span class="heart-pulse" id="heartPulse">♥</span>
+          </div>
+          <div class="soulmate-card__avatar">
+            <div class="soulmate-avatar-inner"></div>
+            <div class="soulmate-online-ring"></div>
+          </div>
+          <div class="soulmate-card__info">
+            <div class="soulmate-name">Velvetine <span class="soulmate-mark">♥</span></div>
+            <div class="soulmate-duration">Together for 47 days</div>
+            <div class="soulmate-mood">Obsessed 💜</div>
+          </div>
+          <div class="soulmate-card__actions">
+            <button class="btn btn--ghost btn--sm">View Profile</button>
+            <button class="btn btn--danger btn--sm">Break Up</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Showcase -->
+      <section class="section-block">
+        <div class="section-header">
+          <span class="section-title">Showcase</span>
+          <button class="section-action">Edit</button>
+        </div>
+        <div class="showcase-scroll-wrap">
+          <div class="showcase-row">
+            <div class="showcase-card" data-tilt>
+              <div class="showcase-card__shine"></div>
+              <div class="showcase-card__img">👗</div>
+              <div class="showcase-card__label">Midnight Muse</div>
+              <div class="showcase-card__type">Outfit</div>
+            </div>
+            <div class="showcase-card" data-tilt>
+              <div class="showcase-card__shine"></div>
+              <div class="showcase-card__img">👑</div>
+              <div class="showcase-card__label">Crystal Crown</div>
+              <div class="showcase-card__type">Accessory</div>
+            </div>
+            <div class="showcase-card" data-tilt>
+              <div class="showcase-card__shine"></div>
+              <div class="showcase-card__img">👠</div>
+              <div class="showcase-card__label">Neon Heels</div>
+              <div class="showcase-card__type">Footwear</div>
+            </div>
+            <div class="showcase-card" data-tilt>
+              <div class="showcase-card__shine"></div>
+              <div class="showcase-card__img">💎</div>
+              <div class="showcase-card__label">Starlight Locks</div>
+              <div class="showcase-card__type">Hair</div>
+            </div>
+            <div class="showcase-card showcase-card--empty" data-tilt>
+              <div class="showcase-card__add">+</div>
+              <div class="showcase-card__add-label">Add Item</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Companion -->
+      <section class="section-block">
+        <div class="section-header">
+          <span class="section-title">Companion</span>
+        </div>
+        <div class="companion-card">
+          <div class="companion-pet">
+            <div class="companion-pet__aura"></div>
+            <div class="companion-pet__img">🐱</div>
+          </div>
+          <div class="companion-info">
+            <div class="companion-name-row">
+              <span class="companion-name">Moonwhisker</span>
+              <span class="companion-mood">😺 Playful</span>
+            </div>
+            <div class="companion-level">Level 12 Familiar</div>
+            <div class="companion-xp">
+              <div class="xp-bar">
+                <div class="xp-bar__fill" style="--xp: 68%"></div>
+              </div>
+              <div class="xp-labels">
+                <span>XP 680 / 1000</span>
+                <span>68%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Right Panel ── -->
+    <aside class="right-panel">
+
+      <!-- About -->
+      <section class="right-section">
+        <div class="section-header">
+          <span class="section-title">About</span>
+          <button class="section-action" id="editBioBtn">Edit</button>
+        </div>
+        <div class="about-content">
+          <p class="about-text" id="aboutText">
+            digital dreamer &amp; fashion obsessive living between reality and pixels.
+            i collect rare items, break hearts in style, and spend too much time
+            perfecting outfits that no one will ever see in full. if you're looking
+            for someone who takes virtual fashion seriously — you found her.
+            i've been on neclis since the beta days and never looked back.
+          </p>
+          <button class="read-more-btn" id="readMoreBtn">Read more ▾</button>
+        </div>
+      </section>
+
+      <!-- Divider -->
+      <div class="right-divider">
+        <div class="right-divider__line"></div>
+        <span class="right-divider__gem">✦</span>
+        <div class="right-divider__line"></div>
+      </div>
+
+      <!-- Guestbook -->
+      <section class="right-section right-section--guestbook">
+        <div class="section-header">
+          <span class="section-title">Guestbook</span>
+          <span class="section-count" id="gbCountBadge">3</span>
+        </div>
+
+        <div class="guestbook-feed" id="guestbookFeed">
+          <div class="gb-message">
+            <div class="gb-message__avatar">
+              <div class="gb-avatar-inner gb-avatar--1"></div>
+            </div>
+            <div class="gb-message__body">
+              <div class="gb-message__header">
+                <span class="gb-message__name">Lunara</span>
+                <span class="gb-message__time">2h ago</span>
+              </div>
+              <p class="gb-message__text">omg your midnight muse outfit is absolutely iconic, you always set the trends 💜✨</p>
+              <div class="gb-message__footer">
+                <button class="gb-react-btn gb-react-btn--liked" data-liked="true" data-count="12">♥ 12</button>
+                <button class="gb-react-btn" data-liked="false" data-count="3">🔥 3</button>
+                <button class="gb-reply-btn">Reply</button>
+              </div>
+            </div>
+          </div>
+          <div class="gb-message">
+            <div class="gb-message__avatar">
+              <div class="gb-avatar-inner gb-avatar--2"></div>
+            </div>
+            <div class="gb-message__body">
+              <div class="gb-message__header">
+                <span class="gb-message__name">Zephyrine</span>
+                <span class="gb-message__time">5h ago</span>
+              </div>
+              <p class="gb-message__text">the crystal crown with those neon heels?? unreal combination. drop a lookbook 🌙</p>
+              <div class="gb-message__footer">
+                <button class="gb-react-btn" data-liked="false" data-count="8">♥ 8</button>
+                <button class="gb-react-btn" data-liked="false" data-count="0">🔥 0</button>
+                <button class="gb-reply-btn">Reply</button>
+              </div>
+            </div>
+          </div>
+          <div class="gb-message">
+            <div class="gb-message__avatar">
+              <div class="gb-avatar-inner gb-avatar--3"></div>
+            </div>
+            <div class="gb-message__body">
+              <div class="gb-message__header">
+                <span class="gb-message__name">Morphix</span>
+                <span class="gb-message__time">1d ago</span>
+              </div>
+              <p class="gb-message__text">diamond tier and world builder badge? respect. you're basically neclis royalty at this point 👑</p>
+              <div class="gb-message__footer">
+                <button class="gb-react-btn" data-liked="false" data-count="21">♥ 21</button>
+                <button class="gb-react-btn" data-liked="false" data-count="7">🔥 7</button>
+                <button class="gb-reply-btn">Reply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="post-message-btn" id="postMessageBtn">
+          <span class="post-message-btn__icon">✉</span>
+          Post a Message
+        </button>
+
+        <div class="gb-compose" id="gbCompose">
+          <textarea class="gb-compose__input" placeholder="Leave a kind message…" maxlength="200" id="gbInput"></textarea>
+          <div class="gb-compose__footer">
+            <span class="gb-compose__count" id="gbCounter">0 / 200</span>
+            <div class="gb-compose__actions">
+              <button class="btn btn--ghost btn--sm" id="gbCancel">Cancel</button>
+              <button class="btn btn--primary btn--sm" id="gbSubmit">Post</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+  </div>
+
+  <script src="profile.js"></script>
+</body>
+</html>

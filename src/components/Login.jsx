@@ -1,11 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import styled from "styled-components";
-import {
-  loginWithEmail,
-  register,
-  loginAsGuest,
-  loginWithGoogle,
-} from "../api/auth";
+import { loginWithEmail, register, loginAsGuest } from "../api/auth";
+import supabase from "../lib/supabase";
 
 // ── Styled Components ──
 
@@ -113,6 +109,33 @@ const PrimaryBtn = styled.button`
   }
 `;
 
+const GoogleBtn = styled.button`
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 const Divider = styled.div`
   display: flex;
   align-items: center;
@@ -181,6 +204,16 @@ const ErrorMsg = styled.div`
   text-align: center;
 `;
 
+const SuccessMsg = styled.div`
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+`;
+
 // ── Register Modal ──
 
 const Overlay = styled.div`
@@ -227,12 +260,26 @@ const CloseBtn = styled.button`
   }
 `;
 
+// Google "G" SVG icon
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+  );
+}
+
 // ── Component ──
 
 export default function Login({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [regSuccess, setRegSuccess] = useState(false);
 
   // Login form state
   const [email, setEmail] = useState("");
@@ -269,53 +316,21 @@ export default function Login({ onLogin }) {
     }
   }
 
-  const googleBtnRef = useRef(null);
-  const googleInitRef = useRef(false);
-
-  useEffect(() => {
-    if (googleInitRef.current) return;
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
-
-    function initGoogle() {
-      if (!window.google?.accounts?.id || !googleBtnRef.current) return;
-      googleInitRef.current = true;
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          setLoading(true);
-          setError("");
-          try {
-            const data = await loginWithGoogle(response.credential);
-            onLogin(data.user, data.token);
-          } catch (err) {
-            setError(err.message);
-          } finally {
-            setLoading(false);
-          }
-        },
+  async function handleGoogleLogin() {
+    setError("");
+    setLoading(true);
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
       });
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        type: "standard",
-        theme: "filled_black",
-        size: "large",
-        width: 328,
-        text: "continue_with",
-      });
+      if (oauthError) throw oauthError;
+      // Browser redirects to Google — loading state stays until page unloads
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
     }
-
-    if (window.google?.accounts?.id) {
-      initGoogle();
-    } else {
-      const interval = setInterval(() => {
-        if (window.google?.accounts?.id) {
-          clearInterval(interval);
-          initGoogle();
-        }
-      }, 200);
-      return () => clearInterval(interval);
-    }
-  }, [onLogin]);
+  }
 
   async function handleRegister(e) {
     e.preventDefault();
@@ -323,6 +338,11 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const data = await register(regEmail, regPassword);
+      if (!data.token) {
+        // Email confirmation required — no session returned yet
+        setRegSuccess(true);
+        return;
+      }
       onLogin(data.user, data.token);
     } catch (err) {
       setError(err.message);
@@ -364,7 +384,10 @@ export default function Login({ onLogin }) {
 
         <Divider>or</Divider>
 
-        <div ref={googleBtnRef} style={{ display: "flex", justifyContent: "center" }} />
+        <GoogleBtn type="button" onClick={handleGoogleLogin} disabled={loading}>
+          <GoogleIcon />
+          Continue with Google
+        </GoogleBtn>
 
         <GuestBtn
           type="button"
@@ -377,44 +400,51 @@ export default function Login({ onLogin }) {
 
         <BottomLink>
           Don't have an account?
-          <button type="button" onClick={() => setShowRegister(true)}>
+          <button type="button" onClick={() => { setShowRegister(true); setError(""); }}>
             Register
           </button>
         </BottomLink>
       </Card>
 
       {showRegister && (
-        <Overlay onClick={() => setShowRegister(false)}>
+        <Overlay onClick={() => { setShowRegister(false); setRegSuccess(false); }}>
           <Modal
             onClick={(e) => e.stopPropagation()}
             style={{ position: "relative" }}
           >
-            <CloseBtn onClick={() => setShowRegister(false)}>x</CloseBtn>
+            <CloseBtn onClick={() => { setShowRegister(false); setRegSuccess(false); }}>x</CloseBtn>
             <h2>Create Account</h2>
 
-            {error && <ErrorMsg style={{ marginBottom: 16 }}>{error}</ErrorMsg>}
+            {regSuccess ? (
+              <SuccessMsg>
+                Account created! Check your email to confirm, then log in.
+              </SuccessMsg>
+            ) : (
+              <>
+                {error && <ErrorMsg style={{ marginBottom: 16 }}>{error}</ErrorMsg>}
 
-            <Form onSubmit={handleRegister}>
-              <InputField
-                type="email"
-                placeholder="Email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                required
-              />
-              <InputField
-                type="password"
-                placeholder="Password"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-
-              <PrimaryBtn type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Account"}
-              </PrimaryBtn>
-            </Form>
+                <Form onSubmit={handleRegister}>
+                  <InputField
+                    type="email"
+                    placeholder="Email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    required
+                  />
+                  <InputField
+                    type="password"
+                    placeholder="Password"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                  <PrimaryBtn type="submit" disabled={loading}>
+                    {loading ? "Creating..." : "Create Account"}
+                  </PrimaryBtn>
+                </Form>
+              </>
+            )}
           </Modal>
         </Overlay>
       )}

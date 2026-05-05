@@ -217,6 +217,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         mp.wireTeleport(this, localPlayer, playerManager, {
           onMapSwitch: (scene, mapName) => {
             walkableZones = createMap(scene, mapName);
+            scene.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            scene.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
             createInteractables(
               scene,
               (pos) => setObjectMenu((prev) => (prev ? null : pos)),

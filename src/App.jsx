@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Game from "./components/Game";
 import HUD from "./components/HUD";
 import Login from "./components/Login";
 import CharacterSetup from "./components/CharacterSetup";
-import { updateBio, updateBadge } from "./api/auth";
+import { updateBio, updateBadge, getMe } from "./api/auth";
+import supabase from "./lib/supabase";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -35,6 +36,27 @@ function App() {
     setUser(userData);
     localStorage.setItem("fv_user", JSON.stringify(userData));
   }
+
+  // After Google OAuth redirect, Supabase handles the callback automatically.
+  // If there's a session but no stored user, fetch the profile from the backend.
+  useEffect(() => {
+    if (user) return;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Clean up the hash Supabase leaves in the URL after OAuth redirect
+      if (window.location.hash) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      if (!session) return;
+      try {
+        const data = await getMe(session.access_token);
+        handleLogin(data.user, session.access_token);
+      } catch (err) {
+        console.error("Session restore failed:", err);
+        supabase.auth.signOut();
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEquip = useCallback((item) => {
     equipRef.current?.(item);
@@ -70,6 +92,13 @@ function App() {
     });
   }, []);
 
+  async function handleLogout() {
+    localStorage.removeItem("fv_user");
+    localStorage.removeItem("fv_token");
+    await supabase.auth.signOut();
+    setUser(null);
+  }
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
@@ -81,11 +110,7 @@ function App() {
   return (
     <>
       <HUD
-        onLogout={() => {
-          localStorage.removeItem("fv_user");
-          localStorage.removeItem("fv_token");
-          setUser(null);
-        }}
+        onLogout={handleLogout}
         equipped={equipped}
         onEquip={handleEquip}
         onUnequip={handleUnequip}
