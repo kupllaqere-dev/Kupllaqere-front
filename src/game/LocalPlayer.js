@@ -26,7 +26,7 @@ export function baseTextureKey(gender) {
 }
 
 export function genderScale(gender) {
-  return gender === "male" ? 1.05 : 1.0;
+  return gender === "male" ? 1.05 : 0.65;
 }
 
 export function getBaseSpriteUrl(gender) {
