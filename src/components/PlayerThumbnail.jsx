@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchPlayerAppearance } from "../api/users";
 
 const LAYER_ORDER = [
+  "appearance",
   "bottoms",
   "feet",
   "tops",

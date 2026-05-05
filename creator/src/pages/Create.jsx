@@ -13,11 +13,13 @@ const CATEGORIES = {
   accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
   feet:        ["shoes", "boots", "slipOns", "socks"],
   hands:       ["gloves", "handheld"],
+  appearance:  ["eyes", "eyebrows", "nose", "mouth", "beard"],
 };
 
 const CAT_LABELS = {
   tops: "Tops", bottoms: "Bottoms", coats: "Coats", head: "Head",
   hair: "Hair", accessories: "Accessories", feet: "Feet", hands: "Hands",
+  appearance: "Appearance",
 };
 
 const SUBCAT_LABELS = {
@@ -29,6 +31,7 @@ const SUBCAT_LABELS = {
   bracelets: "Bracelets", belts: "Belts", neckwear: "Neckwear", necklace: "Necklace", bags: "Bags", nails: "Nails",
   shoes: "Shoes", boots: "Boots", slipOns: "Slip-Ons", socks: "Socks",
   gloves: "Gloves", handheld: "Handheld",
+  eyes: "Eyes", eyebrows: "Eyebrows", nose: "Nose", mouth: "Mouth", beard: "Beard",
 };
 
 // ── Extract thumbnail from sprite sheet (y:4616, 510×510 → 256×256) ──────────
@@ -274,7 +277,8 @@ export default function Create() {
       const it = setItems[i];
       if (!it.name.trim()) return setError(`Item ${i + 1}: name is required.`);
       if (!it.category)    return setError(`Item ${i + 1}: select a category.`);
-      if (it.variants.some((v) => !v)) return setError(`Item ${i + 1}: all 5 variants are required.`);
+      const varCount = it.category === "appearance" ? 1 : 5;
+      if (it.variants.slice(0, varCount).some((v) => !v)) return setError(`Item ${i + 1}: all ${varCount} variant${varCount > 1 ? "s are" : " is"} required.`);
     }
 
     const fd = new FormData();
@@ -374,7 +378,7 @@ export default function Create() {
                   : "Select a category"}
               </VariantBoxTitle>
               <VariantGrid>
-                {EMPTY_VARIANTS().map((_, i) => (
+                {Array(singleSel.category === "appearance" ? 1 : 10).fill(null).map((_, i) => (
                   <VariantSlot
                     key={i}
                     variant={singleVariants[i]}
@@ -388,32 +392,35 @@ export default function Create() {
               </VariantGrid>
             </VariantBox>
           ) : (
-            setItems.map((item, slotIdx) => (
-              <VariantBox
-                key={slotIdx}
-                $active={slotIdx === selectedSlot}
-                onClick={() => setSelectedSlot(slotIdx)}
-              >
-                <VariantBoxTitle>
-                  {item.subcategory
-                    ? `${slotIdx + 1}. ${CAT_LABELS[item.category]} - ${SUBCAT_LABELS[item.subcategory] || item.subcategory}`
-                    : `${slotIdx + 1}. No category`}
-                </VariantBoxTitle>
-                <VariantGrid>
-                  {item.variants.map((variant, varIdx) => (
-                    <VariantSlot
-                      key={varIdx}
-                      variant={variant}
-                      required={true}
-                      isActive={!!item.variants[varIdx] && varIdx === item.activeVar}
-                      onUpload={(f) => { setSelectedSlot(slotIdx); handleSetUpload(slotIdx, varIdx, f); }}
-                      onSelect={() => { setSelectedSlot(slotIdx); handleSetActiveVar(slotIdx, varIdx); }}
-                      onDelete={() => handleSetDelete(slotIdx, varIdx)}
-                    />
-                  ))}
-                </VariantGrid>
-              </VariantBox>
-            ))
+            setItems.map((item, slotIdx) => {
+              const varCount = item.category === "appearance" ? 1 : 5;
+              return (
+                <VariantBox
+                  key={slotIdx}
+                  $active={slotIdx === selectedSlot}
+                  onClick={() => setSelectedSlot(slotIdx)}
+                >
+                  <VariantBoxTitle>
+                    {item.subcategory
+                      ? `${slotIdx + 1}. ${CAT_LABELS[item.category]} - ${SUBCAT_LABELS[item.subcategory] || item.subcategory}`
+                      : `${slotIdx + 1}. No category`}
+                  </VariantBoxTitle>
+                  <VariantGrid>
+                    {item.variants.slice(0, varCount).map((variant, varIdx) => (
+                      <VariantSlot
+                        key={varIdx}
+                        variant={variant}
+                        required={true}
+                        isActive={!!item.variants[varIdx] && varIdx === item.activeVar}
+                        onUpload={(f) => { setSelectedSlot(slotIdx); handleSetUpload(slotIdx, varIdx, f); }}
+                        onSelect={() => { setSelectedSlot(slotIdx); handleSetActiveVar(slotIdx, varIdx); }}
+                        onDelete={() => handleSetDelete(slotIdx, varIdx)}
+                      />
+                    ))}
+                  </VariantGrid>
+                </VariantBox>
+              );
+            })
           )}
         </RightPanel>
       </ThreeCols>

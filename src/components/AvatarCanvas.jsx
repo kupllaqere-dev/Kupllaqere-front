@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const LAYER_ORDER = ["bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
+const LAYER_ORDER = ["appearance", "bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
 
 // Sprite sheet: 6 columns × 510px wide, first row = idle poses (sy=0, sh=880)
 const FRAME_W = 510;

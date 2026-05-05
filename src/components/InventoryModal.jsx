@@ -7,6 +7,7 @@ import { fetchInventory, sellItem } from "../api/store";
 const CATEGORY_LABELS = {
   tops: "Tops", bottoms: "Bottoms", onePiece: "One Piece", coats: "Coats",
   head: "Head", hair: "Hair", accessories: "Accessories", feet: "Feet", hands: "Hands",
+  appearance: "Appearance",
 };
 
 const CATEGORY_DECO = {
@@ -14,7 +15,7 @@ const CATEGORY_DECO = {
   onePiece: "/assets/store/onepiece.png", coats: "/assets/store/coats.png",
   head: "/assets/store/head.png", hair: "/assets/store/hair.png",
   accessories: "/assets/store/accessories.png", feet: "/assets/store/feet.png",
-  hands: "/assets/store/hands.png",
+  hands: "/assets/store/hands.png", appearance: "/assets/store/head.png",
 };
 
 const SUBCATEGORY_LABELS = {
@@ -27,6 +28,7 @@ const SUBCATEGORY_LABELS = {
   bracelets: "Bracelets", belts: "Belts", neckwear: "Neckwear", necklace: "Necklace", bags: "Bags", nails: "Nails",
   shoes: "Shoes", boots: "Boots", slipOns: "Slip-Ons", socks: "Socks",
   gloves: "Gloves", handheld: "Handheld",
+  eyes: "Eyes", eyebrows: "Eyebrows", nose: "Nose", mouth: "Mouth", beard: "Beard",
 };
 
 const CATEGORY_SUBCATEGORIES = {
@@ -39,6 +41,7 @@ const CATEGORY_SUBCATEGORIES = {
   accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
   feet: ["shoes", "boots", "slipOns", "socks"],
   hands: ["gloves", "handheld"],
+  appearance: ["eyes", "eyebrows", "nose", "mouth", "beard"],
 };
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);

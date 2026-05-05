@@ -28,6 +28,7 @@ import {
   markThreadRead,
   replyToThread,
 } from "../api/mail";
+import { fetchInventory, sellItem } from "../api/store";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -36,8 +37,50 @@ const FRAME_H = 900;
 const ZOOM_LEVELS = [1, 1.2, 1.4, 1.6, 1.8];
 const POSE_ORDER = [0, 4, 5, 3, 2, 1];
 const POSE_LABELS = ["Front", "Front Right", "Right", "Back", "Left", "Front Left"];
-const LAYER_ORDER = ["bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
+const LAYER_ORDER = ["appearance", "bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
 const BADGES = ["diamond", "flame", "medal", "paint", "verified"];
+
+const INV_CATEGORY_LABELS = {
+  tops: "Tops", bottoms: "Bottoms", onePiece: "One Piece", coats: "Coats",
+  head: "Head", hair: "Hair", accessories: "Accessories", feet: "Feet", hands: "Hands",
+  appearance: "Appearance",
+};
+const INV_SUBCATEGORY_LABELS = {
+  longSleeve: "Long Sleeve", shortSleeve: "Short Sleeve", sleeveless: "Sleeveless", baggy: "Baggy",
+  pants: "Pants", skinny: "Skinny", shorts: "Shorts", skirt: "Skirt",
+  overall: "Overall", dress: "Dress",
+  jackets: "Jackets", vests: "Vests", hoodie: "Hoodie",
+  hats: "Hats", sunglasses: "Sunglasses", decorations: "Decorations", horns: "Horns", halos: "Halos",
+  short: "Short", medium: "Medium", long: "Long", facial: "Facial",
+  bracelets: "Bracelets", belts: "Belts", neckwear: "Neckwear", necklace: "Necklace", bags: "Bags", nails: "Nails",
+  shoes: "Shoes", boots: "Boots", slipOns: "Slip-Ons", socks: "Socks",
+  gloves: "Gloves", handheld: "Handheld",
+  eyes: "Eyes", eyebrows: "Eyebrows", nose: "Nose", mouth: "Mouth", beard: "Beard",
+};
+const INV_CATEGORY_SUBCATEGORIES = {
+  tops: ["longSleeve", "shortSleeve", "sleeveless", "baggy"],
+  bottoms: ["pants", "skinny", "shorts", "skirt"],
+  onePiece: ["overall", "dress"],
+  coats: ["jackets", "vests", "hoodie"],
+  head: ["hats", "sunglasses", "decorations", "horns", "halos"],
+  hair: ["short", "medium", "long", "facial"],
+  accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
+  feet: ["shoes", "boots", "slipOns", "socks"],
+  hands: ["gloves", "handheld"],
+  appearance: ["eyes", "eyebrows", "nose", "mouth", "beard"],
+};
+const INV_CATEGORY_DECO = {
+  tops: "/assets/store/tops.png", bottoms: "/assets/store/bottoms.png",
+  onePiece: "/assets/store/onepiece.png", coats: "/assets/store/coats.png",
+  head: "/assets/store/head.png", hair: "/assets/store/hair.png",
+  accessories: "/assets/store/accessories.png", feet: "/assets/store/feet.png",
+  hands: "/assets/store/hands.png", appearance: "/assets/store/head.png",
+};
+const INV_CATEGORIES = Object.keys(INV_CATEGORY_LABELS);
+function invGetSellPrice(entry) {
+  if (entry.currency === "gems") return (entry.amountPaid || 0) * 1000;
+  return Math.floor((entry.amountPaid || 0) / 2);
+}
 const BADGE_RARITY = { diamond: "legendary", flame: "legendary", medal: "rare", paint: "rare", verified: "common" };
 const BIO_MAX = 150;
 const SHOWCASE_SLOTS = 5;
@@ -88,9 +131,12 @@ export default function PlayerProfile({
   unreadMailCount = 0,
   onUnreadChange = null,
   onOpenAlbum = null,
-  onOpenStats = null,
   onOpenWishlist = null,
   onOpenMarketplace = null,
+  onEquip = null,
+  onUnequip = null,
+  equipped = null,
+  level = 1,
 }) {
   const canvasRef = useRef(null);
   const textareaRef = useRef(null);
@@ -131,6 +177,18 @@ export default function PlayerProfile({
   const [gbSubmitting, setGbSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
+
+  const [invItems, setInvItems] = useState([]);
+  const [invLoading, setInvLoading] = useState(false);
+  const [invLoaded, setInvLoaded] = useState(false);
+  const [invView, setInvView] = useState("categories");
+  const [invCategory, setInvCategory] = useState(null);
+  const [invSubcategory, setInvSubcategory] = useState(null);
+  const [invSelectedEntries, setInvSelectedEntries] = useState({});
+  const [invPreviewOutfit, setInvPreviewOutfit] = useState({});
+  const [invPreviewLayerImages, setInvPreviewLayerImages] = useState([]);
+  const [invSelling, setInvSelling] = useState(null);
+  const [invSellError, setInvSellError] = useState(null);
 
   const [mailTab, setMailTab] = useState("inbox");
   const [mailInbox, setMailInbox] = useState([]);
@@ -274,14 +332,37 @@ export default function PlayerProfile({
     const frameIndex = POSE_ORDER[poseIndex];
     const { sx, sy } = extractFrame(baseImg, frameIndex, cols);
     ctx.drawImage(baseImg, sx, sy, FRAME_W, FRAME_H, 0, 0, canvas.width, canvas.height);
-    for (const { img } of layerImages) {
+    const activeLayers = activeTab === "inventory" ? invPreviewLayerImages : layerImages;
+    for (const { img } of activeLayers) {
       const layerCols = Math.floor(img.width / FRAME_W);
       const { sx: lx, sy: ly } = extractFrame(img, frameIndex, layerCols);
       ctx.drawImage(img, lx, ly, FRAME_W, FRAME_H, 0, 0, canvas.width, canvas.height);
     }
-  }, [baseImg, layerImages, poseIndex]);
+  }, [baseImg, layerImages, invPreviewLayerImages, poseIndex, activeTab]);
 
   useEffect(() => { draw(); }, [draw]);
+
+  useEffect(() => {
+    if (!invPreviewOutfit || Object.keys(invPreviewOutfit).length === 0) {
+      setInvPreviewLayerImages([]); return;
+    }
+    const entries = LAYER_ORDER
+      .filter(cat => invPreviewOutfit[cat]?.imageUrl)
+      .map(cat => ({ category: cat, url: invPreviewOutfit[cat].imageUrl }));
+    let cancelled = false;
+    Promise.all(entries.map(({ category, url }) =>
+      new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = url;
+        img.onload = () => resolve({ category, img });
+        img.onerror = () => resolve(null);
+      })
+    )).then(results => {
+      if (!cancelled) setInvPreviewLayerImages(results.filter(Boolean));
+    });
+    return () => { cancelled = true; };
+  }, [invPreviewOutfit]);
 
   const applyFormat = (marker) => {
     const ta = textareaRef.current;
@@ -388,6 +469,27 @@ export default function PlayerProfile({
     if (activeTab === "friends") loadFriendsData();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (activeTab !== "inventory" || invLoaded) return;
+    setInvLoading(true);
+    fetchInventory()
+      .then(data => {
+        const loadedItems = data.items || [];
+        setInvItems(loadedItems);
+        const initial = {};
+        for (const [cat, itemId] of Object.entries(equipped || {})) {
+          const eStr = itemId?.toString();
+          const entry = loadedItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+          if (entry) initial[cat] = entry;
+        }
+        setInvSelectedEntries(initial);
+        setInvPreviewOutfit(outfit || {});
+        setInvLoaded(true);
+      })
+      .catch(() => {})
+      .finally(() => setInvLoading(false));
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmitComment = async () => {
     if (!gbInput.trim() || gbSubmitting) return;
     setGbSubmitting(true);
@@ -410,6 +512,161 @@ export default function PlayerProfile({
       console.error(err);
     }
   };
+
+  const invGoCategories = () => { setInvView("categories"); setInvCategory(null); setInvSubcategory(null); };
+  const invGoToCategory = cat => { setInvCategory(cat); setInvSubcategory(null); setInvView("items"); };
+  const invGoToSubcategory = (cat, sub) => { setInvCategory(cat); setInvSubcategory(sub); setInvView("items"); };
+  const invGoToRecent = () => { setInvView("recentlyAdded"); setInvCategory(null); setInvSubcategory(null); };
+  const invGoToEquipped = () => { setInvView("equipped"); setInvCategory(null); setInvSubcategory(null); };
+
+  const invIsSelected = entry =>
+    invSelectedEntries[entry.category]?._id?.toString() === entry._id?.toString();
+
+  const invCanUse = entry => {
+    if (entry.currency === "gems") return true;
+    if (!entry.levelRequirement) return true;
+    return (level ?? 1) >= entry.levelRequirement;
+  };
+
+  const invToggleEntry = entry => {
+    const cat = entry.category;
+    if (invIsSelected(entry)) {
+      setInvSelectedEntries(prev => { const n = { ...prev }; delete n[cat]; return n; });
+      setInvPreviewOutfit(prev => {
+        const n = { ...prev };
+        const equippedId = equipped?.[cat];
+        const isCurrentlyEquipped = equippedId && (
+          equippedId.toString() === entry._id?.toString() ||
+          equippedId.toString() === entry.itemId?.toString()
+        );
+        if (!isCurrentlyEquipped && outfit?.[cat]) {
+          // Tried on a non-equipped item then deselected → restore the actually equipped item
+          n[cat] = outfit[cat];
+        } else {
+          // Deselected the currently equipped item → remove it from preview immediately
+          delete n[cat];
+        }
+        return n;
+      });
+    } else {
+      setInvSelectedEntries(prev => ({ ...prev, [cat]: entry }));
+      setInvPreviewOutfit(prev => ({ ...prev, [cat]: { imageUrl: entry.imageUrl } }));
+    }
+  };
+
+  const invHasChanges = (() => {
+    for (const cat of Object.keys(equipped || {})) {
+      if (!invSelectedEntries[cat]) return true;
+    }
+    for (const [cat, entry] of Object.entries(invSelectedEntries)) {
+      const equippedId = equipped?.[cat];
+      if (!equippedId) return true;
+      const eStr = equippedId.toString();
+      if (eStr !== entry._id?.toString() && eStr !== entry.itemId?.toString()) return true;
+    }
+    return false;
+  })();
+
+  const invHandleApply = () => {
+    for (const cat of Object.keys(equipped || {})) {
+      if (!invSelectedEntries[cat]) onUnequip?.(cat);
+    }
+    for (const [cat, entry] of Object.entries(invSelectedEntries)) {
+      if (!invCanUse(entry)) continue;
+      const equippedId = equipped?.[cat];
+      if (equippedId) {
+        const eStr = equippedId.toString();
+        if (eStr === entry._id?.toString() || eStr === entry.itemId?.toString()) continue;
+      }
+      onEquip?.(entry);
+    }
+  };
+
+  const invHandleReset = () => {
+    const initial = {};
+    for (const [cat, itemId] of Object.entries(equipped || {})) {
+      const eStr = itemId?.toString();
+      const entry = invItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+      if (entry) initial[cat] = entry;
+    }
+    setInvSelectedEntries(initial);
+    setInvPreviewOutfit(outfit || {});
+  };
+
+  const invHandleNude = () => {
+    setInvSelectedEntries({});
+    setInvPreviewOutfit({});
+  };
+
+  const invHandleSell = async (entry, e) => {
+    e.stopPropagation();
+    if (invSelling) return;
+    setInvSelling(entry._id);
+    setInvSellError(null);
+    try {
+      await sellItem({ inventoryId: entry._id });
+      setInvItems(prev => prev.filter(i => i._id !== entry._id));
+      if (invIsSelected(entry)) {
+        const cat = entry.category;
+        setInvSelectedEntries(prev => { const n = { ...prev }; delete n[cat]; return n; });
+        setInvPreviewOutfit(prev => {
+          const n = { ...prev };
+          if (outfit?.[cat]) n[cat] = outfit[cat];
+          else delete n[cat];
+          return n;
+        });
+      }
+    } catch (err) {
+      setInvSellError(err.message);
+    } finally {
+      setInvSelling(null);
+    }
+  };
+
+  const invEquippedItems = Object.entries(equipped || {}).map(([, itemId]) => {
+    const eStr = itemId?.toString();
+    return invItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+  }).filter(Boolean);
+
+  const invDisplayItems = (() => {
+    if (invView === "items") {
+      return invItems.filter(e => {
+        if (invCategory && e.category !== invCategory) return false;
+        if (invSubcategory && e.subcategory !== invSubcategory) return false;
+        return true;
+      });
+    }
+    if (invView === "recentlyAdded") {
+      return [...invItems].sort((a, b) => {
+        if (!a.acquiredAt && !b.acquiredAt) return 0;
+        if (!a.acquiredAt) return 1;
+        if (!b.acquiredAt) return -1;
+        return new Date(b.acquiredAt) - new Date(a.acquiredAt);
+      });
+    }
+    if (invView === "equipped") return invEquippedItems;
+    return [];
+  })();
+
+  const invSubCount = (cat, sub) => invItems.filter(e => e.category === cat && e.subcategory === sub).length;
+
+  const isNonCategoryView = invView === "items" || invView === "recentlyAdded" || invView === "equipped";
+  const invCrumbs = [
+    { label: "Inventory", onClick: isNonCategoryView ? invGoCategories : null },
+    { label: "Clothing", onClick: isNonCategoryView ? invGoCategories : null },
+  ];
+  if (invView === "items") {
+    if (invCategory) invCrumbs.push({
+      label: INV_CATEGORY_LABELS[invCategory],
+      onClick: invSubcategory ? () => invGoToCategory(invCategory) : null,
+    });
+    if (invSubcategory) invCrumbs.push({
+      label: INV_SUBCATEGORY_LABELS[invSubcategory] || invSubcategory,
+      onClick: null,
+    });
+  }
+  if (invView === "recentlyAdded") invCrumbs.push({ label: "Recently Added", onClick: null });
+  if (invView === "equipped") invCrumbs.push({ label: "Equipped", onClick: null });
 
   const canComment = !isSelfView && !!currentUserId;
 
@@ -479,9 +736,9 @@ export default function PlayerProfile({
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
-                    <SidebarBtn onClick={() => { onClose(); onOpenStats?.(); }}>
-                      <SidebarIcon>◉</SidebarIcon>
-                      <SidebarLabel>Stats</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")}>
+                      <SidebarIcon $active={activeTab === "inventory"}>⊞</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "inventory"}>Inventory</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
@@ -581,15 +838,23 @@ export default function PlayerProfile({
               <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
             </Controls>
 
-            <StatusCard>
-              <StatusCardTop>
-                <OnlineDot />
-                <OnlineLabel>Online</OnlineLabel>
-                <StatusSep>·</StatusSep>
-                <StatusLoc>Neclis Plaza</StatusLoc>
-              </StatusCardTop>
-              <StatusText>"living in a dream sequence ✨"</StatusText>
-            </StatusCard>
+            {activeTab === "inventory" ? (
+              <InvActionBar>
+                <InvNudeBtn onClick={invHandleNude}>Remove All</InvNudeBtn>
+                <InvResetBtn onClick={invHandleReset}>Reset</InvResetBtn>
+                <InvApplyBtn onClick={invHandleApply} disabled={!invHasChanges}>Apply</InvApplyBtn>
+              </InvActionBar>
+            ) : (
+              <StatusCard>
+                <StatusCardTop>
+                  <OnlineDot />
+                  <OnlineLabel>Online</OnlineLabel>
+                  <StatusSep>·</StatusSep>
+                  <StatusLoc>Neclis Plaza</StatusLoc>
+                </StatusCardTop>
+                <StatusText>"living in a dream sequence ✨"</StatusText>
+              </StatusCard>
+            )}
 
           </AvatarStageCol>
 
@@ -1016,9 +1281,144 @@ export default function PlayerProfile({
             <LookPanelContent />
           )}
 
+          {activeTab === "inventory" && isSelfView && (
+            <HubPanelContainer>
+              <InvItemsArea
+                items={invDisplayItems}
+                loading={invLoading}
+                view={invView}
+                isSelected={invIsSelected}
+                canUse={invCanUse}
+                toggleEntry={invToggleEntry}
+                selling={invSelling}
+                sellError={invSellError}
+                onSell={invHandleSell}
+                goToCategory={invGoToCategory}
+                goToSubcategory={invGoToSubcategory}
+                subCount={invSubCount}
+                goToRecent={invGoToRecent}
+                goToEquipped={invGoToEquipped}
+                recentCount={invItems.length}
+                equippedCount={invEquippedItems.length}
+              />
+              <InvBreadcrumbsBar crumbs={invCrumbs} />
+            </HubPanelContainer>
+          )}
+
         </ProfileWrapper>
       </Overlay>
     </>
+  );
+}
+
+/* ── Inventory panel components ── */
+
+function InvItemsArea({ items, loading, view, isSelected, canUse, toggleEntry, selling, sellError, onSell, goToCategory, goToSubcategory, subCount, goToRecent, goToEquipped, recentCount, equippedCount }) {
+  const isListView = view === "items" || view === "recentlyAdded" || view === "equipped";
+  const emptyMsg = view === "equipped" ? "Nothing equipped." : "No items in this category.";
+
+  return (
+    <InvContentCol>
+      {view === "categories" && (
+        <InvCatScroll>
+          {loading && <InvMsg>Loading…</InvMsg>}
+
+          <InvQuickNavRow>
+            <InvQuickNavBtn onClick={goToRecent}>
+              <InvQuickNavLabel>Recently Added</InvQuickNavLabel>
+              <InvQuickNavRight>
+                <InvQuickNavCount>{recentCount}</InvQuickNavCount>
+                <InvQuickNavArrow>→</InvQuickNavArrow>
+              </InvQuickNavRight>
+            </InvQuickNavBtn>
+            <InvQuickNavBtn onClick={goToEquipped}>
+              <InvQuickNavLabel>Equipped</InvQuickNavLabel>
+              <InvQuickNavRight>
+                <InvQuickNavCount>{equippedCount}</InvQuickNavCount>
+                <InvQuickNavArrow>→</InvQuickNavArrow>
+              </InvQuickNavRight>
+            </InvQuickNavBtn>
+          </InvQuickNavRow>
+
+          <InvCatGrid>
+            {INV_CATEGORIES.map(cat => (
+              <InvCatCard key={cat}>
+                <InvCatDeco src={INV_CATEGORY_DECO[cat]} alt="" />
+                <InvCatCardTop onClick={() => goToCategory(cat)}>
+                  <InvCatLabel>{INV_CATEGORY_LABELS[cat].toUpperCase()}</InvCatLabel>
+                  <InvCatArrow>→</InvCatArrow>
+                </InvCatCardTop>
+                <InvCatSubList>
+                  {INV_CATEGORY_SUBCATEGORIES[cat].map(sub => {
+                    const cnt = subCount(cat, sub);
+                    return (
+                      <InvCatSubItem key={sub} onClick={() => goToSubcategory(cat, sub)}>
+                        {INV_SUBCATEGORY_LABELS[sub] || sub}
+                        {cnt > 0 && <InvSubCount>({cnt})</InvSubCount>}
+                      </InvCatSubItem>
+                    );
+                  })}
+                </InvCatSubList>
+              </InvCatCard>
+            ))}
+          </InvCatGrid>
+        </InvCatScroll>
+      )}
+
+      {isListView && (
+        <InvItemScroll>
+          {sellError && <InvErrTxt>{sellError}</InvErrTxt>}
+          {!loading && items.length === 0 && <InvMsg>{emptyMsg}</InvMsg>}
+          <InvItemList>
+            {items.map(entry => {
+              const selected = isSelected(entry);
+              const usable = canUse(entry);
+              const sp = invGetSellPrice(entry);
+              const isSelling = selling === entry._id;
+              return (
+                <InvItemCard key={entry._id} $expanded={selected} $locked={!usable} onClick={() => toggleEntry(entry)}>
+                  <InvThumbImg src={entry.thumbnailUrl || entry.imageUrl} alt={entry.name} crossOrigin="anonymous" />
+                  <InvMidSection>
+                    <InvItemName>{entry.name}</InvItemName>
+                    {selected && <InvWearingBadge>Wearing</InvWearingBadge>}
+                    {!usable && <InvLockTxt>Level {entry.levelRequirement} required</InvLockTxt>}
+                  </InvMidSection>
+                  <InvPricesArea>
+                    <InvPricePanel>
+                      {!usable && <InvLevelBadge>Level {entry.levelRequirement}</InvLevelBadge>}
+                      <InvBadgeAndPrice>
+                        <InvCoinImg src="/icons/Nectar.png" alt="coins" />
+                        <InvPriceAmt>{sp.toLocaleString()}</InvPriceAmt>
+                      </InvBadgeAndPrice>
+                    </InvPricePanel>
+                    <InvSellPanel onClick={e => onSell(entry, e)} disabled={isSelling}>
+                      {isSelling ? "…" : "SELL"}
+                    </InvSellPanel>
+                  </InvPricesArea>
+                </InvItemCard>
+              );
+            })}
+          </InvItemList>
+          {loading && <InvMsg>Loading…</InvMsg>}
+        </InvItemScroll>
+      )}
+    </InvContentCol>
+  );
+}
+
+function InvBreadcrumbsBar({ crumbs }) {
+  return (
+    <InvBreadcrumbCol>
+      {crumbs.map((c, i) => {
+        const isLast = i === crumbs.length - 1;
+        const clickable = !isLast && !!c.onClick;
+        return (
+          <InvCrumbStep key={i} $active={isLast} $clickable={clickable} onClick={clickable ? c.onClick : undefined}>
+            {c.label}
+          </InvCrumbStep>
+        );
+      })}
+    </InvBreadcrumbCol>
   );
 }
 
@@ -3708,4 +4108,376 @@ const LookSliderValue = styled.div`
   color: rgba(255,255,255,0.3);
   min-width: 28px;
   text-align: right;
+`;
+
+/* ── Inventory action bar (below avatar) ── */
+
+const InvActionBar = styled.div`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  flex-shrink: 0;
+`;
+
+const InvNudeBtn = styled.button`
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(220,38,38,0.35);
+  background: rgba(220,38,38,0.08);
+  color: #ff8a8a;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.13s;
+  &:hover { background: rgba(220,38,38,0.18); border-color: rgba(220,38,38,0.55); }
+`;
+
+const InvResetBtn = styled.button`
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.13s;
+  &:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.22); }
+`;
+
+const InvApplyBtn = styled.button`
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,58,237,0.5);
+  background: rgba(124,58,237,0.22);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.13s;
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.38); border-color: #7c3aed; color: #fff; box-shadow: 0 0 12px rgba(124,58,237,0.3); }
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+`;
+
+/* ── Inventory panel (items area) ── */
+
+const InvContentCol = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(10,6,20,0.97) 0%, rgba(7,4,14,0.94) 100%);
+`;
+
+const InvCatScroll = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const InvCatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+`;
+
+const InvCatCard = styled.div`
+  position: relative;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover { border-color: rgba(124,58,237,0.35); box-shadow: 0 4px 18px rgba(124,58,237,0.12); }
+`;
+
+const InvCatDeco = styled.img`
+  position: absolute;
+  z-index: 1;
+  right: -8px;
+  bottom: 0;
+  height: 78%;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.07;
+  filter: saturate(0);
+  pointer-events: none;
+  transition: transform 0.2s;
+  ${InvCatCard}:hover & { transform: translateX(-4px) scale(1.05); }
+`;
+
+const InvCatCardTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(124,58,237,0.06);
+  transition: background 0.13s;
+  &:hover { background: rgba(124,58,237,0.14); }
+`;
+
+const InvCatLabel = styled.span`font-size: 13px; font-weight: 700; color: #e4d0ff; flex: 1;`;
+const InvCatArrow = styled.span`font-size: 13px; color: rgba(255,255,255,0.25); transition: transform 0.13s; ${InvCatCardTop}:hover & { transform: translateX(2px); }`;
+
+const InvCatSubList = styled.div`padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 1px;`;
+
+const InvCatSubItem = styled.div`
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.35);
+  padding: 4px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  transition: color 0.1s;
+  &:hover { color: #c084fc; font-weight: 600; }
+`;
+
+const InvSubCount = styled.span`font-size: 10px; color: rgba(255,255,255,0.2); font-weight: 500;`;
+
+const InvQuickNavRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+`;
+
+const InvQuickNavBtn = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  &:hover {
+    border-color: rgba(124,58,237,0.35);
+    background: rgba(124,58,237,0.07);
+    box-shadow: 0 4px 18px rgba(124,58,237,0.1);
+  }
+`;
+
+const InvQuickNavLabel = styled.span`
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e4d0ff;
+`;
+
+const InvQuickNavRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const InvQuickNavCount = styled.span`
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  font-weight: 500;
+`;
+
+const InvQuickNavArrow = styled.span`
+  font-size: 13px;
+  color: rgba(255,255,255,0.25);
+  transition: transform 0.13s;
+  ${InvQuickNavBtn}:hover & { transform: translateX(2px); color: #a78bfa; }
+`;
+
+const InvItemScroll = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const InvMsg = styled.div`text-align: center; color: rgba(255,255,255,0.22); padding: 20px 0; font-size: 13px;`;
+const InvErrTxt = styled.div`font-size: 12px; color: #ff7777; padding: 8px 12px;`;
+
+const InvItemList = styled.div`display: flex; flex-direction: column; gap: 6px;`;
+
+const InvItemCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid ${p => p.$expanded ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.07)"};
+  min-height: 84px;
+  cursor: pointer;
+  opacity: ${p => p.$locked ? 0.65 : 1};
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  &:hover { border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.04); box-shadow: 0 2px 10px rgba(124,58,237,0.1); }
+`;
+
+const InvThumbImg = styled.img`flex-shrink: 0; width: 72px; height: 72px; object-fit: contain;`;
+
+const InvMidSection = styled.div`
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 12px;
+  align-self: stretch;
+  gap: 4px;
+`;
+
+const InvItemName = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #e4d0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const InvWearingBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c084fc;
+  background: rgba(124,58,237,0.14);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 4px;
+  padding: 2px 7px;
+  width: fit-content;
+`;
+
+const InvLockTxt = styled.div`font-size: 10px; font-weight: 600; color: #ff7777;`;
+
+const InvPricesArea = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 32%;
+`;
+
+const InvPricePanel = styled.div`
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 18px;
+  width: 50%;
+`;
+
+const InvLevelBadge = styled.div`
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(220,38,38,0.1);
+  color: #ff7777;
+  border: 1px solid rgba(220,38,38,0.28);
+  text-wrap: nowrap;
+`;
+
+const InvBadgeAndPrice = styled.div`display: flex; gap: 5px; align-items: center;`;
+
+const InvCoinImg = styled.img`width: 26px; height: 26px; object-fit: contain;`;
+
+const InvPriceAmt = styled.div`font-size: 12px; font-weight: 700; color: #e8a630;`;
+
+const InvSellPanel = styled.button`
+  width: 50%;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.07);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  font-family: inherit;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.3); color: #c084fc; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
+/* ── Inventory breadcrumbs sidebar ── */
+
+const InvBreadcrumbCol = styled.div`
+  width: 186px;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(255,255,255,0.055);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(160deg, rgba(8,5,16,0.97) 0%, rgba(6,3,14,0.94) 100%);
+  border-radius: 0 14px 14px 0;
+  overflow-y: auto;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+`;
+
+const InvCrumbStep = styled.button`
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: ${p => p.$active ? "#c084fc" : "rgba(255,255,255,0.35)"};
+  background: ${p => p.$active
+    ? "linear-gradient(145deg, rgba(124,58,237,0.2), rgba(157,111,245,0.12))"
+    : "linear-gradient(145deg, rgba(255,255,255,0.04), rgba(124,58,237,0.03))"};
+  border: 1px solid ${p => p.$active ? "rgba(124,58,237,0.42)" : "rgba(255,255,255,0.07)"};
+  box-shadow: ${p => p.$active ? "0 0 18px rgba(124,58,237,0.15), inset 0 1px 0 rgba(255,255,255,0.08)" : "inset 0 1px 0 rgba(255,255,255,0.04)"};
+  cursor: ${p => p.$clickable ? "pointer" : "default"};
+  transition: all 0.18s;
+  word-break: break-word;
+  line-height: 1.3;
+  ${p => p.$clickable && `
+    &:hover {
+      background: linear-gradient(145deg, rgba(124,58,237,0.14), rgba(157,111,245,0.08));
+      border-color: rgba(124,58,237,0.35);
+      color: #e4d0ff;
+      box-shadow: 0 6px 20px rgba(124,58,237,0.18), inset 0 1px 0 rgba(255,255,255,0.1);
+      transform: translateY(-2px);
+    }
+  `}
 `;

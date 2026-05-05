@@ -11,6 +11,7 @@ const CATEGORIES = {
   accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
   feet:        ["shoes", "boots", "slipOns", "socks"],
   hands:       ["gloves", "handheld"],
+  appearance:  ["eyes", "eyebrows", "nose", "mouth", "beard"],
 };
 
 const MAX_VARIANTS = 10;

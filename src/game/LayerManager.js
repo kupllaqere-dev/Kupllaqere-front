@@ -10,6 +10,7 @@ import Phaser from "phaser";
  *   base sprite → feet → bottoms → tops → coats → hands → accessories → hair → head
  */
 const LAYER_ORDER = [
+  "appearance",
   "bottoms",
   "feet",
   "tops",

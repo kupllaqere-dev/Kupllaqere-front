@@ -14,11 +14,13 @@ const CATEGORY_LABELS = {
   accessories: "Accessories",
   feet: "Feet",
   hands: "Hands",
+  appearance: "Appearance",
 };
 
 const CATEGORY_ICONS = {
   tops: "👕", bottoms: "👖", onePiece: "👗", coats: "🧥",
   head: "🎩", hair: "✂️", accessories: "💍", feet: "👟", hands: "🧤",
+  appearance: "👁️",
 };
 
 const CATEGORY_DECO = {
@@ -31,6 +33,7 @@ const CATEGORY_DECO = {
   accessories: "/assets/store/accessories.png",
   feet: "/assets/store/feet.png",
   hands: "/assets/store/hands.png",
+  appearance: "/assets/store/head.png",
 };
 
 const SUBCATEGORY_LABELS = {
@@ -46,6 +49,7 @@ const SUBCATEGORY_LABELS = {
   necklace: "Necklace", bags: "Bags", nails: "Nails",
   shoes: "Shoes", boots: "Boots", slipOns: "Slip-Ons", socks: "Socks",
   gloves: "Gloves", handheld: "Handheld",
+  eyes: "Eyes", eyebrows: "Eyebrows", nose: "Nose", mouth: "Mouth", beard: "Beard",
 };
 
 const CATEGORY_SUBCATEGORIES = {
@@ -58,6 +62,7 @@ const CATEGORY_SUBCATEGORIES = {
   accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
   feet: ["shoes", "boots", "slipOns", "socks"],
   hands: ["gloves", "handheld"],
+  appearance: ["eyes", "eyebrows", "nose", "mouth", "beard"],
 };
 
 const RARITY = {

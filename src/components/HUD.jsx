@@ -114,13 +114,15 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         unreadMailCount={unreadCount}
         onUnreadChange={refreshUnread}
         onOpenMail={openMail}
-        onOpenInventory={() => { setShowProfile(false); setShowInventory(true); }}
         onOpenAppearance={() => { setShowProfile(false); }}
         onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
         onOpenAlbum={() => { setShowProfile(false); }}
-        onOpenStats={() => { setShowProfile(false); }}
         onOpenWishlist={() => { setShowProfile(false); }}
         onOpenMarketplace={() => { setShowProfile(false); setShowStore(true); }}
+        onEquip={onEquip}
+        onUnequip={onUnequip}
+        equipped={equipped}
+        level={level}
       />
     )}
     {searchedUser && (
