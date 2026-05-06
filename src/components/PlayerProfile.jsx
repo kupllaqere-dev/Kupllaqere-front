@@ -28,7 +28,8 @@ import {
   markThreadRead,
   replyToThread,
 } from "../api/mail";
-import { fetchInventory, sellItem } from "../api/store";
+import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../api/store";
+import { fetchProfileView, saveProfileView, clearProfileView } from "../api/users";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -131,7 +132,6 @@ export default function PlayerProfile({
   unreadMailCount = 0,
   onUnreadChange = null,
   onOpenAlbum = null,
-  onOpenWishlist = null,
   onOpenMarketplace = null,
   onEquip = null,
   onUnequip = null,
@@ -148,6 +148,14 @@ export default function PlayerProfile({
 
   const [poseIndex, setPoseIndex] = useState(0);
   const [zoomIndex, setZoomIndex] = useState(0);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [hasLockedView, setHasLockedView] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const panAtDrag = useRef({ x: 0, y: 0 });
   const [baseImg, setBaseImg] = useState(null);
   const [layerImages, setLayerImages] = useState([]);
 
@@ -189,6 +197,10 @@ export default function PlayerProfile({
   const [invPreviewLayerImages, setInvPreviewLayerImages] = useState([]);
   const [invSelling, setInvSelling] = useState(null);
   const [invSellError, setInvSellError] = useState(null);
+
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistLoaded, setWishlistLoaded] = useState(false);
 
   const [mailTab, setMailTab] = useState("inbox");
   const [mailInbox, setMailInbox] = useState([]);
@@ -383,6 +395,71 @@ export default function PlayerProfile({
   const zoomOut = () => setZoomIndex((i) => Math.max(i - 1, 0));
   const zoomIn = () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1));
 
+  // Load the profile owner's saved avatar view (pose, zoom, pan) on mount
+  useEffect(() => {
+    if (!targetUserId) return;
+    fetchProfileView(targetUserId).then((view) => {
+      if (!view) return;
+      setHasLockedView(view.locked ?? false);
+      if (view.locked) {
+        setPoseIndex(view.poseIndex ?? 0);
+        setZoomIndex(view.zoomIndex ?? 0);
+        setPanX(view.panX ?? 0);
+        setPanY(view.panY ?? 0);
+      }
+    }).catch(() => {});
+  }, [targetUserId]);
+
+  // Drag-to-pan: track mouse globally so the drag works even when cursor leaves the viewport
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging.current) return;
+      setPanX(panAtDrag.current.x + (e.clientX - dragStart.current.x));
+      setPanY(panAtDrag.current.y + (e.clientY - dragStart.current.y));
+    };
+    const onUp = () => { isDragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const onViewportMouseDown = (e) => {
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    panAtDrag.current = { x: panX, y: panY };
+    e.preventDefault();
+  };
+
+  const handleSaveView = async () => {
+    if (viewSaving) return;
+    setViewSaving(true);
+    try {
+      await saveProfileView({ poseIndex, zoomIndex, panX, panY });
+      setHasLockedView(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setViewSaving(false);
+    }
+  };
+
+  const handleUnlockView = async () => {
+    if (unlocking) return;
+    setUnlocking(true);
+    try {
+      await clearProfileView();
+      setHasLockedView(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   const visibleBadges = badgesExpanded ? BADGES : BADGES.slice(0, 6);
 
   const loadGbComments = useCallback(async () => {
@@ -489,6 +566,22 @@ export default function PlayerProfile({
       .catch(() => {})
       .finally(() => setInvLoading(false));
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeTab !== "wishlist" || wishlistLoaded) return;
+    setWishlistLoading(true);
+    fetchWishlist()
+      .then(({ items }) => { setWishlistItems(items); setWishlistLoaded(true); })
+      .catch(() => {})
+      .finally(() => setWishlistLoading(false));
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleWishlistRemove = (itemId) => {
+    setWishlistItems(prev => prev.filter(i => i.itemId !== itemId));
+    removeFromWishlist({ itemId }).catch(() => {
+      fetchWishlist().then(({ items }) => setWishlistItems(items)).catch(() => {});
+    });
+  };
 
   const handleSubmitComment = async () => {
     if (!gbInput.trim() || gbSubmitting) return;
@@ -743,9 +836,9 @@ export default function PlayerProfile({
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
-                    <SidebarBtn onClick={() => { onClose(); onOpenWishlist?.(); }}>
-                      <SidebarIcon>☆</SidebarIcon>
-                      <SidebarLabel>Wishlist</SidebarLabel>
+                    <SidebarBtn $active={activeTab === "wishlist"} onClick={() => setActiveTab("wishlist")}>
+                      <SidebarIcon $active={activeTab === "wishlist"}>☆</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "wishlist"}>Wishlist</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
@@ -817,13 +910,16 @@ export default function PlayerProfile({
             <StageContainer>
               <StageHalo />
               <StageHaloOuter />
-              <AvatarViewport>
+              <AvatarViewport
+                onMouseDown={onViewportMouseDown}
+                style={{ cursor: "grab" }}
+              >
                 <AvatarCanvas
                   ref={canvasRef}
                   width={FRAME_W}
                   height={FRAME_H}
                   style={{
-                    transform: `scale(${ZOOM_LEVELS[zoomIndex]})`,
+                    transform: `translate(${panX}px, ${panY}px) scale(${ZOOM_LEVELS[zoomIndex]})`,
                     transformOrigin: "top center",
                   }}
                 />
@@ -837,6 +933,12 @@ export default function PlayerProfile({
               {/* <PoseLabel>{POSE_LABELS[poseIndex]}</PoseLabel> */}
               <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
               <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
+              {isSelfView && hasLockedView && (
+                <ArrowBtn onClick={handleUnlockView} disabled={unlocking} title="Remove locked profile view">🔓</ArrowBtn>
+              )}
+              {isSelfView && (
+                <ArrowBtn onClick={handleSaveView} disabled={viewSaving} title="Lock current view as profile view">🔒</ArrowBtn>
+              )}
             </Controls>
 
             {activeTab === "inventory" ? (
@@ -1282,6 +1384,14 @@ export default function PlayerProfile({
             <LookPanelContent />
           )}
 
+          {activeTab === "wishlist" && isSelfView && (
+            <WishlistPanelContent
+              items={wishlistItems}
+              loading={wishlistLoading}
+              onRemove={handleWishlistRemove}
+            />
+          )}
+
           {activeTab === "inventory" && isSelfView && (
             <HubPanelContainer>
               <InvItemsArea
@@ -1310,6 +1420,52 @@ export default function PlayerProfile({
         </ProfileOuter>
       </Overlay>
     </>
+  );
+}
+
+/* ── Wishlist panel ── */
+
+const STORE_LABELS = { normal: "Normal Store", gem: "Gem Store", seasonal: "Seasonal Store" };
+const WL_RARITY = {
+  nonRare:  { label: "Common",     bg: "rgba(120,90,180,0.1)",  border: "rgba(120,90,180,0.22)", color: "#7c5cbf" },
+  rare:     { label: "Rare",       bg: "rgba(109,40,217,0.1)",  border: "rgba(109,40,217,0.3)",  color: "#7c3aed" },
+  superRare:{ label: "Super Rare", bg: "rgba(217,119,6,0.1)",   border: "rgba(217,119,6,0.3)",   color: "#b45309" },
+};
+
+function WishlistPanelContent({ items, loading, onRemove }) {
+  return (
+    <HubPanelContainer>
+      <WishlistPanelInner>
+        <PanelHeaderRow style={{ padding: "14px 18px" }}>
+          <PanelTitle>☆ Wishlist</PanelTitle>
+        </PanelHeaderRow>
+        <WishlistScrollArea>
+          {loading && <WishlistMsg>Loading…</WishlistMsg>}
+          {!loading && items.length === 0 && <WishlistMsg>Your wishlist is empty.</WishlistMsg>}
+          {!loading && items.map(item => (
+            <WishlistItemCard key={item.wishlistId}>
+              <InvThumbImg
+                src={item.thumbnailUrl || item.imageUrl}
+                alt={item.name}
+                crossOrigin="anonymous"
+              />
+              <InvMidSection>
+                <WishlistNameRow>
+                  <InvItemName>{item.name}</InvItemName>
+                  <WishlistTag>{STORE_LABELS[item.storeType] || item.storeType || "Store"}</WishlistTag>
+                </WishlistNameRow>
+                {item.rarity && WL_RARITY[item.rarity] && (
+                  <WishlistRarityBadge $r={item.rarity}>
+                    {WL_RARITY[item.rarity].label}
+                  </WishlistRarityBadge>
+                )}
+              </InvMidSection>
+              <WishlistRemoveBtn onClick={() => onRemove(item.itemId)} title="Remove">✕</WishlistRemoveBtn>
+            </WishlistItemCard>
+          ))}
+        </WishlistScrollArea>
+      </WishlistPanelInner>
+    </HubPanelContainer>
   );
 }
 
@@ -2295,6 +2451,7 @@ const ArrowBtn = styled.button`
   &:active:not(:disabled) { transform: scale(0.9); }
   &:disabled { opacity: 0.25; cursor: not-allowed; }
 `;
+
 
 const PoseLabel = styled.span`
   font-size: 8.5px;
@@ -4046,6 +4203,87 @@ const FriendInviteActions = styled.div`
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+`;
+
+/* ── Wishlist Panel ── */
+
+const WishlistPanelInner = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  border-radius: 0 22px 22px 0;
+  overflow: hidden;
+`;
+
+const WishlistScrollArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  ${thinScrollbar}
+`;
+
+const WishlistMsg = styled.div`
+  text-align: center;
+  padding: 40px 0;
+  font-size: 13px;
+  color: ${C.txt3};
+`;
+
+const WishlistItemCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border-radius: 14px;
+  background: linear-gradient(to top, #ddd0f8, #f8f3ff);
+  border: 1px solid ${C.border};
+  min-height: 88px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover { border-color: ${C.border2}; box-shadow: 0 2px 10px rgba(120,60,220,0.1); }
+`;
+
+const WishlistNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const WishlistRarityBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 2px 7px; border-radius: 4px;
+  width: fit-content;
+  background: ${p => WL_RARITY[p.$r]?.bg};
+  border: 1px solid ${p => WL_RARITY[p.$r]?.border};
+  color: ${p => WL_RARITY[p.$r]?.color};
+`;
+
+const WishlistTag = styled.div`
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  color: ${C.accent};
+  background: rgba(124,58,237,0.08);
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 4px;
+  padding: 2px 7px;
+`;
+
+const WishlistRemoveBtn = styled.button`
+  background: none; border: none; cursor: pointer; flex-shrink: 0;
+  font-size: 13px; color: ${C.txt3};
+  padding: 4px 8px; border-radius: 6px; margin-right: 4px;
+  transition: color .13s, background .13s;
+  &:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
 `;
 
 /* ── Look Panel ── */

@@ -34,6 +34,31 @@ export async function sellItem({ inventoryId }) {
   return res.json();
 }
 
+export async function fetchWishlist() {
+  const res = await fetch(`${API}/api/store/wishlist`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch wishlist");
+  return res.json(); // { items }
+}
+
+export async function addToWishlist({ itemId }) {
+  const res = await fetch(`${API}/api/store/wishlist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ itemId }),
+  });
+  if (!res.ok) throw new Error("Failed to add to wishlist");
+  return res.json();
+}
+
+export async function removeFromWishlist({ itemId }) {
+  const res = await fetch(`${API}/api/store/wishlist/${itemId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to remove from wishlist");
+  return res.json();
+}
+
 // items: [{ id, currency: "coins"|"gems" }]
 export async function purchaseItems({ items }) {
   const res = await fetch(`${API}/api/store/purchase`, {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import styled, { css, keyframes } from "styled-components";
 import AvatarCanvas from "./AvatarCanvas";
 import { POSE_COUNT } from "../constants/poses";
-import { fetchStoreItems, purchaseItems } from "../api/store";
+import { fetchStoreItems, purchaseItems, fetchWishlist, addToWishlist, removeFromWishlist } from "../api/store";
 
 const CATEGORY_LABELS = {
   tops: "Tops",
@@ -91,6 +91,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const [purchaseError, setPurchaseError] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [pose, setPose] = useState(0);
+  const [wishlistedIds, setWishlistedIds] = useState(new Set());
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
   const maxPose = (POSE_COUNT[gender] ?? 5) - 1;
@@ -141,6 +142,27 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
   const previewItem = item => {
     setPreviewOutfit(prev => ({ ...prev, [item.category]: { imageUrl: item.imageUrl } }));
+  };
+
+  useEffect(() => {
+    fetchWishlist()
+      .then(({ items }) => setWishlistedIds(new Set(items.map(i => i.itemId))))
+      .catch(() => {});
+  }, []);
+
+  const toggleWishlist = async (itemId, e) => {
+    e.stopPropagation();
+    if (wishlistedIds.has(itemId)) {
+      setWishlistedIds(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+      removeFromWishlist({ itemId }).catch(() =>
+        setWishlistedIds(prev => new Set(prev).add(itemId))
+      );
+    } else {
+      setWishlistedIds(prev => new Set(prev).add(itemId));
+      addToWishlist({ itemId }).catch(() =>
+        setWishlistedIds(prev => { const next = new Set(prev); next.delete(itemId); return next; })
+      );
+    }
   };
 
   const addToCart = item => {
@@ -386,33 +408,42 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                           </ExpandedArea>
                         )}
 
-                        {expanded && (coinPrice !== null || gemPrice !== null) && (
+                        {expanded && (
                           <AddButtonsBar>
-                            <ButtonsGroup>
-                              {coinPrice !== null && (
-                                <AddVariantBtn
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "coins" });
-                                  }}
-                                >
-                                  <CoinImg src="/icons/Nectar.png" alt="coins" />
-                                  <span>ADD</span>
-                                </AddVariantBtn>
-                              )}
-                              {gemPrice !== null && (
-                                <AddVariantBtn
-                                  $gem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "gems" });
-                                  }}
-                                >
-                                  <GemImg src="/icons/Lis.png" alt="gems" />
-                                  <span>ADD</span>
-                                </AddVariantBtn>
-                              )}
-                            </ButtonsGroup>
+                            <WishlistVariantBtn
+                              $active={wishlistedIds.has(selVariant._id)}
+                              onClick={(e) => toggleWishlist(selVariant._id, e)}
+                            >
+                              <span>{wishlistedIds.has(selVariant._id) ? "★" : "☆"}</span>
+                              <span>WISHLIST</span>
+                            </WishlistVariantBtn>
+                            {(coinPrice !== null || gemPrice !== null) && (
+                              <ButtonsGroup>
+                                {coinPrice !== null && (
+                                  <AddVariantBtn
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "coins" });
+                                    }}
+                                  >
+                                    <CoinImg src="/icons/Nectar.png" alt="coins" />
+                                    <span>ADD</span>
+                                  </AddVariantBtn>
+                                )}
+                                {gemPrice !== null && (
+                                  <AddVariantBtn
+                                    $gem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToCart({ ...selVariant, coinPrice, gemPrice, chosenCurrency: "gems" });
+                                    }}
+                                  >
+                                    <GemImg src="/icons/Lis.png" alt="gems" />
+                                    <span>ADD</span>
+                                  </AddVariantBtn>
+                                )}
+                              </ButtonsGroup>
+                            )}
                           </AddButtonsBar>
                         )}
                       </ItemGroup>
@@ -893,7 +924,6 @@ const LevelBadge = styled.div`
 /* ── expanded area ── */
 const ExpandedArea = styled.div`
   border:1px solid ${C.border};border-top:none;
-  border-radius:0 0 0 14px;
   background:linear-gradient(to top,#e8dcff,#f8f3ff);
   /* padding:10px 12px 12px; */
   display:flex;flex-direction:column;gap:10px;
@@ -955,7 +985,7 @@ const ExpandVOverlay = styled.div`
 `;
 
 const AddButtonsBar = styled.div`
-  display:flex;justify-content:flex-end;
+  display:flex;justify-content:space-between;
   width:100%;
   `;
   
@@ -978,6 +1008,19 @@ const AddVariantBtn = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
+`;
+
+const WishlistVariantBtn = styled.button`
+  padding:7px 24px;border-radius:0 0 10px 10px;
+  font-size:12px;font-weight:700;cursor:pointer;
+  background:${p => p.$active ? "linear-gradient(to top,#e6d9ff,#f5f0ff)" : "linear-gradient(to top,#ede5ff,#ffffff)"};
+  color:${p => p.$active ? C.accent : C.txt3};
+  border:1px solid ${C.border};
+  border-right:none;
+  transition:border-color .13s,background .13s,color .13s;
+  &:hover{border-color:${C.border2};background:${C.card};color:${C.accent};}
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  /* flex:1; */
 `;
 
 /* ─── avatar panel ─── */

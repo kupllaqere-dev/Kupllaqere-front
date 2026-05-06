@@ -117,7 +117,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onOpenAppearance={() => { setShowProfile(false); }}
         onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
         onOpenAlbum={() => { setShowProfile(false); }}
-        onOpenWishlist={() => { setShowProfile(false); }}
         onOpenMarketplace={() => { setShowProfile(false); setShowStore(true); }}
         onEquip={onEquip}
         onUnequip={onUnequip}

@@ -15,3 +15,30 @@ export async function fetchPlayerAppearance(name) {
   appearanceCache.set(name, promise);
   return promise;
 }
+
+export async function fetchProfileView(userId) {
+  if (!userId) return null;
+  const res = await fetch(`${API}/api/users/${encodeURIComponent(userId)}/profile-view`);
+  return res.ok ? res.json() : null;
+}
+
+export async function saveProfileView({ poseIndex, zoomIndex, panX, panY }) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/auth/profile-view`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ poseIndex, zoomIndex, panX, panY }),
+  });
+  if (!res.ok) throw new Error("Failed to save profile view");
+  return res.json();
+}
+
+export async function clearProfileView() {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/auth/profile-view`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to unlock profile view");
+  return res.json();
+}
