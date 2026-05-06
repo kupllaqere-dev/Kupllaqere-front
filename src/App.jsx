@@ -26,10 +26,15 @@ function App() {
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
 
-  function handleLogin(userData, token) {
+  function handleLogin(userData, token, refreshToken) {
     setUser(userData);
     localStorage.setItem("fv_user", JSON.stringify(userData));
     if (token) localStorage.setItem("fv_token", token);
+    if (token && refreshToken) {
+      // Give the Supabase client a session so it auto-refreshes like OAuth users do.
+      // onAuthStateChange above will keep fv_token updated on every refresh.
+      supabase.auth.setSession({ access_token: token, refresh_token: refreshToken });
+    }
   }
 
   function handleSetupComplete(userData) {

@@ -295,7 +295,7 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const data = await loginWithEmail(email, password);
-      onLogin(data.user, data.token);
+      onLogin(data.user, data.token, data.refreshToken);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -308,7 +308,7 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const data = await loginAsGuest();
-      onLogin(data.user, data.token);
+      onLogin(data.user, data.token, data.refreshToken);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -343,7 +343,7 @@ export default function Login({ onLogin }) {
         setRegSuccess(true);
         return;
       }
-      onLogin(data.user, data.token);
+      onLogin(data.user, data.token, data.refreshToken);
     } catch (err) {
       setError(err.message);
     } finally {
