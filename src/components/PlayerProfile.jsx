@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import styled, { keyframes, css } from "styled-components";
 import {
   fetchSoulMateState,
@@ -22,14 +23,15 @@ import {
   deleteGuestBookComment,
 } from "../api/guestbook";
 import {
-  fetchInbox,
-  fetchSent,
+  fetchConversations,
   fetchThread,
   markThreadRead,
   replyToThread,
+  sendMail,
 } from "../api/mail";
+import { lookupUser, updatePresence } from "../api/auth";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../api/store";
-import { fetchProfileView, saveProfileView, clearProfileView } from "../api/users";
+import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus } from "../api/users";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -86,6 +88,13 @@ const BADGE_RARITY = { diamond: "legendary", flame: "legendary", medal: "rare", 
 const BIO_MAX = 150;
 const SHOWCASE_SLOTS = 5;
 const COMMENT_MAX = 100;
+
+const PRESENCE_LABELS = {
+  online:    "Online",
+  away:      "Away",
+  offline:   "Offline",
+  invisible: "Invisible",
+};
 
 function extractFrame(img, frameIndex, cols) {
   const col = frameIndex % cols;
@@ -151,6 +160,7 @@ export default function PlayerProfile({
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [hasLockedView, setHasLockedView] = useState(false);
+  const [viewLoaded, setViewLoaded] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const isDragging = useRef(false);
@@ -202,9 +212,7 @@ export default function PlayerProfile({
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
 
-  const [mailTab, setMailTab] = useState("inbox");
-  const [mailInbox, setMailInbox] = useState([]);
-  const [mailSent, setMailSent] = useState([]);
+  const [mailConversations, setMailConversations] = useState([]);
   const [mailLoading, setMailLoading] = useState(false);
   const [mailListsLoaded, setMailListsLoaded] = useState(false);
   const [mailThread, setMailThread] = useState(null);
@@ -218,7 +226,66 @@ export default function PlayerProfile({
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendsSearch, setFriendsSearch] = useState("");
 
+  const [userStatus, setUserStatus] = useState(null); // { status, manualStatus }
+  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
+  const [statusChanging, setStatusChanging] = useState(false);
+  const statusPickerRef = useRef(null);
+  const statusDropdownRef = useRef(null);
+
   useEffect(() => { setBioDraft(bio); }, [bio]);
+
+  // Fetch presence status for the viewed player
+  useEffect(() => {
+    if (!targetUserId) return;
+    fetchUserStatus(targetUserId).then(setUserStatus).catch(() => {});
+  }, [targetUserId]);
+
+  // Live status updates via socket
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const onFriendStatus = (payload) => {
+      if (String(payload.userId) === String(targetUserId)) {
+        setUserStatus((prev) => ({ ...prev, status: payload.status }));
+      }
+    };
+    const onUserStatus = (payload) => {
+      if (isSelfView) {
+        setUserStatus((prev) => ({ ...prev, ...payload }));
+      }
+    };
+    socket.socket.on("friend:status", onFriendStatus);
+    socket.socket.on("user:status",   onUserStatus);
+    return () => {
+      socket.socket.off("friend:status", onFriendStatus);
+      socket.socket.off("user:status",   onUserStatus);
+    };
+  }, [socket, targetUserId, isSelfView]);
+
+  // Close status picker on outside click — must check both the anchor and the portal node
+  useEffect(() => {
+    if (!statusPickerOpen) return;
+    const handler = (e) => {
+      const inAnchor   = statusPickerRef.current?.contains(e.target);
+      const inDropdown = statusDropdownRef.current?.contains(e.target);
+      if (!inAnchor && !inDropdown) setStatusPickerOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [statusPickerOpen]);
+
+  const handleChangeStatus = async (newManualStatus) => {
+    if (statusChanging) return;
+    setStatusChanging(true);
+    setStatusPickerOpen(false);
+    try {
+      const result = await updatePresence(newManualStatus);
+      setUserStatus(result);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    } finally {
+      setStatusChanging(false);
+    }
+  };
 
   const loadSm = useCallback(async () => {
     if (!currentUserId) { setSmState(null); return; }
@@ -399,15 +466,17 @@ export default function PlayerProfile({
   useEffect(() => {
     if (!targetUserId) return;
     fetchProfileView(targetUserId).then((view) => {
-      if (!view) return;
-      setHasLockedView(view.locked ?? false);
-      if (view.locked) {
-        setPoseIndex(view.poseIndex ?? 0);
-        setZoomIndex(view.zoomIndex ?? 0);
-        setPanX(view.panX ?? 0);
-        setPanY(view.panY ?? 0);
+      if (view) {
+        setHasLockedView(view.locked ?? false);
+        if (view.locked) {
+          setPoseIndex(view.poseIndex ?? 0);
+          setZoomIndex(view.zoomIndex ?? 0);
+          setPanX(view.panX ?? 0);
+          setPanY(view.panY ?? 0);
+        }
       }
-    }).catch(() => {});
+      setViewLoaded(true);
+    }).catch(() => { setViewLoaded(true); });
   }, [targetUserId]);
 
   // Drag-to-pan: track mouse globally so the drag works even when cursor leaves the viewport
@@ -481,9 +550,7 @@ export default function PlayerProfile({
     if (!isSelfView) return;
     setMailLoading(true);
     try {
-      const [inboxData, sentData] = await Promise.all([fetchInbox(), fetchSent()]);
-      setMailInbox(inboxData);
-      setMailSent(sentData);
+      setMailConversations(await fetchConversations());
     } catch { /* ignore */ }
     finally { setMailLoading(false); setMailListsLoaded(true); }
   }, [isSelfView]);
@@ -495,14 +562,13 @@ export default function PlayerProfile({
 
   const openMailThread = useCallback(async (threadId) => {
     setMailThreadLoading(true);
+    setMailThread(null);
     try {
       const data = await fetchThread(threadId);
       setMailThread(data);
       setMailReplyBody("");
       setMailReplyError(null);
-      // Zero out this thread's unread count locally — no full list reload
-      setMailInbox(prev => prev.map(t => t.threadId === threadId ? { ...t, unreadCount: 0 } : t));
-      setMailSent(prev => prev.map(t => t.threadId === threadId ? { ...t, unreadCount: 0 } : t));
+      setMailConversations(prev => prev.map(c => c.threadId === threadId ? { ...c, unreadCount: 0 } : c));
       markThreadRead(threadId).then(() => onUnreadChange?.()).catch(() => {});
     } catch { /* ignore */ }
     finally { setMailThreadLoading(false); }
@@ -518,16 +584,34 @@ export default function PlayerProfile({
       setMailReplyBody("");
       const updated = await fetchThread(mailThread.threadId);
       setMailThread(updated);
-      // Update the preview in the thread list without reloading everything
       const newLast = { isFromMe: true, body: bodyText, createdAt: new Date().toISOString() };
-      setMailInbox(prev => prev.map(t => t.threadId === mailThread.threadId ? { ...t, lastMessage: newLast } : t));
-      setMailSent(prev => prev.map(t => t.threadId === mailThread.threadId ? { ...t, lastMessage: newLast } : t));
+      setMailConversations(prev => prev.map(c => c.threadId === mailThread.threadId ? { ...c, lastMessage: newLast } : c));
     } catch (err) {
       setMailReplyError(err.message || "Failed to send.");
     } finally {
       setMailReplySending(false);
     }
   }, [mailReplyBody, mailReplySending, mailThread]);
+
+  const handleNewMailSend = useCallback(async (targetId, body) => {
+    await sendMail(targetId, "Direct Message", body);
+    const data = await fetchConversations();
+    setMailConversations(data);
+    setMailListsLoaded(true);
+    const created = data.find((c) => c.otherParticipant.id === targetId);
+    if (created) {
+      setMailThreadLoading(true);
+      setMailThread(null);
+      try {
+        const threadData = await fetchThread(created.threadId);
+        setMailThread(threadData);
+        setMailReplyBody("");
+        setMailReplyError(null);
+        markThreadRead(created.threadId).then(() => onUnreadChange?.()).catch(() => {});
+      } catch { /* ignore */ }
+      finally { setMailThreadLoading(false); }
+    }
+  }, [onUnreadChange]);
 
   const loadFriendsData = useCallback(async () => {
     if (!isSelfView) return;
@@ -801,11 +885,11 @@ export default function PlayerProfile({
                       <SidebarIcon $active={activeTab === "mail"}>✉</SidebarIcon>
                       <SidebarLabel $active={activeTab === "mail"}>Mail</SidebarLabel>
                       {(mailListsLoaded
-                        ? mailInbox.reduce((s, t) => s + (t.unreadCount || 0), 0)
+                        ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
                         : unreadMailCount) > 0 && (
                         <SidebarNotifDot>
                           {mailListsLoaded
-                            ? mailInbox.reduce((s, t) => s + (t.unreadCount || 0), 0)
+                            ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
                             : unreadMailCount}
                         </SidebarNotifDot>
                       )}
@@ -921,6 +1005,7 @@ export default function PlayerProfile({
                   style={{
                     transform: `translate(${panX}px, ${panY}px) scale(${ZOOM_LEVELS[zoomIndex]})`,
                     transformOrigin: "top center",
+                    visibility: viewLoaded ? "visible" : "hidden",
                   }}
                 />
               </AvatarViewport>
@@ -950,12 +1035,57 @@ export default function PlayerProfile({
             ) : (
               <StatusCard>
                 <StatusCardTop>
-                  <OnlineDot />
-                  <OnlineLabel>Online</OnlineLabel>
+                  {isSelfView ? (
+                    <StatusPickerWrap ref={statusPickerRef}>
+                      <StatusClickTarget
+                        onClick={() => {
+                          if (statusChanging) return;
+                          setStatusPickerOpen((p) => !p);
+                        }}
+                        style={{ visibility: userStatus ? "visible" : "hidden" }}
+                      >
+                        <PresenceDot $status={userStatus?.manualStatus || "online"} />
+                        <PresenceLabel $status={userStatus?.manualStatus || "online"}>
+                          {PRESENCE_LABELS[userStatus?.manualStatus || "online"]}
+                        </PresenceLabel>
+                      </StatusClickTarget>
+                      {statusPickerOpen && statusPickerRef.current && createPortal(
+                        (() => {
+                          const r = statusPickerRef.current.getBoundingClientRect();
+                          return (
+                            <StatusDropdown ref={statusDropdownRef} style={{ position: "fixed", left: r.left, bottom: window.innerHeight - r.top + 6, top: "auto" }}>
+                              {[
+                                { key: "online",    dot: "online",  label: "Online"    },
+                                { key: "away",      dot: "away",    label: "Away"      },
+                                { key: "invisible", dot: "offline", label: "Invisible" },
+                              ].map(({ key, dot, label }) => (
+                                <StatusOption
+                                  key={key}
+                                  $active={userStatus?.manualStatus === key}
+                                  onClick={() => handleChangeStatus(key)}
+                                >
+                                  <OptionDot $status={dot} />
+                                  {label}
+                                </StatusOption>
+                              ))}
+                            </StatusDropdown>
+                          );
+                        })(),
+                        document.body
+                      )}
+                    </StatusPickerWrap>
+                  ) : (
+                    <span style={{ visibility: userStatus ? "visible" : "hidden" }}>
+                      <PresenceDot $status={userStatus?.status || "offline"} />
+                      <PresenceLabel $status={userStatus?.status || "offline"}>
+                        {PRESENCE_LABELS[userStatus?.status || "offline"]}
+                      </PresenceLabel>
+                    </span>
+                  )}
                   <StatusSep>·</StatusSep>
                   <StatusLoc>Neclis Plaza</StatusLoc>
                 </StatusCardTop>
-                <StatusText>"living in a dream sequence ✨"</StatusText>
+                <StatusText>"{bio || "No status set"}"</StatusText>
               </StatusCard>
             )}
 
@@ -1348,10 +1478,7 @@ export default function PlayerProfile({
 
           {activeTab === "mail" && isSelfView && (
             <MailPanelContent
-              mailTab={mailTab}
-              setMailTab={setMailTab}
-              mailInbox={mailInbox}
-              mailSent={mailSent}
+              mailConversations={mailConversations}
               mailLoading={mailLoading}
               mailThread={mailThread}
               mailThreadLoading={mailThreadLoading}
@@ -1361,8 +1488,8 @@ export default function PlayerProfile({
               mailReplyError={mailReplyError}
               openMailThread={openMailThread}
               handleMailReply={handleMailReply}
-              onBack={() => setMailThread(null)}
-              setComposing={setComposing}
+              onNewSend={handleNewMailSend}
+              onClearThread={() => setMailThread(null)}
             />
           )}
 
@@ -1682,85 +1809,168 @@ function renderSoulMate({ smState, isSelfView, targetUserId, currentUserId, smBu
 /* ── Mail Panel ── */
 
 function MailPanelContent({
-  mailTab, setMailTab, mailInbox, mailSent, mailLoading,
+  mailConversations, mailLoading,
   mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
   mailReplySending, mailReplyError, openMailThread, handleMailReply,
-  onBack, setComposing,
+  onNewSend, onClearThread,
 }) {
   const messagesEndRef = useRef(null);
+  const [isNew, setIsNew] = useState(false);
+  const [newToInput, setNewToInput] = useState("");
+  const [newResolved, setNewResolved] = useState(null);
+  const [lookupStatus, setLookupStatus] = useState(null);
+  const [newBody, setNewBody] = useState("");
+  const [newSending, setNewSending] = useState(false);
+  const [newError, setNewError] = useState(null);
 
   useEffect(() => {
     if (mailThread) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mailThread?.messages?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const currentList = mailTab === "inbox" ? mailInbox : mailSent;
-  const inboxUnread = mailInbox.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+  const totalUnread = mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+  const activeThreadId = isNew ? null : mailThread?.threadId;
+
+  function startNew() {
+    setIsNew(true);
+    onClearThread();
+    setNewToInput("");
+    setNewResolved(null);
+    setLookupStatus(null);
+    setNewBody("");
+    setNewError(null);
+  }
+
+  async function handleLookup() {
+    const name = newToInput.trim();
+    if (!name) return;
+    setLookupStatus("searching");
+    setNewResolved(null);
+    setNewError(null);
+    try {
+      const user = await lookupUser(name);
+      if (!user) { setLookupStatus("notfound"); return; }
+      const existing = mailConversations.find((c) => c.otherParticipant.id === user.id);
+      if (existing) { setIsNew(false); openMailThread(existing.threadId); return; }
+      setNewResolved({ id: user.id, name: user.name });
+      setLookupStatus("found");
+    } catch {
+      setLookupStatus("error");
+    }
+  }
+
+  async function handleNewSend() {
+    if (!newBody.trim() || newSending || !newResolved) return;
+    setNewSending(true);
+    setNewError(null);
+    try {
+      await onNewSend(newResolved.id, newBody.trim());
+      setIsNew(false);
+    } catch (err) {
+      setNewError(err.message || "Failed to send.");
+    } finally {
+      setNewSending(false);
+    }
+  }
 
   return (
     <HubPanelContainer>
+      {/* ── Left: conversation list ── */}
       <MailListCol>
         <PanelHeaderRow>
-          <PanelTitle>✉ Mail</PanelTitle>
-          <NewMailBtn onClick={() => setComposing(true)}>+ New</NewMailBtn>
+          <PanelTitle>
+            Messages
+            {totalUnread > 0 && <TabUnreadBadge>{totalUnread > 99 ? "99+" : totalUnread}</TabUnreadBadge>}
+          </PanelTitle>
+          <NewMailBtn onClick={startNew}>+ New</NewMailBtn>
         </PanelHeaderRow>
-        <PanelTabs>
-          <PanelTab $active={mailTab === "inbox"} onClick={() => setMailTab("inbox")}>
-            Inbox
-            {inboxUnread > 0 && <TabUnreadBadge>{inboxUnread > 99 ? "99+" : inboxUnread}</TabUnreadBadge>}
-          </PanelTab>
-          <PanelTab $active={mailTab === "sent"} onClick={() => setMailTab("sent")}>Sent</PanelTab>
-        </PanelTabs>
         <MailThreadList>
           {mailLoading ? (
             <PanelEmpty>Loading…</PanelEmpty>
-          ) : currentList.length === 0 ? (
-            <PanelEmpty>{mailTab === "inbox" ? "Your inbox is empty." : "No sent mail."}</PanelEmpty>
+          ) : mailConversations.length === 0 ? (
+            <PanelEmpty>No conversations yet.</PanelEmpty>
           ) : (
-            currentList.map((t) => (
+            mailConversations.map((c) => (
               <MailThreadRow
-                key={t.threadId}
-                $unread={t.unreadCount > 0}
-                $active={mailThread?.threadId === t.threadId}
-                onClick={() => openMailThread(t.threadId)}
+                key={c.threadId}
+                $unread={c.unreadCount > 0}
+                $active={activeThreadId === c.threadId}
+                onClick={() => { setIsNew(false); openMailThread(c.threadId); }}
               >
                 <MailThreadThumb>
-                  <PlayerThumbnail playerName={t.otherParticipant.name} size={38} />
-                  {t.unreadCount > 0 && <MailUnreadDot />}
+                  <PlayerThumbnail playerName={c.otherParticipant.name} size={38} />
+                  {c.unreadCount > 0 && <MailUnreadDot />}
                 </MailThreadThumb>
                 <MailThreadMeta>
                   <MailThreadMetaTop>
-                    <MailThreadName $unread={t.unreadCount > 0}>{t.otherParticipant.name}</MailThreadName>
-                    <MailThreadTime>{formatRelativeTime(t.lastMessage.createdAt)}</MailThreadTime>
+                    <MailThreadName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</MailThreadName>
+                    <MailThreadTime>{formatRelativeTime(c.lastMessage.createdAt)}</MailThreadTime>
                   </MailThreadMetaTop>
-                  <MailThreadSubject $unread={t.unreadCount > 0}>{t.subject}</MailThreadSubject>
                   <MailThreadPreview>
-                    {t.lastMessage.isFromMe ? "You: " : ""}{t.lastMessage.body}
+                    {c.lastMessage.isFromMe ? "You: " : ""}{c.lastMessage.body}
                   </MailThreadPreview>
                 </MailThreadMeta>
-                {t.unreadCount > 0 && <MailUnreadBadge>{t.unreadCount}</MailUnreadBadge>}
+                {c.unreadCount > 0 && <MailUnreadBadge>{c.unreadCount}</MailUnreadBadge>}
               </MailThreadRow>
             ))
           )}
         </MailThreadList>
       </MailListCol>
 
+      {/* ── Right: thread or new conversation ── */}
       <MailDetailCol>
-        {!mailThread ? (
-          <MailPlaceholder>
-            <MailPlaceholderIcon>✉</MailPlaceholderIcon>
-            <MailPlaceholderText>Select a conversation to read</MailPlaceholderText>
-          </MailPlaceholder>
+        {isNew ? (
+          <MailNewPanel>
+            <MailNewTitle>New Conversation</MailNewTitle>
+            <MailToRow>
+              <MailToLabel>To</MailToLabel>
+              <MailToInput
+                value={newToInput}
+                onChange={(e) => { setNewToInput(e.target.value); setLookupStatus(null); setNewResolved(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
+                placeholder="Player username…"
+                disabled={newSending}
+                autoFocus
+              />
+              <MailFindBtn onClick={handleLookup} disabled={!newToInput.trim() || lookupStatus === "searching"}>
+                {lookupStatus === "searching" ? "…" : "Find"}
+              </MailFindBtn>
+            </MailToRow>
+            {lookupStatus === "found" && <MailLookupHint $ok>Found: {newResolved.name}</MailLookupHint>}
+            {lookupStatus === "notfound" && <MailLookupHint>No player with that name.</MailLookupHint>}
+            {lookupStatus === "error" && <MailLookupHint>Lookup failed. Try again.</MailLookupHint>}
+            {newResolved && (
+              <>
+                <MailNewTextarea
+                  value={newBody}
+                  onChange={(e) => setNewBody(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleNewSend(); }}
+                  maxLength={2000}
+                  placeholder={`Message ${newResolved.name}… (Ctrl+Enter to send)`}
+                  disabled={newSending}
+                  autoFocus
+                />
+                {newError && <MailReplyError>{newError}</MailReplyError>}
+                <MailReplyFooter>
+                  <MailReplyCounter>{newBody.length}/2000</MailReplyCounter>
+                  <PrimaryBtn onClick={handleNewSend} disabled={!newBody.trim() || newSending}>
+                    {newSending ? "Sending…" : "Send"}
+                  </PrimaryBtn>
+                </MailReplyFooter>
+              </>
+            )}
+          </MailNewPanel>
         ) : mailThreadLoading ? (
           <MailPlaceholder><MailPlaceholderText>Loading…</MailPlaceholderText></MailPlaceholder>
+        ) : !mailThread ? (
+          <MailPlaceholder>
+            <MailPlaceholderIcon>✉</MailPlaceholderIcon>
+            <MailPlaceholderText>Select a conversation or start a new one.</MailPlaceholderText>
+          </MailPlaceholder>
         ) : (
           <>
             <MailDetailHeader>
-              <MailBackBtn onClick={onBack}>← Back</MailBackBtn>
-              <MailDetailSubject>{mailThread.subject}</MailDetailSubject>
-              <MailDetailWith>
-                <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={26} />
-                <span>{mailThread.otherParticipant.name}</span>
-              </MailDetailWith>
+              <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={28} />
+              <MailDetailWith>{mailThread.otherParticipant.name}</MailDetailWith>
             </MailDetailHeader>
             <MailMessageList>
               {mailThread.messages.map((msg) => (
@@ -1793,7 +2003,7 @@ function MailPanelContent({
               <MailReplyFooter>
                 <MailReplyCounter>{mailReplyBody.length}/2000</MailReplyCounter>
                 <PrimaryBtn onClick={handleMailReply} disabled={!mailReplyBody.trim() || mailReplySending}>
-                  {mailReplySending ? "Sending…" : "Send Reply"}
+                  {mailReplySending ? "Sending…" : "Send"}
                 </PrimaryBtn>
               </MailReplyFooter>
             </MailReplyBox>
@@ -2356,14 +2566,18 @@ const AvatarPlatform = styled.div`
 `;
 
 const StatusCard = styled.div`
-  width: 100%;
+  width: calc(100% + 28px);
+  margin: 0 -14px;
   height: 58px;
   box-sizing: border-box;
   flex-shrink: 0;
   background: rgba(124,58,237,0.04);
-  border: 1px solid ${C.border};
-  border-radius: 10px;
-  padding: 9px 13px;
+  border-left: none;
+  border-right: none;
+  border-top: 1px solid ${C.border};
+  border-bottom: 1px solid ${C.border};
+  border-radius: 0;
+  padding: 9px 27px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2407,6 +2621,85 @@ const StatusText = styled.div`
   color: ${C.txt2};
   font-style: italic;
   line-height: 1.4;
+`;
+
+const PRESENCE_DOT_COLORS = {
+  online:    { bg: "#22c55e", shadow: "#22c55e" },
+  away:      { bg: "#f59e0b", shadow: "#f59e0b" },
+  offline:   { bg: "#6b7280", shadow: "transparent" },
+  invisible: { bg: "#6b7280", shadow: "transparent" },
+};
+
+const PresenceDot = styled.span`
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
+  box-shadow: 0 0 7px ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).shadow};
+  animation: ${({ $status }) => ($status === "offline" || $status === "invisible") ? "none" : "pipBlink 2.4s ease-in-out infinite"};
+`;
+
+const PRESENCE_LABEL_COLORS = { online: "#16a34a", away: "#d97706", offline: "#9ca3af", invisible: "#9ca3af" };
+
+const PresenceLabel = styled.span`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: ${({ $status }) => PRESENCE_LABEL_COLORS[$status] || PRESENCE_LABEL_COLORS.offline};
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+`;
+
+const StatusPickerWrap = styled.div`
+  position: relative;
+`;
+
+const StatusClickTarget = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.15s;
+  &:hover { background: rgba(124,58,237,0.08); }
+`;
+
+const StatusDropdown = styled.div`
+  background: ${C.surface};
+  border: 1px solid ${C.border2};
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 9999;
+  min-width: 120px;
+  box-shadow: 0 -4px 16px rgba(80,40,160,0.14);
+`;
+
+const StatusOption = styled.button`
+  background: ${({ $active }) => $active ? "rgba(124,58,237,0.10)" : "none"};
+  border: none;
+  border-radius: 6px;
+  color: ${C.txt};
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: ${({ $active }) => $active ? "700" : "500"};
+  cursor: pointer;
+  padding: 6px 8px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  &:hover { background: rgba(124,58,237,0.08); }
+`;
+
+const OptionDot = styled.span`
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
 `;
 
 const Controls = styled.div`
@@ -3833,7 +4126,7 @@ const MailThreadList = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: 8px 0;
   gap: 3px;
   ${thinScrollbar}
 `;
@@ -3844,7 +4137,7 @@ const MailThreadRow = styled.div`
   gap: 10px;
   background: ${p => p.$active ? "rgba(124,58,237,0.12)" : p.$unread ? C.card : C.surface};
   border: 1px solid ${p => p.$active ? C.border2 : C.border};
-  border-radius: 10px;
+  /* border-radius: 10px; */
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.15s;
@@ -3980,13 +4273,14 @@ const MailDetailSubject = styled.div`
 `;
 
 const MailDetailWith = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: ${C.txt3};
-  flex-shrink: 0;
-  padding-right: 42px;
+  font-size: 15px;
+  font-weight: 600;
+  color: ${C.txt};
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const MailMessageList = styled.div`
@@ -4070,6 +4364,98 @@ const MailReplyFooter = styled.div`
 const MailReplyCounter = styled.div`font-size: 11px; color: ${C.txt3};`;
 
 const MailReplyError = styled.div`font-size: 11px; color: #dc2626;`;
+
+const MailNewPanel = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 22px 20px;
+  gap: 14px;
+  overflow-y: auto;
+  ${thinScrollbar}
+`;
+
+const MailNewTitle = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: ${C.txt};
+  flex-shrink: 0;
+`;
+
+const MailToRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+`;
+
+const MailToLabel = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  color: ${C.txt3};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  width: 20px;
+`;
+
+const MailToInput = styled.input`
+  flex: 1;
+  background: ${C.surface};
+  border: 1px solid ${C.border};
+  border-radius: 8px;
+  color: ${C.txt};
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  &:focus { border-color: ${C.border2}; background: ${C.card}; }
+  &::placeholder { color: ${C.txt3}; }
+  &:disabled { opacity: 0.5; }
+`;
+
+const MailFindBtn = styled.button`
+  background: rgba(124,58,237,0.1);
+  border: 1px solid ${C.border2};
+  color: ${C.accent};
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+  height: 35px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); }
+`;
+
+const MailLookupHint = styled.div`
+  font-size: 12px;
+  color: ${({ $ok }) => ($ok ? "#16a34a" : "#dc2626")};
+  flex-shrink: 0;
+`;
+
+const MailNewTextarea = styled.textarea`
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+  background: ${C.surface};
+  border: 1px solid ${C.border};
+  border-radius: 10px;
+  color: ${C.txt};
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: ${C.accent};
+  &:focus { border-color: ${C.border2}; background: ${C.card}; }
+  &::placeholder { color: ${C.txt3}; }
+  &:disabled { opacity: 0.5; }
+`;
 
 /* ── Friends panel ── */
 

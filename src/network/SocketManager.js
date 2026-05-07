@@ -138,6 +138,16 @@ export default class SocketManager {
     this.socket.on("friends:refresh", callback);
   }
 
+  // { userId, status } — a friend's effective status changed (online/away/offline)
+  onFriendStatus(callback) {
+    this.socket.on("friend:status", callback);
+  }
+
+  // { status, manualStatus } — this user's own status changed (e.g. from another tab)
+  onUserStatus(callback) {
+    this.socket.on("user:status", callback);
+  }
+
   onSoulMateRefresh(callback) {
     this.socket.on("soulmate:refresh", callback);
   }

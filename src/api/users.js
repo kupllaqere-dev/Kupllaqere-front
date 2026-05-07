@@ -16,6 +16,15 @@ export async function fetchPlayerAppearance(name) {
   return promise;
 }
 
+export async function fetchUserStatus(userId) {
+  if (!userId) return { status: "offline", manualStatus: "online" };
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return res.ok ? res.json() : { status: "offline", manualStatus: "online" };
+}
+
 export async function fetchProfileView(userId) {
   if (!userId) return null;
   const res = await fetch(`${API}/api/users/${encodeURIComponent(userId)}/profile-view`);

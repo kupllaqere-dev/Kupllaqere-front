@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { fetchInbox, fetchSent, fetchThread, markThreadRead, replyToThread } from "../api/mail";
+import { fetchConversations, fetchThread, markThreadRead, replyToThread, sendMail } from "../api/mail";
+import { lookupUser } from "../api/auth";
 import PlayerThumbnail from "./PlayerThumbnail";
 
 function formatTime(dateStr) {
@@ -19,60 +20,66 @@ function formatTime(dateStr) {
 const REPLY_MAX = 2000;
 
 export default function MailModal({ onClose, onUnreadChange }) {
-  const [tab, setTab] = useState("inbox");
-  const [inbox, setInbox] = useState([]);
-  const [sent, setSent] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [thread, setThread] = useState(null); // null = list view, object = thread detail
+  const [activeThreadId, setActiveThreadId] = useState(null);
+  const [thread, setThread] = useState(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [replyBody, setReplyBody] = useState("");
   const [replySending, setReplySending] = useState(false);
   const [replyError, setReplyError] = useState(null);
+  const [isNew, setIsNew] = useState(false);
+  const [newToInput, setNewToInput] = useState("");
+  const [newResolved, setNewResolved] = useState(null);
+  const [lookupStatus, setLookupStatus] = useState(null);
+  const [newBody, setNewBody] = useState("");
+  const [newSending, setNewSending] = useState(false);
+  const [newError, setNewError] = useState(null);
   const messagesEndRef = useRef(null);
 
-  const loadLists = useCallback(async () => {
+  async function loadConversations() {
     setLoading(true);
     try {
-      const [inboxData, sentData] = await Promise.all([fetchInbox(), fetchSent()]);
-      setInbox(inboxData);
-      setSent(sentData);
+      setConversations(await fetchConversations());
     } catch {
       // silently ignore
     } finally {
       setLoading(false);
     }
-  }, []);
+  }
 
-  useEffect(() => { loadLists(); }, [loadLists]);
+  async function refreshConversations() {
+    try {
+      setConversations(await fetchConversations());
+    } catch {
+      // silently ignore
+    }
+  }
 
-  // Scroll to bottom when thread messages load or a reply is sent
+  useEffect(() => { loadConversations(); }, []);
+
   useEffect(() => {
     if (thread) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages?.length]);
 
   async function openThread(threadId) {
+    setIsNew(false);
+    setActiveThreadId(threadId);
     setThreadLoading(true);
+    setThread(null);
     try {
       const data = await fetchThread(threadId);
       setThread(data);
       setReplyBody("");
       setReplyError(null);
-      // Mark all unread as read
       await markThreadRead(threadId).catch(() => {});
       onUnreadChange?.();
-      // Refresh lists so unread counts update
-      loadLists();
+      refreshConversations();
     } catch {
       // silently ignore
     } finally {
       setThreadLoading(false);
     }
-  }
-
-  function backToList() {
-    setThread(null);
-    setReplyBody("");
-    setReplyError(null);
   }
 
   async function handleReply() {
@@ -82,10 +89,9 @@ export default function MailModal({ onClose, onUnreadChange }) {
     try {
       await replyToThread(thread.threadId, replyBody.trim());
       setReplyBody("");
-      // Reload thread to show new message
       const updated = await fetchThread(thread.threadId);
       setThread(updated);
-      loadLists();
+      refreshConversations();
     } catch (err) {
       setReplyError(err.message || "Failed to send.");
     } finally {
@@ -93,8 +99,56 @@ export default function MailModal({ onClose, onUnreadChange }) {
     }
   }
 
-  const inboxUnread = inbox.reduce((sum, t) => sum + t.unreadCount, 0);
-  const currentList = tab === "inbox" ? inbox : sent;
+  function startNew() {
+    setIsNew(true);
+    setThread(null);
+    setActiveThreadId(null);
+    setNewToInput("");
+    setNewResolved(null);
+    setLookupStatus(null);
+    setNewBody("");
+    setNewError(null);
+  }
+
+  async function handleLookup() {
+    const name = newToInput.trim();
+    if (!name) return;
+    setLookupStatus("searching");
+    setNewResolved(null);
+    setNewError(null);
+    try {
+      const user = await lookupUser(name);
+      if (!user) { setLookupStatus("notfound"); return; }
+      const existing = conversations.find((c) => c.otherParticipant.id === user.id);
+      if (existing) {
+        openThread(existing.threadId);
+        return;
+      }
+      setNewResolved({ id: user.id, name: user.name });
+      setLookupStatus("found");
+    } catch {
+      setLookupStatus("error");
+    }
+  }
+
+  async function handleNewSend() {
+    if (!newBody.trim() || newSending || !newResolved) return;
+    setNewSending(true);
+    setNewError(null);
+    try {
+      await sendMail(newResolved.id, "Direct Message", newBody.trim());
+      const updated = await fetchConversations();
+      setConversations(updated);
+      const created = updated.find((c) => c.otherParticipant.id === newResolved.id);
+      if (created) openThread(created.threadId);
+    } catch (err) {
+      setNewError(err.message || "Failed to send.");
+    } finally {
+      setNewSending(false);
+    }
+  }
+
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <Overlay onClick={onClose}>
@@ -102,123 +156,154 @@ export default function MailModal({ onClose, onUnreadChange }) {
         <Inner>
           <CloseBtn onClick={onClose}>&times;</CloseBtn>
 
-          {thread ? (
-            /* ── Thread detail view ── */
-            <>
-              <ThreadHeader>
-                <BackBtn onClick={backToList}>← Back</BackBtn>
-                <ThreadSubject>{thread.subject}</ThreadSubject>
-                <ThreadWith>
-                  <PlayerThumbnail playerName={thread.otherParticipant.name} size={28} />
-                  <span>{thread.otherParticipant.name}</span>
-                </ThreadWith>
-              </ThreadHeader>
+          {/* ── Left sidebar ── */}
+          <Sidebar>
+            <SidebarHeader>
+              <SidebarTitle>
+                Messages
+                {totalUnread > 0 && <TitleBadge>{totalUnread > 99 ? "99+" : totalUnread}</TitleBadge>}
+              </SidebarTitle>
+              <NewBtn onClick={startNew}>+ New</NewBtn>
+            </SidebarHeader>
 
-              {threadLoading ? (
-                <EmptyState>Loading…</EmptyState>
-              ) : (
+            {loading ? (
+              <SidebarEmpty>Loading…</SidebarEmpty>
+            ) : conversations.length === 0 ? (
+              <SidebarEmpty>No conversations yet.</SidebarEmpty>
+            ) : (
+              <ConvList>
+                {conversations.map((c) => (
+                  <ConvRow
+                    key={c.threadId}
+                    $active={activeThreadId === c.threadId}
+                    $unread={c.unreadCount > 0}
+                    onClick={() => openThread(c.threadId)}
+                  >
+                    <ThumbWrap>
+                      <PlayerThumbnail playerName={c.otherParticipant.name} size={38} />
+                      {c.unreadCount > 0 && <UnreadDot />}
+                    </ThumbWrap>
+                    <ConvMeta>
+                      <ConvTop>
+                        <ConvName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</ConvName>
+                        <ConvTime>{formatTime(c.lastMessage.createdAt)}</ConvTime>
+                      </ConvTop>
+                      <ConvPreview>
+                        {c.lastMessage.isFromMe ? "You: " : ""}{c.lastMessage.body}
+                      </ConvPreview>
+                    </ConvMeta>
+                    {c.unreadCount > 0 && <UnreadBadge>{c.unreadCount}</UnreadBadge>}
+                  </ConvRow>
+                ))}
+              </ConvList>
+            )}
+          </Sidebar>
+
+          {/* ── Right content ── */}
+          <Content>
+            {isNew ? (
+              <NewPanel>
+                <NewPanelTitle>New Conversation</NewPanelTitle>
+                <ToRow>
+                  <ToLabel>To</ToLabel>
+                  <ToInput
+                    value={newToInput}
+                    onChange={(e) => {
+                      setNewToInput(e.target.value);
+                      setLookupStatus(null);
+                      setNewResolved(null);
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
+                    placeholder="Player username…"
+                    disabled={newSending}
+                    autoFocus
+                  />
+                  <FindBtn
+                    onClick={handleLookup}
+                    disabled={!newToInput.trim() || lookupStatus === "searching"}
+                  >
+                    {lookupStatus === "searching" ? "…" : "Find"}
+                  </FindBtn>
+                </ToRow>
+                {lookupStatus === "found" && <LookupHint $ok>Found: {newResolved.name}</LookupHint>}
+                {lookupStatus === "notfound" && <LookupHint>No player with that name.</LookupHint>}
+                {lookupStatus === "error" && <LookupHint>Lookup failed. Try again.</LookupHint>}
+
+                {newResolved && (
+                  <>
+                    <NewBodyTextarea
+                      value={newBody}
+                      onChange={(e) => setNewBody(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleNewSend();
+                      }}
+                      maxLength={REPLY_MAX}
+                      placeholder={`Message ${newResolved.name}… (Ctrl+Enter to send)`}
+                      disabled={newSending}
+                      autoFocus
+                    />
+                    {newError && <ReplyError>{newError}</ReplyError>}
+                    <ReplyFooter>
+                      <ReplyCounter>{newBody.length}/{REPLY_MAX}</ReplyCounter>
+                      <SendBtn onClick={handleNewSend} disabled={!newBody.trim() || newSending}>
+                        {newSending ? "Sending…" : "Send"}
+                      </SendBtn>
+                    </ReplyFooter>
+                  </>
+                )}
+              </NewPanel>
+            ) : threadLoading ? (
+              <EmptyState>Loading…</EmptyState>
+            ) : thread ? (
+              <>
+                <ThreadHeader>
+                  <PlayerThumbnail playerName={thread.otherParticipant.name} size={30} />
+                  <ThreadName>{thread.otherParticipant.name}</ThreadName>
+                </ThreadHeader>
+
                 <MessageList>
                   {thread.messages.map((msg) => (
                     <MessageRow key={msg.id} $mine={msg.isFromMe}>
                       {!msg.isFromMe && (
-                        <MsgThumb>
-                          <PlayerThumbnail playerName={msg.fromName} size={34} />
-                        </MsgThumb>
+                        <MsgThumb><PlayerThumbnail playerName={msg.fromName} size={34} /></MsgThumb>
                       )}
                       <MessageBubble $mine={msg.isFromMe}>
                         <BubbleBody>{msg.body}</BubbleBody>
                         <BubbleTime>{formatTime(msg.createdAt)}</BubbleTime>
                       </MessageBubble>
                       {msg.isFromMe && (
-                        <MsgThumb>
-                          <PlayerThumbnail playerName={msg.fromName} size={34} />
-                        </MsgThumb>
+                        <MsgThumb><PlayerThumbnail playerName={msg.fromName} size={34} /></MsgThumb>
                       )}
                     </MessageRow>
                   ))}
                   <div ref={messagesEndRef} />
                 </MessageList>
-              )}
 
-              <ReplyBox>
-                <ReplyTextarea
-                  value={replyBody}
-                  onChange={(e) => setReplyBody(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleReply();
-                  }}
-                  maxLength={REPLY_MAX}
-                  placeholder="Write a reply… (Ctrl+Enter to send)"
-                  disabled={replySending}
-                  rows={3}
-                />
-                {replyError && <ReplyError>{replyError}</ReplyError>}
-                <ReplyFooter>
-                  <ReplyCounter>{replyBody.length}/{REPLY_MAX}</ReplyCounter>
-                  <ReplySendBtn
-                    onClick={handleReply}
-                    disabled={!replyBody.trim() || replySending}
-                  >
-                    {replySending ? "Sending…" : "Send Reply"}
-                  </ReplySendBtn>
-                </ReplyFooter>
-              </ReplyBox>
-            </>
-          ) : (
-            /* ── Thread list view ── */
-            <>
-              <ListHeader>
-                <ModalTitle>Mailbox</ModalTitle>
-                <Tabs>
-                  <Tab $active={tab === "inbox"} onClick={() => setTab("inbox")}>
-                    Inbox
-                    {inboxUnread > 0 && <TabBadge>{inboxUnread > 99 ? "99+" : inboxUnread}</TabBadge>}
-                  </Tab>
-                  <Tab $active={tab === "sent"} onClick={() => setTab("sent")}>
-                    Sent
-                  </Tab>
-                </Tabs>
-              </ListHeader>
-
-              {loading ? (
-                <EmptyState>Loading…</EmptyState>
-              ) : currentList.length === 0 ? (
-                <EmptyState>{tab === "inbox" ? "Your inbox is empty." : "No sent mail."}</EmptyState>
-              ) : (
-                <ThreadList>
-                  {currentList.map((t) => (
-                    <ThreadRow
-                      key={t.threadId}
-                      $unread={t.unreadCount > 0}
-                      onClick={() => openThread(t.threadId)}
-                    >
-                      <ThumbWrap>
-                        <PlayerThumbnail playerName={t.otherParticipant.name} size={42} />
-                        {t.unreadCount > 0 && <UnreadDot />}
-                      </ThumbWrap>
-                      <ThreadMeta>
-                        <ThreadMetaTop>
-                          <ThreadParticipant $unread={t.unreadCount > 0}>
-                            {t.otherParticipant.name}
-                          </ThreadParticipant>
-                          <ThreadTime>{formatTime(t.lastMessage.createdAt)}</ThreadTime>
-                        </ThreadMetaTop>
-                        <ThreadSubjectLine $unread={t.unreadCount > 0}>
-                          {t.subject}
-                        </ThreadSubjectLine>
-                        <ThreadPreview>
-                          {t.lastMessage.isFromMe ? "You: " : ""}{t.lastMessage.body}
-                        </ThreadPreview>
-                      </ThreadMeta>
-                      {t.unreadCount > 0 && (
-                        <UnreadBadge>{t.unreadCount}</UnreadBadge>
-                      )}
-                    </ThreadRow>
-                  ))}
-                </ThreadList>
-              )}
-            </>
-          )}
+                <ReplyBox>
+                  <ReplyTextarea
+                    value={replyBody}
+                    onChange={(e) => setReplyBody(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleReply();
+                    }}
+                    maxLength={REPLY_MAX}
+                    placeholder="Write a reply… (Ctrl+Enter to send)"
+                    disabled={replySending}
+                    rows={3}
+                  />
+                  {replyError && <ReplyError>{replyError}</ReplyError>}
+                  <ReplyFooter>
+                    <ReplyCounter>{replyBody.length}/{REPLY_MAX}</ReplyCounter>
+                    <SendBtn onClick={handleReply} disabled={!replyBody.trim() || replySending}>
+                      {replySending ? "Sending…" : "Send"}
+                    </SendBtn>
+                  </ReplyFooter>
+                </ReplyBox>
+              </>
+            ) : (
+              <EmptyState>Select a conversation or start a new one.</EmptyState>
+            )}
+          </Content>
         </Inner>
       </Modal>
     </Overlay>
@@ -253,13 +338,11 @@ const Inner = styled.div`
   position: absolute;
   top: 5.5%; right: 2.5%; bottom: 5%; left: 2.5%;
   background: #49494d;
-  padding: 28px;
   box-sizing: border-box;
   overflow: hidden;
   z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  flex-direction: row;
 `;
 
 const CloseBtn = styled.button`
@@ -271,112 +354,114 @@ const CloseBtn = styled.button`
   &:hover { color: #fff; }
 `;
 
-/* ── List view ── */
+/* ── Sidebar ── */
 
-const ListHeader = styled.div`
+const Sidebar = styled.div`
+  width: 260px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const SidebarHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 18px 16px 12px;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 `;
 
-const ModalTitle = styled.h2`
-  margin: 0;
-  font-size: 22px;
+const SidebarTitle = styled.div`
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
-`;
-
-const Tabs = styled.div`
   display: flex;
-  gap: 4px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 10px;
-  padding: 4px;
+  align-items: center;
+  gap: 8px;
 `;
 
-const Tab = styled.button`
-  position: relative;
-  background: ${(p) => (p.$active ? "rgba(124,58,237,0.5)" : "transparent")};
-  border: ${(p) => (p.$active ? "1px solid rgba(124,58,237,0.6)" : "1px solid transparent")};
-  color: ${(p) => (p.$active ? "#fff" : "#888")};
-  font-size: 13px; font-weight: 600;
-  padding: 6px 18px;
-  border-radius: 7px; cursor: pointer;
-  display: flex; align-items: center; gap: 6px;
-  transition: all 0.15s;
-  &:hover { color: #fff; }
-`;
-
-const TabBadge = styled.span`
+const TitleBadge = styled.span`
   background: #e03131; color: #fff;
   font-size: 10px; font-weight: 700;
-  min-width: 16px; height: 16px;
-  border-radius: 8px;
+  min-width: 18px; height: 18px;
+  border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
   padding: 0 4px;
 `;
 
-const ThreadList = styled.div`
-  flex: 1; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 4px;
-  padding-right: 4px;
-  &::-webkit-scrollbar { width: 6px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #ffffff22; border-radius: 3px; }
+const NewBtn = styled.button`
+  background: rgba(124,58,237,0.35);
+  border: 1px solid rgba(124,58,237,0.6);
+  color: #c084fc;
+  font-size: 12px; font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 7px; cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: rgba(124,58,237,0.6); color: #fff; }
 `;
 
-const ThreadRow = styled.div`
-  display: flex; align-items: center; gap: 12px;
-  background: ${(p) => (p.$unread ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)")};
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px; padding: 12px 14px;
-  cursor: pointer; transition: all 0.15s;
-  &:hover { background: rgba(124,58,237,0.1); border-color: rgba(124,58,237,0.3); }
+const SidebarEmpty = styled.div`
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #555;
+`;
+
+const ConvList = styled.div`
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #ffffff18; border-radius: 2px; }
+`;
+
+const ConvRow = styled.div`
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: ${(p) => p.$active ? "rgba(124,58,237,0.2)" : "transparent"};
+  border-left: 2px solid ${(p) => p.$active ? "rgba(124,58,237,0.8)" : "transparent"};
+  transition: all 0.12s;
+  &:hover { background: ${(p) => p.$active ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)"}; }
 `;
 
 const ThumbWrap = styled.div`
   position: relative; flex-shrink: 0;
-  width: 42px; height: 42px;
+  width: 38px; height: 38px;
 `;
 
 const UnreadDot = styled.div`
   position: absolute; top: -2px; right: -2px;
-  width: 10px; height: 10px;
+  width: 9px; height: 9px;
   background: #e03131; border-radius: 50%;
   border: 2px solid #49494d;
 `;
 
-const ThreadMeta = styled.div`
+const ConvMeta = styled.div`
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; gap: 2px;
 `;
 
-const ThreadMetaTop = styled.div`
-  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+const ConvTop = styled.div`
+  display: flex; align-items: baseline; justify-content: space-between; gap: 4px;
 `;
 
-const ThreadParticipant = styled.div`
+const ConvName = styled.div`
   font-size: 13px;
   font-weight: ${(p) => (p.$unread ? 700 : 500)};
   color: ${(p) => (p.$unread ? "#c4a1ff" : "#ccc")};
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 
-const ThreadTime = styled.div`
-  font-size: 11px; color: #666;
+const ConvTime = styled.div`
+  font-size: 10px; color: #555;
   flex-shrink: 0; white-space: nowrap;
 `;
 
-const ThreadSubjectLine = styled.div`
-  font-size: 12px;
-  font-weight: ${(p) => (p.$unread ? 600 : 400)};
-  color: ${(p) => (p.$unread ? "#fff" : "#aaa")};
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-`;
-
-const ThreadPreview = styled.div`
-  font-size: 11px; color: #666;
+const ConvPreview = styled.div`
+  font-size: 11px; color: #555;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 
@@ -384,42 +469,43 @@ const UnreadBadge = styled.div`
   flex-shrink: 0;
   background: #e03131; color: #fff;
   font-size: 10px; font-weight: 700;
-  min-width: 18px; height: 18px; border-radius: 9px;
+  min-width: 17px; height: 17px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  padding: 0 4px;
+  padding: 0 3px;
 `;
 
-/* ── Thread detail view ── */
+/* ── Right content ── */
+
+const Content = styled.div`
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+`;
+
+const EmptyState = styled.div`
+  flex: 1; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 14px; color: #555;
+`;
+
+/* ── Thread view ── */
 
 const ThreadHeader = styled.div`
-  display: flex; align-items: center; gap: 14px; flex-shrink: 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ffffff15;
-`;
-
-const BackBtn = styled.button`
-  background: none; border: none;
-  color: #c4a1ff; font-size: 13px; font-weight: 600;
-  cursor: pointer; padding: 0; flex-shrink: 0;
-  &:hover { color: #fff; }
-`;
-
-const ThreadSubject = styled.div`
-  flex: 1; font-size: 15px; font-weight: 600; color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-`;
-
-const ThreadWith = styled.div`
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   flex-shrink: 0;
-  font-size: 13px; color: #aaa;
   canvas { border-radius: 50%; }
+`;
+
+const ThreadName = styled.div`
+  font-size: 15px; font-weight: 600; color: #fff;
 `;
 
 const MessageList = styled.div`
   flex: 1; overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
-  padding-right: 4px; padding-bottom: 4px;
+  padding: 16px 20px;
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb { background: #ffffff22; border-radius: 3px; }
@@ -439,10 +525,8 @@ const MsgThumb = styled.div`
 
 const MessageBubble = styled.div`
   max-width: 65%;
-  background: ${(p) =>
-    p.$mine ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.08)"};
-  border: 1px solid ${(p) =>
-    p.$mine ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.1)"};
+  background: ${(p) => p.$mine ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.08)"};
+  border: 1px solid ${(p) => p.$mine ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.1)"};
   border-radius: ${(p) => (p.$mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px")};
   padding: 10px 14px;
   display: flex; flex-direction: column; gap: 4px;
@@ -460,8 +544,8 @@ const BubbleTime = styled.div`
 
 const ReplyBox = styled.div`
   flex-shrink: 0;
-  border-top: 1px solid #ffffff15;
-  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 20px;
   display: flex; flex-direction: column; gap: 6px;
 `;
 
@@ -489,7 +573,7 @@ const ReplyCounter = styled.div`
   font-size: 10px; color: #555;
 `;
 
-const ReplySendBtn = styled.button`
+const SendBtn = styled.button`
   background: rgba(124,58,237,0.6);
   border: 1px solid rgba(124,58,237,0.8);
   color: #fff; font-size: 13px; font-weight: 600;
@@ -498,8 +582,66 @@ const ReplySendBtn = styled.button`
   &:hover:not(:disabled) { background: rgba(124,58,237,0.85); }
 `;
 
-const EmptyState = styled.div`
-  flex: 1; display: flex;
-  align-items: center; justify-content: center;
-  font-size: 14px; color: #666;
+/* ── New conversation panel ── */
+
+const NewPanel = styled.div`
+  flex: 1; display: flex; flex-direction: column;
+  padding: 24px 24px 20px;
+  gap: 14px; overflow-y: auto;
+`;
+
+const NewPanelTitle = styled.div`
+  font-size: 16px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+`;
+
+const ToRow = styled.div`
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+`;
+
+const ToLabel = styled.div`
+  font-size: 12px; font-weight: 600; color: #888;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  flex-shrink: 0; width: 24px;
+`;
+
+const ToInput = styled.input`
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #ffffff22;
+  border-radius: 8px; color: #fff;
+  font-family: inherit; font-size: 13px;
+  padding: 9px 12px; outline: none;
+  &:focus { border-color: #7b2ff7; }
+  &::placeholder { color: #555; }
+  &:disabled { opacity: 0.6; }
+`;
+
+const FindBtn = styled.button`
+  background: rgba(124,58,237,0.35);
+  border: 1px solid rgba(124,58,237,0.6);
+  color: #c084fc; font-size: 12px; font-weight: 700;
+  padding: 0 14px; height: 37px;
+  border-radius: 8px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: rgba(124,58,237,0.6); color: #fff; }
+`;
+
+const LookupHint = styled.div`
+  font-size: 12px;
+  color: ${({ $ok }) => ($ok ? "#50c878" : "#ff7777")};
+  flex-shrink: 0;
+`;
+
+const NewBodyTextarea = styled.textarea`
+  flex: 1; resize: none; min-height: 120px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #ffffff22;
+  border-radius: 8px; color: #fff;
+  font-family: inherit; font-size: 13px; line-height: 1.5;
+  padding: 10px 12px; outline: none; box-sizing: border-box;
+  &:focus { border-color: #7b2ff7; }
+  &::placeholder { color: #555; }
+  &:disabled { opacity: 0.6; }
 `;

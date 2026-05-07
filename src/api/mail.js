@@ -57,6 +57,10 @@ export async function replyToThread(threadId, body) {
   );
 }
 
+export async function fetchConversations() {
+  return handle(await fetch(`${API}/api/mail/conversations`, { headers: authHeaders() }));
+}
+
 export async function fetchUnreadCount() {
   return handle(await fetch(`${API}/api/mail/unread-count`, { headers: authHeaders() }));
 }

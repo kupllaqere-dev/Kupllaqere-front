@@ -80,3 +80,14 @@ export async function updateBadge(badge) {
     body: JSON.stringify({ badge }),
   }); // { selectedBadge }
 }
+
+export async function updatePresence(status) {
+  return apiFetch("/api/auth/presence", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token()}`,
+    },
+    body: JSON.stringify({ status }),
+  }); // { status, manualStatus }
+}
