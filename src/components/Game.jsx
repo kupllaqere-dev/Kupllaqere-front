@@ -30,7 +30,6 @@ import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
 import { sendFriendRequest } from "../api/friends";
 import ChatBox from "./ChatBox";
-import OnlineFriendsBar from "./OnlineFriendsBar";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
 
@@ -478,7 +477,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         onSend={handleSend}
         onWhisper={handleWhisper}
       /> */}
-      {socketReady && <OnlineFriendsBar socket={socketRef.current} />}
       {viewedProfile && (
         <PlayerProfile
           onClose={() => setViewedProfile(null)}
