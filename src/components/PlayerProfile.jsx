@@ -31,7 +31,7 @@ import {
 } from "../api/mail";
 import { lookupUser, updatePresence } from "../api/auth";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../api/store";
-import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache, invalidateStatusCache } from "../api/users";
+import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache } from "../api/users";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -249,11 +249,9 @@ export default function PlayerProfile({
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
   // Fetch presence status for the viewed player
-  // Stale-while-revalidate: serve cache instantly for no flash, always refetch fresh in parallel
   useEffect(() => {
     if (!targetUserId) return;
     fetchUserStatus(targetUserId).then(setUserStatus).catch(() => {});
-    fetchUserStatus(targetUserId, { force: true }).then(setUserStatus).catch(() => {});
   }, [targetUserId]);
 
   // Live status updates via socket
@@ -295,7 +293,6 @@ export default function PlayerProfile({
     setStatusPickerOpen(false);
     try {
       const result = await updatePresence(newManualStatus);
-      invalidateStatusCache(targetUserId);
       setUserStatus(result);
     } catch (err) {
       console.error("Failed to update status:", err);

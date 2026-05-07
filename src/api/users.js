@@ -16,29 +16,15 @@ export async function fetchPlayerAppearance(name) {
   return promise;
 }
 
-// Cache: userId -> { promise, expiresAt }
-const statusCache = new Map();
-const STATUS_TTL = 30_000;
 
-export async function fetchUserStatus(userId, { force = false } = {}) {
+export async function fetchUserStatus(userId) {
   if (!userId) return { status: "offline", manualStatus: "online" };
-
-  const cached = statusCache.get(userId);
-  if (!force && cached && Date.now() < cached.expiresAt) return cached.promise;
-
   const token = localStorage.getItem("fv_token");
-  const promise = fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {
+  return fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
     .then((res) => (res.ok ? res.json() : { status: "offline", manualStatus: "online" }))
-    .catch(() => { statusCache.delete(userId); return { status: "offline", manualStatus: "online" }; });
-
-  statusCache.set(userId, { promise, expiresAt: Date.now() + STATUS_TTL });
-  return promise;
-}
-
-export function invalidateStatusCache(userId) {
-  if (userId) statusCache.delete(userId);
+    .catch(() => ({ status: "offline", manualStatus: "online" }));
 }
 
 // Cache: userId -> Promise<view | null>
