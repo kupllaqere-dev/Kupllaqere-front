@@ -16,19 +16,49 @@ export async function fetchPlayerAppearance(name) {
   return promise;
 }
 
+// Cache: userId -> { promise, expiresAt }
+const statusCache = new Map();
+const STATUS_TTL = 30_000;
+
 export async function fetchUserStatus(userId) {
   if (!userId) return { status: "offline", manualStatus: "online" };
+
+  const cached = statusCache.get(userId);
+  if (cached && Date.now() < cached.expiresAt) return cached.promise;
+
   const token = localStorage.getItem("fv_token");
-  const res = await fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {
+  const promise = fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  return res.ok ? res.json() : { status: "offline", manualStatus: "online" };
+  })
+    .then((res) => (res.ok ? res.json() : { status: "offline", manualStatus: "online" }))
+    .catch(() => { statusCache.delete(userId); return { status: "offline", manualStatus: "online" }; });
+
+  statusCache.set(userId, { promise, expiresAt: Date.now() + STATUS_TTL });
+  return promise;
 }
+
+export function invalidateStatusCache(userId) {
+  if (userId) statusCache.delete(userId);
+}
+
+// Cache: userId -> Promise<view | null>
+// Invalidated explicitly on save/clear so we never show stale lock state.
+const profileViewCache = new Map();
 
 export async function fetchProfileView(userId) {
   if (!userId) return null;
-  const res = await fetch(`${API}/api/users/${encodeURIComponent(userId)}/profile-view`);
-  return res.ok ? res.json() : null;
+  if (profileViewCache.has(userId)) return profileViewCache.get(userId);
+
+  const promise = fetch(`${API}/api/users/${encodeURIComponent(userId)}/profile-view`)
+    .then((res) => (res.ok ? res.json() : null))
+    .catch(() => { profileViewCache.delete(userId); return null; });
+
+  profileViewCache.set(userId, promise);
+  return promise;
+}
+
+export function invalidateProfileViewCache(userId) {
+  if (userId) profileViewCache.delete(userId);
 }
 
 export async function saveProfileView({ poseIndex, zoomIndex, panX, panY }) {

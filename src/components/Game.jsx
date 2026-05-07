@@ -53,6 +53,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const teleportRef = useRef(null);
   const equippedRef = useRef({});
   const outfitRef = useRef({});
+  const outfitSaveTimerRef = useRef(null);
+  const pendingOutfitPayloadRef = useRef(null);
   const playerMenuDomRef = useRef(null);
   const playerMenuTargetRef = useRef(null);
   const playerManagerRef = useRef(null);
@@ -332,7 +334,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: effectiveId, imageUrl: item.imageUrl } };
 
     mp.sendOutfitChange(changePayload);
-    updateOutfit(changePayload).catch(() => {});
+    pendingOutfitPayloadRef.current = changePayload;
+    clearTimeout(outfitSaveTimerRef.current);
+    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
   }, []);
 
   const handleUnequip = useCallback((category) => {
@@ -356,7 +360,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     delete changePayload[category];
 
     mp.sendOutfitChange(changePayload);
-    updateOutfit(changePayload).catch(() => {});
+    pendingOutfitPayloadRef.current = changePayload;
+    clearTimeout(outfitSaveTimerRef.current);
+    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
   }, []);
 
   equipRef.current = handleEquip;

@@ -31,7 +31,7 @@ import {
 } from "../api/mail";
 import { lookupUser, updatePresence } from "../api/auth";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../api/store";
-import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus } from "../api/users";
+import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache, invalidateStatusCache } from "../api/users";
 import PlayerThumbnail from "./PlayerThumbnail";
 import ComposeMailModal from "./ComposeMailModal";
 
@@ -95,6 +95,20 @@ const PRESENCE_LABELS = {
   offline:   "Offline",
   invisible: "Invisible",
 };
+
+const imageCache = new Map();
+function loadImage(src) {
+  if (imageCache.has(src)) return imageCache.get(src);
+  const promise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  }).catch(() => { imageCache.delete(src); return null; });
+  imageCache.set(src, promise);
+  return promise;
+}
 
 function extractFrame(img, frameIndex, cols) {
   const col = frameIndex % cols;
@@ -203,7 +217,7 @@ export default function PlayerProfile({
   const [invCategory, setInvCategory] = useState(null);
   const [invSubcategory, setInvSubcategory] = useState(null);
   const [invSelectedEntries, setInvSelectedEntries] = useState({});
-  const [invPreviewOutfit, setInvPreviewOutfit] = useState({});
+  const [invPreviewOutfit, setInvPreviewOutfit] = useState(outfit || {});
   const [invPreviewLayerImages, setInvPreviewLayerImages] = useState([]);
   const [invSelling, setInvSelling] = useState(null);
   const [invSellError, setInvSellError] = useState(null);
@@ -279,6 +293,7 @@ export default function PlayerProfile({
     setStatusPickerOpen(false);
     try {
       const result = await updatePresence(newManualStatus);
+      invalidateStatusCache(targetUserId);
       setUserStatus(result);
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -372,12 +387,10 @@ export default function PlayerProfile({
   };
 
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = gender === "male"
+    const src = gender === "male"
       ? "/assets/character-bases/men-test.png"
       : "/assets/character-bases/females_new.png";
-    img.onload = () => setBaseImg(img);
+    loadImage(src).then((img) => { if (img) setBaseImg(img); });
   }, [gender]);
 
   useEffect(() => {
@@ -388,13 +401,7 @@ export default function PlayerProfile({
     let cancelled = false;
     Promise.all(
       entries.map(({ category, url }) =>
-        new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.src = url;
-          img.onload = () => resolve({ category, img });
-          img.onerror = () => resolve(null);
-        })
+        loadImage(url).then((img) => img ? { category, img } : null)
       )
     ).then((results) => {
       if (!cancelled) setLayerImages(results.filter(Boolean));
@@ -430,13 +437,7 @@ export default function PlayerProfile({
       .map(cat => ({ category: cat, url: invPreviewOutfit[cat].imageUrl }));
     let cancelled = false;
     Promise.all(entries.map(({ category, url }) =>
-      new Promise(resolve => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = url;
-        img.onload = () => resolve({ category, img });
-        img.onerror = () => resolve(null);
-      })
+      loadImage(url).then((img) => img ? { category, img } : null)
     )).then(results => {
       if (!cancelled) setInvPreviewLayerImages(results.filter(Boolean));
     });
@@ -508,6 +509,7 @@ export default function PlayerProfile({
     setViewSaving(true);
     try {
       await saveProfileView({ poseIndex, zoomIndex, panX, panY });
+      invalidateProfileViewCache(targetUserId);
       setHasLockedView(true);
     } catch (err) {
       console.error(err);
@@ -521,6 +523,7 @@ export default function PlayerProfile({
     setUnlocking(true);
     try {
       await clearProfileView();
+      invalidateProfileViewCache(targetUserId);
       setHasLockedView(false);
     } catch (err) {
       console.error(err);
