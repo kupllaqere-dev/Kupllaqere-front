@@ -20,11 +20,11 @@ export async function fetchPlayerAppearance(name) {
 const statusCache = new Map();
 const STATUS_TTL = 30_000;
 
-export async function fetchUserStatus(userId) {
+export async function fetchUserStatus(userId, { force = false } = {}) {
   if (!userId) return { status: "offline", manualStatus: "online" };
 
   const cached = statusCache.get(userId);
-  if (cached && Date.now() < cached.expiresAt) return cached.promise;
+  if (!force && cached && Date.now() < cached.expiresAt) return cached.promise;
 
   const token = localStorage.getItem("fv_token");
   const promise = fetch(`${API}/api/users/${encodeURIComponent(userId)}/status`, {

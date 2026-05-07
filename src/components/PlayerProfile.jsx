@@ -249,9 +249,11 @@ export default function PlayerProfile({
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
   // Fetch presence status for the viewed player
+  // Stale-while-revalidate: serve cache instantly for no flash, always refetch fresh in parallel
   useEffect(() => {
     if (!targetUserId) return;
     fetchUserStatus(targetUserId).then(setUserStatus).catch(() => {});
+    fetchUserStatus(targetUserId, { force: true }).then(setUserStatus).catch(() => {});
   }, [targetUserId]);
 
   // Live status updates via socket
@@ -259,7 +261,7 @@ export default function PlayerProfile({
     if (!socket?.socket) return;
     const onFriendStatus = (payload) => {
       if (String(payload.userId) === String(targetUserId)) {
-        setUserStatus((prev) => ({ ...prev, status: payload.status }));
+        setUserStatus((prev) => ({ ...prev, ...payload }));
       }
     };
     const onUserStatus = (payload) => {
