@@ -238,6 +238,7 @@ export default function PlayerProfile({
   const [friendsTab, setFriendsTab] = useState("friends");
   const [friendsData, setFriendsData] = useState(null);
   const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsLoaded, setFriendsLoaded] = useState(false);
   const [friendsSearch, setFriendsSearch] = useState("");
 
   const [userStatus, setUserStatus] = useState(null); // { status, manualStatus }
@@ -558,7 +559,7 @@ export default function PlayerProfile({
   }, [isSelfView]);
 
   useEffect(() => {
-    if (activeTab === "mail") loadMailLists();
+    if (activeTab === "mail" && !mailListsLoaded) loadMailLists();
     if (activeTab !== "mail") { setMailThread(null); setMailReplyBody(""); }
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -621,6 +622,7 @@ export default function PlayerProfile({
     try {
       const data = await fetchFriends();
       setFriendsData(data);
+      setFriendsLoaded(true);
     } catch {
       setFriendsData({ friends: [], received: [], sent: [] });
     } finally {
@@ -629,7 +631,8 @@ export default function PlayerProfile({
   }, [isSelfView]);
 
   useEffect(() => {
-    if (activeTab === "friends") loadFriendsData();
+    if (activeTab !== "friends" || friendsLoaded) return;
+    loadFriendsData();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -909,12 +912,12 @@ export default function PlayerProfile({
                       <SidebarLabel $active={activeTab === "friends"}>Friends</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
-                  <SidebarItem>
+                  {/* <SidebarItem>
                     <SidebarBtn onClick={() => { onClose(); onOpenAlbum?.(); }}>
                       <SidebarIcon>▦</SidebarIcon>
                       <SidebarLabel>Album</SidebarLabel>
                     </SidebarBtn>
-                  </SidebarItem>
+                  </SidebarItem> */}
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")}>
                       <SidebarIcon $active={activeTab === "inventory"}>⊞</SidebarIcon>
@@ -927,12 +930,12 @@ export default function PlayerProfile({
                       <SidebarLabel $active={activeTab === "wishlist"}>Wishlist</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
-                  <SidebarItem>
+                  {/* <SidebarItem>
                     <SidebarBtn onClick={() => { onClose(); onOpenMarketplace?.(); }}>
                       <SidebarIcon>◇</SidebarIcon>
                       <SidebarLabel>Market</SidebarLabel>
                     </SidebarBtn>
-                  </SidebarItem>
+                  </SidebarItem> */}
                 </>
               ) : (
                 <>
@@ -1093,7 +1096,7 @@ export default function PlayerProfile({
 
           </AvatarStageCol>
 
-          {activeTab === "profile" && (<>
+          <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
 
           {/* ── Profile Content ── */}
           <ProfileContent>
@@ -1133,7 +1136,7 @@ export default function PlayerProfile({
             </ProfileHeader>
 
             {/* Badges */}
-            <SectionBlock>
+            {/* <SectionBlock>
               <SectionHeaderRow>
                 <SectionTitle>Badges</SectionTitle>
                 <SectionCountPill>{visibleBadges.length}</SectionCountPill>
@@ -1170,7 +1173,7 @@ export default function PlayerProfile({
                   {badgesExpanded ? "Show less ▲" : "Show all ▼"}
                 </BadgeExpandBtn>
               )}
-            </SectionBlock>
+            </SectionBlock> */}
 
             {/* Soul Mate */}
             <SectionBlock>
@@ -1185,7 +1188,7 @@ export default function PlayerProfile({
             </SectionBlock>
 
             {/* Showcase */}
-            <SectionBlock>
+            {/* <SectionBlock>
               <SectionHeaderRow>
                 <SectionTitle>Showcase</SectionTitle>
                 {isSelfView && <SectionEditBtn>Edit</SectionEditBtn>}
@@ -1216,10 +1219,10 @@ export default function PlayerProfile({
                   ))}
                 </ShowcaseRow>
               </ShowcaseScrollWrap>
-            </SectionBlock>
+            </SectionBlock> */}
 
             {/* Companion */}
-            <SectionBlock>
+            {/* <SectionBlock>
               <SectionHeaderRow>
                 <SectionTitle>Companion</SectionTitle>
               </SectionHeaderRow>
@@ -1245,7 +1248,7 @@ export default function PlayerProfile({
                   </CompanionXPWrap>
                 </CompanionInfoBlock>
               </CompanionCard>
-            </SectionBlock>
+            </SectionBlock> */}
 
           </ProfileContent>
 
@@ -1476,73 +1479,83 @@ export default function PlayerProfile({
               <GBLeaveGiftBtn>🎁 Leave a Gift</GBLeaveGiftBtn>
             </GBStatsFooter>
           </GuestBookOverlay>
-          </>)}
+          </div>
 
-          {activeTab === "mail" && isSelfView && (
-            <MailPanelContent
-              mailConversations={mailConversations}
-              mailLoading={mailLoading}
-              mailThread={mailThread}
-              mailThreadLoading={mailThreadLoading}
-              mailReplyBody={mailReplyBody}
-              setMailReplyBody={setMailReplyBody}
-              mailReplySending={mailReplySending}
-              mailReplyError={mailReplyError}
-              openMailThread={openMailThread}
-              handleMailReply={handleMailReply}
-              onNewSend={handleNewMailSend}
-              onClearThread={() => setMailThread(null)}
-            />
-          )}
-
-          {activeTab === "friends" && isSelfView && (
-            <FriendsPanelContent
-              friendsTab={friendsTab}
-              setFriendsTab={setFriendsTab}
-              friendsData={friendsData}
-              friendsLoading={friendsLoading}
-              friendsSearch={friendsSearch}
-              setFriendsSearch={setFriendsSearch}
-              onRefresh={loadFriendsData}
-              acceptFriend={acceptFriend}
-              declineFriend={declineFriend}
-            />
-          )}
-
-          {activeTab === "look" && isSelfView && (
-            <LookPanelContent />
-          )}
-
-          {activeTab === "wishlist" && isSelfView && (
-            <WishlistPanelContent
-              items={wishlistItems}
-              loading={wishlistLoading}
-              onRemove={handleWishlistRemove}
-            />
-          )}
-
-          {activeTab === "inventory" && isSelfView && (
-            <HubPanelContainer>
-              <InvItemsArea
-                items={invDisplayItems}
-                loading={invLoading}
-                view={invView}
-                isSelected={invIsSelected}
-                canUse={invCanUse}
-                toggleEntry={invToggleEntry}
-                selling={invSelling}
-                sellError={invSellError}
-                onSell={invHandleSell}
-                goToCategory={invGoToCategory}
-                goToSubcategory={invGoToSubcategory}
-                subCount={invSubCount}
-                goToRecent={invGoToRecent}
-                goToEquipped={invGoToEquipped}
-                recentCount={invItems.length}
-                equippedCount={invEquippedItems.length}
+          {isSelfView && (
+            <div style={{ display: activeTab === "mail" ? "contents" : "none" }}>
+              <MailPanelContent
+                mailConversations={mailConversations}
+                mailLoading={mailLoading}
+                mailThread={mailThread}
+                mailThreadLoading={mailThreadLoading}
+                mailReplyBody={mailReplyBody}
+                setMailReplyBody={setMailReplyBody}
+                mailReplySending={mailReplySending}
+                mailReplyError={mailReplyError}
+                openMailThread={openMailThread}
+                handleMailReply={handleMailReply}
+                onNewSend={handleNewMailSend}
+                onClearThread={() => setMailThread(null)}
               />
-              <InvBreadcrumbsBar crumbs={invCrumbs} />
-            </HubPanelContainer>
+            </div>
+          )}
+
+          {isSelfView && (
+            <div style={{ display: activeTab === "friends" ? "contents" : "none" }}>
+              <FriendsPanelContent
+                friendsTab={friendsTab}
+                setFriendsTab={setFriendsTab}
+                friendsData={friendsData}
+                friendsLoading={friendsLoading}
+                friendsSearch={friendsSearch}
+                setFriendsSearch={setFriendsSearch}
+                onRefresh={loadFriendsData}
+                acceptFriend={acceptFriend}
+                declineFriend={declineFriend}
+              />
+            </div>
+          )}
+
+          {isSelfView && (
+            <div style={{ display: activeTab === "look" ? "contents" : "none" }}>
+              <LookPanelContent />
+            </div>
+          )}
+
+          {isSelfView && (
+            <div style={{ display: activeTab === "wishlist" ? "contents" : "none" }}>
+              <WishlistPanelContent
+                items={wishlistItems}
+                loading={wishlistLoading}
+                onRemove={handleWishlistRemove}
+              />
+            </div>
+          )}
+
+          {isSelfView && (
+            <div style={{ display: activeTab === "inventory" ? "contents" : "none" }}>
+              <HubPanelContainer>
+                <InvItemsArea
+                  items={invDisplayItems}
+                  loading={invLoading}
+                  view={invView}
+                  isSelected={invIsSelected}
+                  canUse={invCanUse}
+                  toggleEntry={invToggleEntry}
+                  selling={invSelling}
+                  sellError={invSellError}
+                  onSell={invHandleSell}
+                  goToCategory={invGoToCategory}
+                  goToSubcategory={invGoToSubcategory}
+                  subCount={invSubCount}
+                  goToRecent={invGoToRecent}
+                  goToEquipped={invGoToEquipped}
+                  recentCount={invItems.length}
+                  equippedCount={invEquippedItems.length}
+                />
+                <InvBreadcrumbsBar crumbs={invCrumbs} />
+              </HubPanelContainer>
+            </div>
           )}
 
         </ProfileWrapper>
@@ -1887,7 +1900,15 @@ function MailPanelContent({
         </PanelHeaderRow>
         <MailThreadList>
           {mailLoading ? (
-            <PanelEmpty>Loading…</PanelEmpty>
+            [0,1,2,3].map(i => (
+              <MailThreadRow key={i} style={{ pointerEvents: "none", gap: 10, alignItems: "center" }}>
+                <SkeletonCircle $size="38px" />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <SkeletonLine $w="55%" $h="11px" />
+                  <SkeletonLine $w="80%" $h="10px" />
+                </div>
+              </MailThreadRow>
+            ))
           ) : mailConversations.length === 0 ? (
             <PanelEmpty>No conversations yet.</PanelEmpty>
           ) : (
@@ -2078,7 +2099,15 @@ function FriendsPanelContent({
 
         <FriendsListScroll>
           {friendsLoading ? (
-            <PanelEmpty>Loading…</PanelEmpty>
+            [0,1,2,3].map(i => (
+              <FriendCardRow key={i} style={{ pointerEvents: "none" }}>
+                <SkeletonCircle $size="42px" />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <SkeletonLine $w="45%" $h="12px" />
+                  <SkeletonLine $w="65%" $h="10px" />
+                </div>
+              </FriendCardRow>
+            ))
           ) : friendsTab === "friends" ? (
             filtered.length === 0 ? (
               <PanelEmpty>
@@ -2266,6 +2295,24 @@ const thinScrollbar = css`
 `;
 
 const fadeIn = keyframes`from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}`;
+const shimmer = keyframes`from{background-position:-400px 0}to{background-position:400px 0}`;
+const SkeletonLine = styled.div`
+  height: ${({ $h }) => $h || "12px"};
+  width: ${({ $w }) => $w || "100%"};
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ede9f5 25%, #ddd6f0 50%, #ede9f5 75%);
+  background-size: 400px 100%;
+  animation: ${shimmer} 1.4s ease-in-out infinite;
+`;
+const SkeletonCircle = styled.div`
+  width: ${({ $size }) => $size || "38px"};
+  height: ${({ $size }) => $size || "38px"};
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #ede9f5 25%, #ddd6f0 50%, #ede9f5 75%);
+  background-size: 400px 100%;
+  animation: ${shimmer} 1.4s ease-in-out infinite;
+`;
 const glassShine = keyframes`
   0%   { transform: translateX(-100%) skewX(-18deg); }
   100% { transform: translateX(420%) skewX(-18deg); }
