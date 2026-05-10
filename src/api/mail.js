@@ -24,8 +24,12 @@ export async function fetchSent() {
   return handle(await fetch(`${API}/api/mail/sent`, { headers: authHeaders() }));
 }
 
-export async function fetchThread(threadId) {
-  return handle(await fetch(`${API}/api/mail/thread/${encodeURIComponent(threadId)}`, { headers: authHeaders() }));
+export async function fetchThread(threadId, { limit, before } = {}) {
+  const params = new URLSearchParams();
+  if (limit)  params.set("limit",  limit);
+  if (before) params.set("before", before);
+  const qs = params.toString() ? `?${params}` : "";
+  return handle(await fetch(`${API}/api/mail/thread/${encodeURIComponent(threadId)}${qs}`, { headers: authHeaders() }));
 }
 
 export async function markThreadRead(threadId) {

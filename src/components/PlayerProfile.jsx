@@ -160,6 +160,7 @@ export default function PlayerProfile({
   onUnequip = null,
   equipped = null,
   level = 1,
+  onOpenProfile = null,
 }) {
   const canvasRef = useRef(null);
   const textareaRef = useRef(null);
@@ -231,6 +232,7 @@ export default function PlayerProfile({
   const [mailListsLoaded, setMailListsLoaded] = useState(false);
   const [mailThread, setMailThread] = useState(null);
   const [mailThreadLoading, setMailThreadLoading] = useState(false);
+  const [mailThreadCache, setMailThreadCache] = useState({});
   const [mailReplyBody, setMailReplyBody] = useState("");
   const [mailReplySending, setMailReplySending] = useState(false);
   const [mailReplyError, setMailReplyError] = useState(null);
@@ -553,7 +555,14 @@ export default function PlayerProfile({
     if (!isSelfView) return;
     setMailLoading(true);
     try {
-      setMailConversations(await fetchConversations());
+      const convos = await fetchConversations();
+      setMailConversations(convos);
+      // Preload last 20 messages for every thread in the background
+      convos.forEach((c) => {
+        fetchThread(c.threadId, { limit: 20 }).then((data) => {
+          setMailThreadCache((prev) => ({ ...prev, [c.threadId]: data }));
+        }).catch(() => {});
+      });
     } catch { /* ignore */ }
     finally { setMailLoading(false); setMailListsLoaded(true); }
   }, [isSelfView]);
@@ -564,18 +573,28 @@ export default function PlayerProfile({
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openMailThread = useCallback(async (threadId) => {
+    const cached = mailThreadCache[threadId];
+    if (cached) {
+      setMailThread(cached);
+      setMailReplyBody("");
+      setMailReplyError(null);
+      setMailConversations(prev => prev.map(c => c.threadId === threadId ? { ...c, unreadCount: 0 } : c));
+      markThreadRead(threadId).then(() => onUnreadChange?.()).catch(() => {});
+      return;
+    }
     setMailThreadLoading(true);
     setMailThread(null);
     try {
-      const data = await fetchThread(threadId);
+      const data = await fetchThread(threadId, { limit: 20 });
       setMailThread(data);
+      setMailThreadCache((prev) => ({ ...prev, [threadId]: data }));
       setMailReplyBody("");
       setMailReplyError(null);
       setMailConversations(prev => prev.map(c => c.threadId === threadId ? { ...c, unreadCount: 0 } : c));
       markThreadRead(threadId).then(() => onUnreadChange?.()).catch(() => {});
     } catch { /* ignore */ }
     finally { setMailThreadLoading(false); }
-  }, [onUnreadChange]);
+  }, [mailThreadCache, onUnreadChange]);
 
   const handleMailReply = useCallback(async () => {
     if (!mailReplyBody.trim() || mailReplySending || !mailThread) return;
@@ -585,8 +604,9 @@ export default function PlayerProfile({
     try {
       await replyToThread(mailThread.threadId, bodyText);
       setMailReplyBody("");
-      const updated = await fetchThread(mailThread.threadId);
+      const updated = await fetchThread(mailThread.threadId, { limit: 20 });
       setMailThread(updated);
+      setMailThreadCache((prev) => ({ ...prev, [mailThread.threadId]: updated }));
       const newLast = { isFromMe: true, body: bodyText, createdAt: new Date().toISOString() };
       setMailConversations(prev => prev.map(c => c.threadId === mailThread.threadId ? { ...c, lastMessage: newLast } : c));
     } catch (err) {
@@ -606,8 +626,9 @@ export default function PlayerProfile({
       setMailThreadLoading(true);
       setMailThread(null);
       try {
-        const threadData = await fetchThread(created.threadId);
+        const threadData = await fetchThread(created.threadId, { limit: 20 });
         setMailThread(threadData);
+        setMailThreadCache((prev) => ({ ...prev, [created.threadId]: threadData }));
         setMailReplyBody("");
         setMailReplyError(null);
         markThreadRead(created.threadId).then(() => onUnreadChange?.()).catch(() => {});
@@ -615,6 +636,16 @@ export default function PlayerProfile({
       finally { setMailThreadLoading(false); }
     }
   }, [onUnreadChange]);
+
+  const handleLoadMoreMessages = useCallback(async (threadId, beforeTimestamp) => {
+    try {
+      const older = await fetchThread(threadId, { limit: 20, before: beforeTimestamp });
+      setMailThread((prev) => {
+        if (!prev || prev.threadId !== threadId) return prev;
+        return { ...prev, messages: [...older.messages, ...prev.messages], hasMore: older.hasMore };
+      });
+    } catch { /* ignore */ }
+  }, []);
 
   const loadFriendsData = useCallback(async () => {
     if (!isSelfView) return;
@@ -1496,6 +1527,8 @@ export default function PlayerProfile({
                 handleMailReply={handleMailReply}
                 onNewSend={handleNewMailSend}
                 onClearThread={() => setMailThread(null)}
+                onLoadMore={handleLoadMoreMessages}
+                socket={socket}
               />
             </div>
           )}
@@ -1512,6 +1545,8 @@ export default function PlayerProfile({
                 onRefresh={loadFriendsData}
                 acceptFriend={acceptFriend}
                 declineFriend={declineFriend}
+                socket={socket}
+                onOpenProfile={onOpenProfile}
               />
             </div>
           )}
@@ -1827,10 +1862,64 @@ function MailPanelContent({
   mailConversations, mailLoading,
   mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
   mailReplySending, mailReplyError, openMailThread, handleMailReply,
-  onNewSend, onClearThread,
+  onNewSend, onClearThread, onLoadMore, socket,
 }) {
   const messagesEndRef = useRef(null);
+  const messageListRef = useRef(null);
   const [isNew, setIsNew] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [onlineMap, setOnlineMap] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!mailConversations.length) return;
+    Promise.all(
+      mailConversations.map((c) =>
+        fetchUserStatus(c.otherParticipant.id).then((s) => ({
+          id: String(c.otherParticipant.id),
+          status: s.status || "offline",
+        }))
+      )
+    ).then((results) => {
+      setOnlineMap((prev) => {
+        const next = new Map(prev);
+        for (const r of results) next.set(r.id, r.status);
+        return next;
+      });
+    }).catch(() => {});
+  }, [mailConversations]);
+
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const handleList = (list) => {
+      setOnlineMap((prev) => {
+        const next = new Map(prev);
+        for (const f of list || []) next.set(String(f.id), f.status || (f.online ? "online" : "offline"));
+        return next;
+      });
+    };
+    const handleOnline = (f) => {
+      if (!f?.id) return;
+      setOnlineMap((prev) => new Map(prev).set(String(f.id), f.status || "online"));
+    };
+    const handleOffline = ({ id } = {}) => {
+      if (!id) return;
+      setOnlineMap((prev) => new Map(prev).set(String(id), "offline"));
+    };
+    const handleStatus = ({ userId, status } = {}) => {
+      if (!userId || !status) return;
+      setOnlineMap((prev) => new Map(prev).set(String(userId), status));
+    };
+    socket.socket.on("friends:online", handleList);
+    socket.socket.on("friend:online", handleOnline);
+    socket.socket.on("friend:offline", handleOffline);
+    socket.socket.on("friend:status", handleStatus);
+    return () => {
+      socket.socket.off("friends:online", handleList);
+      socket.socket.off("friend:online", handleOnline);
+      socket.socket.off("friend:offline", handleOffline);
+      socket.socket.off("friend:status", handleStatus);
+    };
+  }, [socket]);
   const [newToInput, setNewToInput] = useState("");
   const [newResolved, setNewResolved] = useState(null);
   const [lookupStatus, setLookupStatus] = useState(null);
@@ -1840,7 +1929,26 @@ function MailPanelContent({
 
   useEffect(() => {
     if (mailThread) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mailThread?.messages?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mailThread?.threadId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = messageListRef.current;
+    if (!el) return;
+    const onScroll = async () => {
+      if (el.scrollTop > 40 || loadingMore || !mailThread?.hasMore) return;
+      const oldest = mailThread.messages[0];
+      if (!oldest) return;
+      setLoadingMore(true);
+      const prevHeight = el.scrollHeight;
+      await onLoadMore(mailThread.threadId, oldest.createdAt);
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight - prevHeight;
+      });
+      setLoadingMore(false);
+    };
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [mailThread, loadingMore, onLoadMore]);
 
   const totalUnread = mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
   const activeThreadId = isNew ? null : mailThread?.threadId;
@@ -1905,7 +2013,6 @@ function MailPanelContent({
                 <SkeletonCircle $size="38px" />
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
                   <SkeletonLine $w="55%" $h="11px" />
-                  <SkeletonLine $w="80%" $h="10px" />
                 </div>
               </MailThreadRow>
             ))
@@ -1919,18 +2026,18 @@ function MailPanelContent({
                 $active={activeThreadId === c.threadId}
                 onClick={() => { setIsNew(false); openMailThread(c.threadId); }}
               >
-                <MailThreadThumb>
-                  <PlayerThumbnail playerName={c.otherParticipant.name} size={38} />
+                <MailThumbWrap>
+                  <MailThreadThumb>
+                    <PlayerThumbnail playerName={c.otherParticipant.name} size={38} />
+                  </MailThreadThumb>
+                  <MailStatusDot $status={onlineMap.get(String(c.otherParticipant.id)) || "offline"} />
                   {c.unreadCount > 0 && <MailUnreadDot />}
-                </MailThreadThumb>
+                </MailThumbWrap>
                 <MailThreadMeta>
                   <MailThreadMetaTop>
                     <MailThreadName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</MailThreadName>
                     <MailThreadTime>{formatRelativeTime(c.lastMessage.createdAt)}</MailThreadTime>
                   </MailThreadMetaTop>
-                  <MailThreadPreview>
-                    {c.lastMessage.isFromMe ? "You: " : ""}{c.lastMessage.body}
-                  </MailThreadPreview>
                 </MailThreadMeta>
                 {c.unreadCount > 0 && <MailUnreadBadge>{c.unreadCount}</MailUnreadBadge>}
               </MailThreadRow>
@@ -1995,7 +2102,8 @@ function MailPanelContent({
               <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={28} />
               <MailDetailWith>{mailThread.otherParticipant.name}</MailDetailWith>
             </MailDetailHeader>
-            <MailMessageList>
+            <MailMessageList ref={messageListRef}>
+              {loadingMore && <MailLoadingMore>Loading…</MailLoadingMore>}
               {mailThread.messages.map((msg) => (
                 <MailMessageRow key={msg.id} $mine={msg.isFromMe}>
                   {!msg.isFromMe && (
@@ -2042,29 +2150,85 @@ function MailPanelContent({
 function FriendsPanelContent({
   friendsTab, setFriendsTab, friendsData, friendsLoading,
   friendsSearch, setFriendsSearch, onRefresh, acceptFriend, declineFriend,
+  socket, onOpenProfile,
 }) {
   const [friendBusy, setFriendBusy] = useState(null);
-  const [searchSubmitted, setSearchSubmitted] = useState("");
+  const [searchStatus, setSearchStatus] = useState(null); // null | "searching" | "notfound" | "error"
+  const [onlineMap, setOnlineMap] = useState(() => new Map());
 
   const friends = friendsData?.friends || [];
   const received = friendsData?.received || [];
 
-  const handleSearchKey = (e) => {
-    if (e.key === "Enter") setSearchSubmitted(friendsSearch.trim().toLowerCase());
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const handleList = (list) => {
+      setOnlineMap((prev) => {
+        const next = new Map(prev);
+        for (const f of list || []) next.set(String(f.id), f.status || (f.online ? "online" : "offline"));
+        return next;
+      });
+    };
+    const handleOnline = (f) => {
+      if (!f?.id) return;
+      setOnlineMap((prev) => new Map(prev).set(String(f.id), f.status || "online"));
+    };
+    const handleOffline = ({ id } = {}) => {
+      if (!id) return;
+      setOnlineMap((prev) => new Map(prev).set(String(id), "offline"));
+    };
+    const handleStatus = ({ userId, status } = {}) => {
+      if (!userId || !status) return;
+      setOnlineMap((prev) => new Map(prev).set(String(userId), status));
+    };
+    socket.socket.on("friends:online", handleList);
+    socket.socket.on("friend:online", handleOnline);
+    socket.socket.on("friend:offline", handleOffline);
+    socket.socket.on("friend:status", handleStatus);
+    return () => {
+      socket.socket.off("friends:online", handleList);
+      socket.socket.off("friend:online", handleOnline);
+      socket.socket.off("friend:offline", handleOffline);
+      socket.socket.off("friend:status", handleStatus);
+    };
+  }, [socket]);
+
+  const getFriendStatus = (f) => onlineMap.get(String(f.id)) || (f.online ? "online" : "offline");
+  const isOnline = (f) => { const s = getFriendStatus(f); return s === "online" || s === "away"; };
+  const statusDotColor = (f) => {
+    const s = getFriendStatus(f);
+    if (s === "online") return "#22c55e";
+    if (s === "away") return "#f59e0b";
+    return null;
   };
 
-  const filtered = searchSubmitted
-    ? friends.filter((f) => f.name?.toLowerCase().includes(searchSubmitted))
-    : friends;
+  const handleSearchKey = (e) => { if (e.key === "Enter") handleSearch(); };
+  const handleSearch = async () => {
+    const name = friendsSearch.trim();
+    if (!name) return;
+    setSearchStatus("searching");
+    try {
+      const user = await lookupUser(name);
+      if (!user) { setSearchStatus("notfound"); return; }
+      setSearchStatus(null);
+      onOpenProfile?.(user);
+    } catch {
+      setSearchStatus("error");
+    }
+  };
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.online && !b.online) return -1;
-    if (!a.online && b.online) return 1;
+  const handleFriendClick = (f) => {
+    onOpenProfile?.({ id: f.id, name: f.name });
+  };
+
+  const sorted = [...friends].sort((a, b) => {
+    const ao = isOnline(a), bo = isOnline(b);
+    if (ao && !bo) return -1;
+    if (!ao && bo) return 1;
     return (a.name || "").localeCompare(b.name || "");
   });
 
-  const onlineFriends = sorted.filter((f) => f.online);
-  const offlineFriends = sorted.filter((f) => !f.online);
+  const onlineFriends = sorted.filter((f) => isOnline(f));
+  const offlineFriends = sorted.filter((f) => !isOnline(f));
 
   const runAction = async (fn, id) => {
     if (friendBusy) return;
@@ -2081,12 +2245,15 @@ function FriendsPanelContent({
           <FriendsSearchInput
             type="text"
             value={friendsSearch}
-            onChange={(e) => { setFriendsSearch(e.target.value); if (!e.target.value) setSearchSubmitted(""); }}
+            onChange={(e) => { setFriendsSearch(e.target.value); setSearchStatus(null); }}
             onKeyDown={handleSearchKey}
-            placeholder="Search friends… (Enter)"
+            placeholder="Search all players… (Enter)"
           />
-          <FriendsSearchIcon>⌕</FriendsSearchIcon>
+          <FriendsSearchIcon onClick={handleSearch} style={{ cursor: "pointer", pointerEvents: "auto" }}>⌕</FriendsSearchIcon>
         </FriendsSearchRow>
+        {searchStatus === "searching" && <FriendsSearchHint>Searching…</FriendsSearchHint>}
+        {searchStatus === "notfound" && <FriendsSearchHint $error>No player found.</FriendsSearchHint>}
+        {searchStatus === "error" && <FriendsSearchHint $error>Search failed.</FriendsSearchHint>}
 
         <PanelTabs>
           <PanelTab $active={friendsTab === "friends"} onClick={() => setFriendsTab("friends")}>
@@ -2099,39 +2266,30 @@ function FriendsPanelContent({
 
         <FriendsListScroll>
           {friendsLoading ? (
-            [0,1,2,3].map(i => (
-              <FriendCardRow key={i} style={{ pointerEvents: "none" }}>
-                <SkeletonCircle $size="42px" />
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <SkeletonLine $w="45%" $h="12px" />
-                  <SkeletonLine $w="65%" $h="10px" />
-                </div>
-              </FriendCardRow>
+            [0,1,2,3,4,5].map(i => (
+              <FriendCardTile key={i} style={{ pointerEvents: "none" }}>
+                <SkeletonCircle $size="38px" />
+                <SkeletonLine $w="60%" $h="10px" />
+              </FriendCardTile>
             ))
           ) : friendsTab === "friends" ? (
-            filtered.length === 0 ? (
-              <PanelEmpty>
-                {searchSubmitted ? `No friends matching "${searchSubmitted}".` : "You have no friends yet."}
-              </PanelEmpty>
+            friends.length === 0 ? (
+              <PanelEmpty style={{ gridColumn: "1 / -1" }}>You have no friends yet.</PanelEmpty>
             ) : (
               <>
                 {onlineFriends.length > 0 && (
                   <>
                     <FriendsGroupLabel>Online — {onlineFriends.length}</FriendsGroupLabel>
                     {onlineFriends.map((f) => (
-                      <FriendCardRow key={f.id}>
-                        <FriendCardAvatarWrap>
-                          <PlayerThumbnail playerName={f.name} size={42} />
-                          <FriendOnlineDot />
-                        </FriendCardAvatarWrap>
-                        <FriendCardInfo>
-                          <FriendCardName>{f.name}</FriendCardName>
-                          <FriendCardLocation>
-                            <FriendLocationDot $online />
-                            {f.location || "Online"}
-                          </FriendCardLocation>
-                        </FriendCardInfo>
-                      </FriendCardRow>
+                      <FriendCardTile key={f.id} onClick={() => handleFriendClick(f)}>
+                        <MailThumbWrap>
+                          <MailThreadThumb>
+                            <PlayerThumbnail playerName={f.name} size={38} />
+                          </MailThreadThumb>
+                          <MailStatusDot $status={getFriendStatus(f)} />
+                        </MailThumbWrap>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#2e1065", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{f.name}</p>
+                      </FriendCardTile>
                     ))}
                   </>
                 )}
@@ -2139,18 +2297,15 @@ function FriendsPanelContent({
                   <>
                     <FriendsGroupLabel>Offline — {offlineFriends.length}</FriendsGroupLabel>
                     {offlineFriends.map((f) => (
-                      <FriendCardRow key={f.id}>
-                        <FriendCardAvatarWrap>
-                          <PlayerThumbnail playerName={f.name} size={42} />
-                        </FriendCardAvatarWrap>
-                        <FriendCardInfo>
-                          <FriendCardName>{f.name}</FriendCardName>
-                          <FriendCardLocation>
-                            <FriendLocationDot />
-                            Offline
-                          </FriendCardLocation>
-                        </FriendCardInfo>
-                      </FriendCardRow>
+                      <FriendCardTile key={f.id} onClick={() => handleFriendClick(f)} $offline>
+                        <MailThumbWrap>
+                          <MailThreadThumb>
+                            <PlayerThumbnail playerName={f.name} size={38} />
+                          </MailThreadThumb>
+                          <MailStatusDot $status={getFriendStatus(f)} />
+                        </MailThumbWrap>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#2e1065", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{f.name}</p>
+                      </FriendCardTile>
                     ))}
                   </>
                 )}
@@ -2158,15 +2313,15 @@ function FriendsPanelContent({
             )
           ) : (
             received.length === 0 ? (
-              <PanelEmpty>No pending friend requests.</PanelEmpty>
+              <PanelEmpty style={{ gridColumn: "1 / -1" }}>No pending friend requests.</PanelEmpty>
             ) : (
               received.map((f) => (
                 <FriendCardRow key={f.id}>
-                  <FriendCardAvatarWrap>
+                  <FriendCardAvatarWrap style={{ width: 42, height: 42 }}>
                     <PlayerThumbnail playerName={f.name} size={42} />
                   </FriendCardAvatarWrap>
                   <FriendCardInfo>
-                    <FriendCardName>{f.name}</FriendCardName>
+                    <FriendCardName style={{ textAlign: "left" }}>{f.name}</FriendCardName>
                     <FriendCardLocation>Wants to be your friend</FriendCardLocation>
                   </FriendCardInfo>
                   <FriendInviteActions>
@@ -4190,13 +4345,22 @@ const MailThreadRow = styled.div`
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.15s;
-  &:hover { background: ${C.card}; border-color: ${C.border2}; }
+  &:hover { background: rgba(138, 75, 245, 0.03); border-color: ${C.border2}; }
 `;
 
-const MailThreadThumb = styled.div`
+const MailThumbWrap = styled.div`
   position: relative;
   flex-shrink: 0;
   width: 38px; height: 38px;
+`;
+
+const MailThreadThumb = styled.div`
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid ${C.border2};
+  background: ${C.card};
+  canvas { border-radius: 50%; }
 `;
 
 const MailUnreadDot = styled.div`
@@ -4206,6 +4370,22 @@ const MailUnreadDot = styled.div`
   background: #e03131;
   border-radius: 50%;
   border: 2px solid ${C.bg};
+`;
+
+const MAIL_STATUS_COLOR = {
+  online:    { bg: "#22c55e", shadow: "0 0 5px #22c55e" },
+  away:      { bg: "#f59e0b", shadow: "0 0 5px #f59e0b" },
+  offline:   { bg: "#9ca3af", shadow: "none" },
+  invisible: { bg: "#9ca3af", shadow: "none" },
+};
+const MailStatusDot = styled.div`
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid ${C.bg};
+  background: ${({ $status }) => (MAIL_STATUS_COLOR[$status] || MAIL_STATUS_COLOR.offline).bg};
+  box-shadow: ${({ $status }) => (MAIL_STATUS_COLOR[$status] || MAIL_STATUS_COLOR.offline).shadow};
 `;
 
 const MailThreadMeta = styled.div`
@@ -4341,6 +4521,13 @@ const MailMessageList = styled.div`
   flex-direction: column;
   gap: 14px;
   ${thinScrollbar}
+`;
+
+const MailLoadingMore = styled.div`
+  text-align: center;
+  font-size: 11px;
+  color: ${C.txt3};
+  padding: 4px 0 8px;
 `;
 
 const MailMessageRow = styled.div`
@@ -4551,13 +4738,21 @@ const FriendsSearchIcon = styled.span`
   pointer-events: none;
 `;
 
+const FriendsSearchHint = styled.div`
+  font-size: 11px;
+  color: ${p => p.$error ? "#ef4444" : C.txt3};
+  padding: 2px 2px 0;
+  flex-shrink: 0;
+`;
+
 const FriendsListScroll = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  align-content: start;
   padding-bottom: 16px;
   ${thinScrollbar}
 `;
@@ -4569,6 +4764,26 @@ const FriendsGroupLabel = styled.div`
   text-transform: uppercase;
   letter-spacing: 1px;
   padding: 6px 2px 2px;
+  grid-column: 1 / -1;
+`;
+
+const FriendCardTile = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: ${C.surface};
+  border: 1px solid ${C.border};
+  border-radius: 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.18s;
+  opacity: ${p => p.$offline ? 0.6 : 1};
+  min-width: 0;
+  &:hover {
+    background: ${C.card};
+    border-color: ${C.border2};
+    box-shadow: 0 2px 12px rgba(100,50,200,0.08);
+  }
 `;
 
 const FriendCardRow = styled.div`
@@ -4577,8 +4792,9 @@ const FriendCardRow = styled.div`
   gap: 12px;
   background: ${C.surface};
   border: 1px solid ${C.border};
-  border-radius: 12px;
+  border-radius: 0;
   padding: 11px 14px;
+  grid-column: 1 / -1;
   cursor: pointer;
   transition: all 0.18s;
   &:hover {
@@ -4591,14 +4807,14 @@ const FriendCardRow = styled.div`
 const FriendCardAvatarWrap = styled.div`
   position: relative;
   flex-shrink: 0;
-  width: 42px; height: 42px;
+  width: 60px; height: 60px;
 `;
 
 const FriendOnlineDot = styled.div`
   position: absolute;
-  bottom: 1px; right: 1px;
-  width: 10px; height: 10px;
-  background: #22c55e;
+  bottom: 2px; right: 2px;
+  width: 11px; height: 11px;
+  background: ${p => p.$color || "#22c55e"};
   border-radius: 50%;
   border: 2px solid ${C.surface};
   box-shadow: 0 0 6px #22c55e;
@@ -4613,10 +4829,13 @@ const FriendCardInfo = styled.div`
 `;
 
 const FriendCardName = styled.div`
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 600;
   color: ${C.txt};
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 5px;
 `;
 
 const FriendCardLocation = styled.div`

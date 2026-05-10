@@ -4,6 +4,7 @@ import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
 import MailModal from "./MailModal";
 import { fetchUnreadCount } from "../api/mail";
+import { lookupUser } from "../api/auth";
 
 function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -11,6 +12,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
   const [showMail, setShowMail] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [viewingProfile, setViewingProfile] = useState(null);
 
   const refreshUnread = useCallback(() => {
     fetchUnreadCount()
@@ -37,6 +39,22 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
     setShowMail(true);
   }
 
+  async function handleOpenProfile(user) {
+    let data = user;
+    if (user?.name && !user?.gender) {
+      try { data = await lookupUser(user.name) || user; } catch { /* use what we have */ }
+    }
+    setViewingProfile({
+      userId: data?.id ?? data?.userId,
+      name: data?.name ?? "",
+      outfit: data?.outfit ?? {},
+      gender: data?.gender ?? "girl",
+      bio: data?.bio ?? "",
+      selectedBadge: data?.selectedBadge ?? null,
+      level: data?.level ?? 1,
+    });
+  }
+
   return (
     <>
     {showProfile && (
@@ -61,6 +79,21 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onUnequip={onUnequip}
         equipped={equipped}
         level={level}
+        onOpenProfile={handleOpenProfile}
+      />
+    )}
+    {viewingProfile && (
+      <PlayerProfile
+        onClose={() => setViewingProfile(null)}
+        playerName={viewingProfile.name}
+        outfit={viewingProfile.outfit}
+        gender={viewingProfile.gender}
+        bio={viewingProfile.bio}
+        selectedBadge={viewingProfile.selectedBadge}
+        currentUserId={currentUserId}
+        targetUserId={viewingProfile.userId}
+        socket={socket}
+        level={viewingProfile.level}
       />
     )}
     {showMail && (
