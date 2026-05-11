@@ -2104,20 +2104,32 @@ function MailPanelContent({
             </MailDetailHeader>
             <MailMessageList ref={messageListRef}>
               {loadingMore && <MailLoadingMore>Loading…</MailLoadingMore>}
-              {mailThread.messages.map((msg) => (
-                <MailMessageRow key={msg.id} $mine={msg.isFromMe}>
-                  {!msg.isFromMe && (
-                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={32} /></MailMsgThumb>
-                  )}
-                  <MailBubble $mine={msg.isFromMe}>
+              {mailThread.messages.map((msg, i) => {
+                const prev = mailThread.messages[i - 1];
+                const isFollowUp = prev &&
+                  prev.fromName === msg.fromName &&
+                  new Date(msg.createdAt) - new Date(prev.createdAt) < 60 * 60 * 1000;
+                const hoverTime = msg.createdAt
+                  ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "";
+                return isFollowUp ? (
+                  <MailMessageCompact key={msg.id}>
+                    <MailCompactTime>{hoverTime}</MailCompactTime>
                     <MailBubbleBody>{msg.body}</MailBubbleBody>
-                    <MailBubbleTime>{formatRelativeTime(msg.createdAt)}</MailBubbleTime>
-                  </MailBubble>
-                  {msg.isFromMe && (
-                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={32} /></MailMsgThumb>
-                  )}
-                </MailMessageRow>
-              ))}
+                  </MailMessageCompact>
+                ) : (
+                  <MailMessageRow key={msg.id}>
+                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={42} /></MailMsgThumb>
+                    <MailMsgContent>
+                      <MailMsgHeader>
+                        <MailMsgName $mine={msg.isFromMe}>{msg.fromName}</MailMsgName>
+                        <MailBubbleTime>{formatRelativeTime(msg.createdAt)}{hoverTime && ` · ${hoverTime}`}</MailBubbleTime>
+                      </MailMsgHeader>
+                      <MailBubbleBody>{msg.body}</MailBubbleBody>
+                    </MailMsgContent>
+                  </MailMessageRow>
+                );
+              })}
               <div ref={messagesEndRef} />
             </MailMessageList>
             <MailReplyBox>
@@ -4519,7 +4531,7 @@ const MailMessageList = styled.div`
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   ${thinScrollbar}
 `;
 
@@ -4532,22 +4544,40 @@ const MailLoadingMore = styled.div`
 
 const MailMessageRow = styled.div`
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  justify-content: ${p => p.$mine ? "flex-end" : "flex-start"};
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  margin-top: 12px;
+  &:first-child { margin-top: 0; }
 `;
 
-const MailMsgThumb = styled.div`flex-shrink: 0;`;
+const MailMsgThumb = styled.div`
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: ${C.card};
+`;
 
-const MailBubble = styled.div`
-  max-width: 68%;
-  background: ${p => p.$mine ? "rgba(124,58,237,0.12)" : C.surface};
-  border: 1px solid ${p => p.$mine ? C.border2 : C.border};
-  border-radius: ${p => p.$mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px"};
-  padding: 10px 13px 8px;
+const MailMsgContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+`;
+
+const MailMsgHeader = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+`;
+
+const MailMsgName = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${p => p.$mine ? C.accent : C.txt2};
 `;
 
 const MailBubbleBody = styled.div`
@@ -4557,10 +4587,36 @@ const MailBubbleBody = styled.div`
   word-break: break-word;
 `;
 
-const MailBubbleTime = styled.div`
-  font-size: 10px;
+const MailBubbleTime = styled.span`
+  font-size: 11px;
   color: ${C.txt3};
-  text-align: right;
+`;
+
+const MailMessageCompact = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 1px 0;
+  padding-left: 52px;
+  position: relative;
+  &:hover > span:first-child {
+    opacity: 1;
+  }
+`;
+
+const MailCompactTime = styled.span`
+  position: absolute;
+  left: 0;
+  width: 42px;
+  text-align: center;
+  font-size: 9px;
+  white-space: nowrap;
+  color: ${C.txt3};
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+  top: 50%;
+  transform: translateY(-50%);
 `;
 
 const MailReplyBox = styled.div`
