@@ -149,18 +149,7 @@ export default function PlayerProfile({
   const [wishlistItems, setWishlistItems] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
-  const [themeIdx, setThemeIdx] = useState(() => {
-    if (currentUserId && targetUserId && String(currentUserId) === String(targetUserId)) {
-      try {
-        const stored = localStorage.getItem("fv_theme");
-        if (stored) {
-          const idx = PALETTES.findIndex(p => p.name === stored);
-          if (idx >= 0) return idx;
-        }
-      } catch { /* ignore */ }
-    }
-    return 0;
-  });
+  const [themeIdx, setThemeIdx] = useState(0);
 
   const [mailConversations, setMailConversations] = useState([]);
   const [mailLoading, setMailLoading] = useState(false);
@@ -416,6 +405,8 @@ export default function PlayerProfile({
 
   useEffect(() => {
     if (!targetUserId) return;
+    setViewLoaded(false);
+    setThemeIdx(0);
     invalidateProfileViewCache(targetUserId);
     fetchProfileView(targetUserId).then((view) => {
       if (view) {
@@ -430,13 +421,15 @@ export default function PlayerProfile({
           const idx = PALETTES.findIndex(p => p.name === view.themeName);
           if (idx >= 0) {
             setThemeIdx(idx);
-            try { localStorage.setItem("fv_theme", view.themeName); } catch { /* ignore */ }
+            if (isSelfView) {
+              try { localStorage.setItem("fv_theme", view.themeName); } catch { /* ignore */ }
+            }
           }
         }
       }
       setViewLoaded(true);
     }).catch(() => { setViewLoaded(true); });
-  }, [targetUserId]);
+  }, [targetUserId, isSelfView]);
 
   const handleSelectTheme = useCallback((idx) => {
     setThemeIdx(idx);
@@ -854,7 +847,7 @@ export default function PlayerProfile({
       <Overlay onClick={onClose}>
         <ProfileOuter>
         <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
-        <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
+        {viewLoaded && <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
 
           {/* ── Sidebar ── */}
           <Sidebar>
@@ -1189,7 +1182,7 @@ export default function PlayerProfile({
             </div>
           )}
 
-        </ProfileWrapper>
+        </ProfileWrapper>}
         </ProfileOuter>
       </Overlay>
     </>
