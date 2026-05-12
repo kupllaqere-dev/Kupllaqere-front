@@ -39,12 +39,14 @@ import {
   BADGE_RARITY, SHOWCASE_SLOTS, PRESENCE_LABELS,
 } from "./constants";
 import { loadImage, extractFrame } from "./utils";
+import { PALETTES, paletteToVars } from "./themes";
 
 import ProfileTab from "./tabs/ProfileTab";
 import MailTab from "./tabs/MailTab";
 import FriendsTab from "./tabs/FriendsTab";
 import LookTab from "./tabs/LookTab";
 import WishlistTab from "./tabs/WishlistTab";
+import ThemesTab from "./tabs/ThemesTab";
 import { InvItemsArea, InvBreadcrumbsBar } from "./tabs/InventoryTab";
 
 import {
@@ -83,6 +85,8 @@ export default function PlayerProfile({
 }) {
   const canvasRef = useRef(null);
   const textareaRef = useRef(null);
+  const bakedPosesRef = useRef([]);
+  const invBakedPosesRef = useRef([]);
 
   const isSelfView = !!(
     currentUserId && targetUserId &&
@@ -145,6 +149,7 @@ export default function PlayerProfile({
   const [wishlistItems, setWishlistItems] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
+  const [themeIdx, setThemeIdx] = useState(0);
 
   const [mailConversations, setMailConversations] = useState([]);
   const [mailLoading, setMailLoading] = useState(false);
@@ -327,24 +332,41 @@ export default function PlayerProfile({
     return () => { cancelled = true; };
   }, [outfit]);
 
-  const draw = useCallback(() => {
+  const bakeAllPoses = (base, layers) => POSE_ORDER.map((frameIndex) => {
+    const c = document.createElement("canvas");
+    c.width = FRAME_W;
+    c.height = FRAME_H;
+    const ctx = c.getContext("2d");
+    const cols = Math.floor(base.width / FRAME_W);
+    const { sx, sy } = extractFrame(base, frameIndex, cols);
+    ctx.drawImage(base, sx, sy, FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
+    for (const { img } of layers) {
+      const lc = Math.floor(img.width / FRAME_W);
+      const { sx: lx, sy: ly } = extractFrame(img, frameIndex, lc);
+      ctx.drawImage(img, lx, ly, FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
+    }
+    return c;
+  });
+
+  useEffect(() => {
+    if (!baseImg) { bakedPosesRef.current = []; return; }
+    bakedPosesRef.current = bakeAllPoses(baseImg, layerImages);
+  }, [baseImg, layerImages]);
+
+  useEffect(() => {
+    if (!baseImg) { invBakedPosesRef.current = []; return; }
+    invBakedPosesRef.current = bakeAllPoses(baseImg, invPreviewLayerImages);
+  }, [baseImg, invPreviewLayerImages]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !baseImg) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const cols = Math.floor(baseImg.width / FRAME_W);
-    const frameIndex = POSE_ORDER[poseIndex];
-    const { sx, sy } = extractFrame(baseImg, frameIndex, cols);
-    ctx.drawImage(baseImg, sx, sy, FRAME_W, FRAME_H, 0, 0, canvas.width, canvas.height);
-    const activeLayers = activeTab === "inventory" ? invPreviewLayerImages : layerImages;
-    for (const { img } of activeLayers) {
-      const layerCols = Math.floor(img.width / FRAME_W);
-      const { sx: lx, sy: ly } = extractFrame(img, frameIndex, layerCols);
-      ctx.drawImage(img, lx, ly, FRAME_W, FRAME_H, 0, 0, canvas.width, canvas.height);
-    }
-  }, [baseImg, layerImages, invPreviewLayerImages, poseIndex, activeTab]);
-
-  useEffect(() => { draw(); }, [draw]);
+    const poses = activeTab === "inventory" ? invBakedPosesRef.current : bakedPosesRef.current;
+    const baked = poses[poseIndex];
+    if (baked) ctx.drawImage(baked, 0, 0, canvas.width, canvas.height);
+  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages]);
 
   useEffect(() => {
     if (!invPreviewOutfit || Object.keys(invPreviewOutfit).length === 0) {
@@ -805,7 +827,7 @@ export default function PlayerProfile({
       <Overlay onClick={onClose}>
         <ProfileOuter>
         <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
-        <ProfileWrapper onClick={(e) => e.stopPropagation()}>
+        <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
 
           {/* ── Sidebar ── */}
           <Sidebar>
@@ -862,6 +884,12 @@ export default function PlayerProfile({
                       <SidebarLabel $active={activeTab === "wishlist"}>Wishlist</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn $active={activeTab === "themes"} onClick={() => setActiveTab("themes")}>
+                      <SidebarIcon $active={activeTab === "themes"}>◑</SidebarIcon>
+                      <SidebarLabel $active={activeTab === "themes"}>Themes</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
                 </>
               ) : (
                 <>
@@ -912,8 +940,8 @@ export default function PlayerProfile({
           {/* ── Avatar Stage ── */}
           <AvatarStageCol>
             <StageContainer>
-              <StageHalo />
-              <StageHaloOuter />
+              {/* <StageHalo />
+              <StageHaloOuter /> */}
               <AvatarViewport
                 onMouseDown={onViewportMouseDown}
                 style={{ cursor: "grab" }}
@@ -1099,6 +1127,12 @@ export default function PlayerProfile({
                 loading={wishlistLoading}
                 onRemove={handleWishlistRemove}
               />
+            </div>
+          )}
+
+          {isSelfView && (
+            <div style={{ display: activeTab === "themes" ? "contents" : "none" }}>
+              <ThemesTab themeIdx={themeIdx} setThemeIdx={setThemeIdx} />
             </div>
           )}
 

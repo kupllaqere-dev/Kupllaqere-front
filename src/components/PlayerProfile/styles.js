@@ -62,6 +62,23 @@ export const Overlay = styled.div`
 `;
 
 export const ProfileWrapper = styled.div`
+  --pp-bg:          #f7f3ff;
+  --pp-surface:     #ffffff;
+  --pp-card:        #f0eaff;
+  --pp-cardHov:     #e8deff;
+  --pp-border:      rgba(130,80,220,0.14);
+  --pp-border2:     rgba(130,80,220,0.26);
+  --pp-accent:      #7c3aed;
+  --pp-accentLt:    #9d6ff5;
+  --pp-accent-rgb:  124,58,237;
+  --pp-txt:         #2e1065;
+  --pp-txt2:        #5b3fa0;
+  --pp-txt3:        #a98fd4;
+  --pp-coin:        #b45309;
+  --pp-gradPanel:   linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  --pp-gradSidebar: linear-gradient(160deg, #ede8ff 0%, #f4eeff 100%);
+  --pp-gradCard:    linear-gradient(to top, #ddd0f8, #f8f3ff);
+  --pp-gradInner:   linear-gradient(to top, #ede5ff, #ffffff);
   position: relative;
   width: min(96vw, 1400px);
   max-width: 98vw;
@@ -84,8 +101,8 @@ export const Sidebar = styled.nav`
   padding: 18px 6px;
   width: 80px;
   flex-shrink: 0;
-  background: linear-gradient(160deg, #ede8ff 0%, #fce8ff 60%, #e8f0ff 100%);
-  border-right: 1px solid ${C.border};
+  background: var(--pp-gradSidebar);
+  border-right: 1px solid ${"var(--pp-border)"};
   border-radius: 22px 0 0 22px;
   z-index: 2;
 `;
@@ -100,14 +117,14 @@ export const SidebarLogoWrap = styled.div`
 
 export const SidebarLogoMark = styled.span`
   font-size: 16px;
-  color: ${C.accent};
+  color: ${"var(--pp-accent)"};
 `;
 
 export const SidebarLogoText = styled.span`
   font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 2.5px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
 `;
 
@@ -139,15 +156,15 @@ export const SidebarBtn = styled.button`
   position: relative;
   overflow: hidden;
   transition: background 0.2s, box-shadow 0.2s;
-  background: ${p => p.$active ? "rgba(124,58,237,0.14)" : "transparent"};
-  box-shadow: ${p => p.$active ? `inset 0 0 0 1px rgba(124,58,237,0.38), 0 2px 8px rgba(124,58,237,0.1)` : "none"};
+  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.14)" : "transparent"};
+  box-shadow: ${p => p.$active ? `inset 0 0 0 1px rgba(var(--pp-accent-rgb),0.38), 0 2px 8px rgba(var(--pp-accent-rgb),0.1)` : "none"};
   ${p => p.$active && css`
     &::after {
       content: '';
       position: absolute;
       right: 0; top: 22%; bottom: 22%;
       width: 2.5px;
-      background: ${C.accent};
+      background: ${"var(--pp-accent)"};
       border-radius: 0 2px 2px 0;
     }
   `}
@@ -161,7 +178,7 @@ export const SidebarBtn = styled.button`
     pointer-events: none;
   }
   &:hover:not(:disabled) {
-    background: ${p => p.$danger ? "rgba(220,38,38,0.1)" : p.$active ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.08)"};
+    background: ${p => p.$danger ? "rgba(220,38,38,0.1)" : p.$active ? "rgba(var(--pp-accent-rgb),0.2)" : "rgba(var(--pp-accent-rgb),0.08)"};
   }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
   &:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -169,20 +186,20 @@ export const SidebarBtn = styled.button`
 
 export const SidebarIcon = styled.span`
   font-size: 15px;
-  color: ${p => p.$active ? C.accent : p.$danger ? "#dc2626" : C.txt3};
+  color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
   line-height: 1;
   transition: color 0.2s;
-  ${SidebarBtn}:hover:not(:disabled) & { color: ${C.txt}; }
+  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt)"}; }
 `;
 
 export const SidebarLabel = styled.span`
   font-size: 8px;
   font-weight: 700;
-  color: ${p => p.$active ? C.accent : C.txt3};
+  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
   letter-spacing: 0.4px;
   text-transform: uppercase;
   transition: color 0.2s;
-  ${SidebarBtn}:hover:not(:disabled) & { color: ${C.txt2}; }
+  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt2)"}; }
 `;
 
 export const SidebarFooter = styled.div`
@@ -199,10 +216,10 @@ export const SidebarAvatarThumb = styled.div`
   height: 38px;
   border-radius: 50%;
   background: linear-gradient(135deg, #5b21b6, #1e40af);
-  border: 2px solid rgba(124,58,237,0.5);
+  border: 2px solid rgba(var(--pp-accent-rgb),0.5);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  &:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(124,58,237,0.55); }
+  &:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(var(--pp-accent-rgb),0.55); }
 `;
 
 export const SidebarOnlinePip = styled.div`
@@ -221,7 +238,7 @@ export const SidebarNotifDot = styled.span`
   min-width: 14px;
   height: 14px;
   background: #e03131;
-  border: 1.5px solid #ede8ff;
+  border: 1.5px solid var(--pp-card);
   border-radius: 7px;
   font-size: 8px;
   font-weight: 700;
@@ -243,8 +260,8 @@ export const AvatarStageCol = styled.section`
   padding: 0 14px;
   width: 350px;
   flex-shrink: 0;
-  background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
-  border-right: 1px solid ${C.border};
+  background: var(--pp-gradPanel);
+  border-right: 1px solid ${"var(--pp-border)"};
   gap: 10px;
   overflow: hidden;
   position: relative;
@@ -256,10 +273,10 @@ export const OutfitLabel = styled.div`
   gap: 6px;
   font-size: 10.5px;
   font-weight: 700;
-  color: ${C.accent};
+  color: ${"var(--pp-accent)"};
   letter-spacing: 0.6px;
-  background: rgba(124,58,237,0.08);
-  border: 1px solid ${C.border2};
+  background: rgba(var(--pp-accent-rgb),0.08);
+  border: 1px solid ${"var(--pp-border2)"};
   padding: 5px 13px;
   border-radius: 20px;
   flex-shrink: 0;
@@ -279,7 +296,7 @@ export const StageContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  background: radial-gradient(ellipse 80% 45% at 50% 38%, rgba(124,58,237,0.07) 0%, transparent 68%);
+  background: radial-gradient(ellipse 80% 45% at 50% 38%, rgba(var(--pp-accent-rgb),0.07) 0%, transparent 68%);
 `;
 
 export const StageHalo = styled.div`
@@ -289,7 +306,7 @@ export const StageHalo = styled.div`
   left: 50%;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(var(--pp-accent-rgb),0.22) 0%, transparent 68%);
   animation: haloPulse 3.2s ease-in-out infinite;
   pointer-events: none;
   @keyframes haloPulse {
@@ -317,8 +334,8 @@ export const AvatarViewport = styled.div`
   aspect-ratio: ${FRAME_W} / ${FRAME_H};
   overflow: hidden;
   border-radius: 14px;
-  box-shadow: 0 0 22px rgba(124,58,237,0.1), inset 0 0 18px rgba(124,58,237,0.04);
-  background: radial-gradient(ellipse at 50% 95%, rgba(124,58,237,0.07) 0%, transparent 55%);
+  box-shadow: 0 0 22px rgba(var(--pp-accent-rgb),0.1), inset 0 0 18px rgba(var(--pp-accent-rgb),0.04);
+  /* background: radial-gradient(ellipse at 50% 95%, rgba(var(--pp-accent-rgb),0.07) 0%, transparent 55%); */
   position: relative;
   z-index: 2;
 `;
@@ -334,7 +351,7 @@ export const AvatarPlatform = styled.div`
   width: 64%;
   height: 10px;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(124,58,237,0.95) 0%, rgba(59,130,246,0.55) 38%, transparent 72%);
+  background: radial-gradient(ellipse at center, rgba(var(--pp-accent-rgb),0.95) 0%, rgba(59,130,246,0.55) 38%, transparent 72%);
   filter: blur(6px);
   margin-top: 2px;
   flex-shrink: 0;
@@ -352,11 +369,11 @@ export const StatusCard = styled.div`
   height: 58px;
   box-sizing: border-box;
   flex-shrink: 0;
-  background: rgba(124,58,237,0.04);
+  background: rgba(var(--pp-accent-rgb),0.04);
   border-left: none;
   border-right: none;
-  border-top: 1px solid ${C.border};
-  border-bottom: 1px solid ${C.border};
+  border-top: 1px solid ${"var(--pp-border)"};
+  border-bottom: 1px solid ${"var(--pp-border)"};
   border-radius: 0;
   padding: 9px 27px;
   display: flex;
@@ -389,17 +406,17 @@ export const OnlineLabel = styled.span`
   text-transform: uppercase;
 `;
 
-export const StatusSep = styled.span`color: ${C.txt3}; font-size: 11px;`;
+export const StatusSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
 
 export const StatusLoc = styled.span`
   font-size: 9.5px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-weight: 500;
 `;
 
 export const StatusText = styled.div`
   font-size: 11px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   font-style: italic;
   line-height: 1.4;
 `;
@@ -443,12 +460,12 @@ export const StatusClickTarget = styled.div`
   padding: 2px 4px;
   margin: -2px -4px;
   transition: background 0.15s;
-  &:hover { background: rgba(124,58,237,0.08); }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
 `;
 
 export const StatusDropdown = styled.div`
-  background: ${C.surface};
-  border: 1px solid ${C.border2};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border2)"};
   border-radius: 8px;
   padding: 4px;
   display: flex;
@@ -460,10 +477,10 @@ export const StatusDropdown = styled.div`
 `;
 
 export const StatusOption = styled.button`
-  background: ${({ $active }) => $active ? "rgba(124,58,237,0.10)" : "none"};
+  background: ${({ $active }) => $active ? "rgba(var(--pp-accent-rgb),0.10)" : "none"};
   border: none;
   border-radius: 6px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-size: 11px;
   font-family: inherit;
   font-weight: ${({ $active }) => $active ? "700" : "500"};
@@ -473,7 +490,7 @@ export const StatusOption = styled.button`
   display: flex;
   align-items: center;
   gap: 6px;
-  &:hover { background: rgba(124,58,237,0.08); }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
 `;
 
 export const OptionDot = styled.span`
@@ -494,9 +511,9 @@ export const Controls = styled.div`
 export const ArrowBtn = styled.button`
   width: 28px; height: 28px;
   border-radius: 8px;
-  border: 1px solid ${C.border};
-  background: rgba(124,58,237,0.06);
-  color: ${C.txt2};
+  border: 1px solid ${"var(--pp-border)"};
+  background: rgba(var(--pp-accent-rgb),0.06);
+  color: ${"var(--pp-txt2)"};
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -516,10 +533,10 @@ export const ArrowBtn = styled.button`
     pointer-events: none;
   }
   &:hover:not(:disabled) {
-    background: rgba(124,58,237,0.14);
-    border-color: ${C.border2};
-    color: ${C.txt};
-    box-shadow: 0 2px 8px rgba(124,58,237,0.12);
+    background: rgba(var(--pp-accent-rgb),0.14);
+    border-color: ${"var(--pp-border2)"};
+    color: ${"var(--pp-txt)"};
+    box-shadow: 0 2px 8px rgba(var(--pp-accent-rgb),0.12);
   }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
   &:active:not(:disabled) { transform: scale(0.9); }
@@ -529,7 +546,7 @@ export const ArrowBtn = styled.button`
 export const PoseLabel = styled.span`
   font-size: 8.5px;
   font-weight: 700;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   min-width: 48px;
   text-align: center;
   text-transform: uppercase;
@@ -546,7 +563,7 @@ export const ProfileContent = styled.main`
   gap: 18px;
   padding: 22px 22px 22px 20px;
   overflow-y: auto;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
   position: relative;
   ${thinScrollbar}
 `;
@@ -555,14 +572,14 @@ export const CloseBtn = styled.button`
   position: absolute;
   top: 12px;
   right: 14px;
-  background: rgba(120,80,220,0.06);
-  border: 1px solid ${C.border};
+  background: rgba(var(--pp-accent-rgb),0.06);
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 8px;
   width: 28px; height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 18px;
   cursor: pointer;
   z-index: 2;
@@ -580,7 +597,7 @@ export const ProfileHeader = styled.header`
   justify-content: space-between;
   gap: 14px;
   padding-bottom: 16px;
-  border-bottom: 1px solid ${C.border};
+  border-bottom: 1px solid ${"var(--pp-border)"};
 `;
 
 export const HeaderLeft = styled.div`
@@ -592,18 +609,18 @@ export const HeaderLeft = styled.div`
 export const ProfileEmblem = styled.div`
   width: 50px; height: 50px;
   border-radius: 15px;
-  background: linear-gradient(135deg, rgba(124,58,237,0.14), rgba(59,130,246,0.08));
-  border: 1px solid ${C.border2};
+  background: linear-gradient(135deg, rgba(var(--pp-accent-rgb),0.14), rgba(59,130,246,0.08));
+  border: 1px solid ${"var(--pp-border2)"};
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(124,58,237,0.12);
+  box-shadow: 0 4px 16px rgba(var(--pp-accent-rgb),0.12);
   flex-shrink: 0;
 `;
 
 export const EmblemDiamond = styled.span`
   font-size: 24px;
-  color: ${C.accent};
+  color: ${"var(--pp-accent)"};
 `;
 
 export const HeaderTitles = styled.div`display: flex; flex-direction: column; gap: 5px;`;
@@ -621,7 +638,7 @@ export const PlayerName = styled.h2`
 `;
 
 export const PlayerNameMark = styled.span`
-  -webkit-text-fill-color: ${C.accent};
+  -webkit-text-fill-color: ${"var(--pp-accent)"};
   font-size: 20px;
 `;
 
@@ -634,14 +651,14 @@ export const ProfileMetaRow = styled.div`
 export const LevelBadge = styled.span`
   font-size: 11px;
   font-weight: 700;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.1);
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.1);
   padding: 2px 8px;
   border-radius: 6px;
-  border: 1px solid ${C.border2};
+  border: 1px solid ${"var(--pp-border2)"};
 `;
 
-export const MetaSep = styled.span`color: ${C.txt3}; font-size: 11px;`;
+export const MetaSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
 
 export const RankBadgeDiamond = styled.span`
   font-size: 11px;
@@ -670,14 +687,14 @@ export const ProfileStat = styled.div`
 export const ProfileStatVal = styled.div`
   font-size: 17px;
   font-weight: 800;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   line-height: 1;
 `;
 
 export const ProfileStatLbl = styled.div`
   font-size: 9px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -697,7 +714,7 @@ export const SectionHeaderRow = styled.div`
 export const SectionTitle = styled.div`
   font-size: 9.5px;
   font-weight: 700;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.9px;
 `;
@@ -705,8 +722,8 @@ export const SectionTitle = styled.div`
 export const SectionCountPill = styled.span`
   font-size: 9.5px;
   font-weight: 700;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.1);
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.1);
   padding: 1px 6px;
   border-radius: 10px;
 `;
@@ -715,13 +732,13 @@ export const SectionEditBtn = styled.button`
   all: unset;
   font-size: 9.5px;
   font-weight: 700;
-  color: ${C.accent};
+  color: ${"var(--pp-accent)"};
   cursor: pointer;
   margin-left: auto;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   transition: color 0.2s;
-  &:hover { color: ${C.accentLt}; }
+  &:hover { color: ${"var(--pp-accentLt)"}; }
 `;
 
 export const BadgesScrollWrap = styled.div`
@@ -729,7 +746,7 @@ export const BadgesScrollWrap = styled.div`
   padding-bottom: 5px;
   &::-webkit-scrollbar { height: 3px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(var(--pp-accent-rgb),0.28); border-radius: 3px; }
 `;
 
 export const BadgesRow = styled.div`
@@ -746,24 +763,24 @@ export const BadgeCard = styled.div`
   padding: 10px 12px 9px;
   border-radius: 12px;
   border: 1px solid ${p => {
-    if (p.$selected) return "rgba(124,58,237,0.5)";
+    if (p.$selected) return "rgba(var(--pp-accent-rgb),0.5)";
     if (p.$rarity === "legendary") return "rgba(234,179,8,0.38)";
     if (p.$rarity === "rare") return "rgba(59,130,246,0.28)";
-    return C.border;
+    return "var(--pp-border)";
   }};
-  background: ${p => p.$selected ? "rgba(124,58,237,0.08)" : C.surface};
+  background: ${p => p.$selected ? "rgba(var(--pp-accent-rgb),0.08)" : "var(--pp-surface)"};
   cursor: ${p => p.$clickable ? (p.$saving ? "wait" : "pointer") : "default"};
   min-width: 72px;
   position: relative;
   overflow: hidden;
   opacity: ${p => p.$saving ? 0.6 : 1};
-  box-shadow: ${p => p.$selected ? "0 4px 14px rgba(124,58,237,0.18)" : "0 1px 4px rgba(100,50,200,0.06)"};
+  box-shadow: ${p => p.$selected ? "0 4px 14px rgba(var(--pp-accent-rgb),0.18)" : "0 1px 4px rgba(100,50,200,0.06)"};
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   &:hover {
     transform: ${p => p.$clickable && !p.$saving ? "translateY(-3px) scale(1.04)" : "none"};
     box-shadow: ${p => {
       if (!p.$clickable || p.$saving) return "none";
-      return "0 6px 20px rgba(124,58,237,0.18)";
+      return "0 6px 20px rgba(var(--pp-accent-rgb),0.18)";
     }};
   }
 `;
@@ -786,7 +803,7 @@ export const BadgeImg = styled.img`
 export const BadgeCardName = styled.div`
   font-size: 8.5px;
   font-weight: 700;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   text-align: center;
 `;
 
@@ -798,7 +815,7 @@ export const BadgeCardRarity = styled.div`
   color: ${p => {
     if (p.$rarity === "legendary") return "#b45309";
     if (p.$rarity === "rare") return "#0369a1";
-    return C.txt3;
+    return "var(--pp-txt3)";
   }};
 `;
 
@@ -807,14 +824,14 @@ export const BadgeExpandBtn = styled.button`
   align-self: flex-end;
   font-size: 10px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   cursor: pointer;
   padding: 0;
-  &:hover { color: ${C.accent}; }
+  &:hover { color: ${"var(--pp-accent)"}; }
 `;
 
 export const SoulmateCard = styled.div`
-  background: linear-gradient(135deg, rgba(236,72,153,0.05) 0%, rgba(124,58,237,0.06) 100%);
+  background: linear-gradient(135deg, rgba(236,72,153,0.05) 0%, rgba(var(--pp-accent-rgb),0.06) 100%);
   border: 1px solid rgba(236,72,153,0.22);
   border-radius: 14px;
   padding: 13px 15px;
@@ -858,13 +875,13 @@ export const SoulmateSpinRing = styled.div`
 
 export const SoulmateInfoBlock = styled.div`flex: 1; min-width: 0;`;
 
-export const SoulmateName = styled.div`font-size: 15px; font-weight: 800; color: ${C.txt};`;
+export const SoulmateName = styled.div`font-size: 15px; font-weight: 800; color: ${"var(--pp-txt)"};`;
 
 export const SoulmateMark = styled.span`color: #ec4899;`;
 
 export const SoulmateDuration = styled.div`
   font-size: 10px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   margin: 3px 0 6px;
 `;
 
@@ -872,9 +889,9 @@ export const SoulmateMoodTag = styled.div`
   display: inline-flex;
   font-size: 10px;
   font-weight: 700;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.08);
-  border: 1px solid ${C.border};
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.08);
+  border: 1px solid ${"var(--pp-border)"};
   padding: 2px 8px;
   border-radius: 10px;
 `;
@@ -889,8 +906,8 @@ export const SoulmateCardActions = styled.div`
 `;
 
 export const SoulmateEmptyBox = styled.div`
-  background: rgba(124,58,237,0.04);
-  border: 1px solid ${C.border};
+  background: rgba(var(--pp-accent-rgb),0.04);
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
   padding: 12px 14px;
   min-height: 50px;
@@ -904,7 +921,7 @@ export const ShowcaseScrollWrap = styled.div`
   padding-bottom: 5px;
   &::-webkit-scrollbar { height: 3px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(var(--pp-accent-rgb),0.28); border-radius: 3px; }
 `;
 
 export const ShowcaseRow = styled.div`
@@ -916,8 +933,8 @@ export const ShowcaseRow = styled.div`
 export const ShowcaseCard = styled.div`
   width: 98px; height: 116px;
   border-radius: 12px;
-  border: 1px dashed ${C.border};
-  background: ${C.surface};
+  border: 1px dashed ${"var(--pp-border)"};
+  background: ${"var(--pp-surface)"};
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -931,8 +948,8 @@ export const ShowcaseCard = styled.div`
   &:hover {
     ${p => p.$clickable && css`
       border-style: solid;
-      border-color: ${C.border2};
-      box-shadow: 0 6px 20px rgba(124,58,237,0.14);
+      border-color: ${"var(--pp-border2)"};
+      box-shadow: 0 6px 20px rgba(var(--pp-accent-rgb),0.14);
     `}
   }
 `;
@@ -940,7 +957,7 @@ export const ShowcaseCard = styled.div`
 export const ShowcaseCardShine = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 10%, rgba(124,58,237,0.18), transparent 65%);
+  background: radial-gradient(circle at 50% 10%, rgba(var(--pp-accent-rgb),0.18), transparent 65%);
   opacity: 0;
   transition: opacity 0.22s;
   pointer-events: none;
@@ -955,29 +972,29 @@ export const ShowcaseItemImg = styled.img`
 export const ShowcaseCardLabel = styled.div`
   font-size: 8.5px;
   font-weight: 700;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   text-align: center;
 `;
 
 export const ShowcaseCardType = styled.div`
   font-size: 7.5px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
 
 export const ShowcaseAdd = styled.div`
   font-size: 22px;
-  color: ${C.border2};
+  color: ${"var(--pp-border2)"};
   line-height: 1;
-  ${ShowcaseCard}:hover & { color: ${C.accent}; }
+  ${ShowcaseCard}:hover & { color: ${"var(--pp-accent)"}; }
 `;
 
 export const ShowcaseCardAddLabel = styled.div`
   font-size: 8px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
@@ -986,8 +1003,8 @@ export const CompanionCard = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-  background: linear-gradient(135deg, rgba(124,58,237,0.05), rgba(59,130,246,0.03));
-  border: 1px solid ${C.border};
+  background: linear-gradient(135deg, rgba(var(--pp-accent-rgb),0.05), rgba(59,130,246,0.03));
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 14px;
   padding: 14px 16px;
 `;
@@ -998,7 +1015,7 @@ export const CompanionPetAura = styled.div`
   position: absolute;
   inset: -10px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,58,237,0.28) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--pp-accent-rgb),0.28) 0%, transparent 70%);
   animation: auraBreath 3.2s ease-in-out infinite;
   @keyframes auraBreath { 0%,100% { transform: scale(1); opacity: 0.48; } 50% { transform: scale(1.18); opacity: 0.9; } }
 `;
@@ -1027,14 +1044,14 @@ export const CompanionNameRow = styled.div`
   flex-wrap: wrap;
 `;
 
-export const CompanionNameText = styled.span`font-size: 14px; font-weight: 800; color: ${C.txt};`;
+export const CompanionNameText = styled.span`font-size: 14px; font-weight: 800; color: ${"var(--pp-txt)"};`;
 
-export const CompanionMoodText = styled.span`font-size: 11px; color: ${C.txt3};`;
+export const CompanionMoodText = styled.span`font-size: 11px; color: ${"var(--pp-txt3)"};`;
 
 export const CompanionLevelText = styled.div`
   font-size: 10px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   letter-spacing: 0.3px;
 `;
 
@@ -1068,7 +1085,7 @@ export const XPLabelsRow = styled.div`
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-weight: 600;
 `;
 
@@ -1079,8 +1096,8 @@ export const RightPanel = styled.aside`
   flex-direction: column;
   width: 290px;
   flex-shrink: 0;
-  background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
-  border-left: 1px solid ${C.border};
+  background: var(--pp-gradPanel);
+  border-left: 1px solid ${"var(--pp-border)"};
   border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
@@ -1104,9 +1121,9 @@ export const OrnamentDivider = styled.div`
   flex-shrink: 0;
 `;
 
-export const OrnamentLine = styled.div`flex: 1; height: 1px; background: ${C.border};`;
+export const OrnamentLine = styled.div`flex: 1; height: 1px; background: ${"var(--pp-border)"};`;
 
-export const OrnamentGem = styled.span`font-size: 9px; color: ${C.accentLt};`;
+export const OrnamentGem = styled.span`font-size: 9px; color: ${"var(--pp-accentLt)"};`;
 
 export const GBToggleBtn = styled.button`
   all: unset;
@@ -1120,15 +1137,15 @@ export const GBToggleBtn = styled.button`
 export const GBCountPill = styled.span`
   font-size: 9.5px;
   font-weight: 700;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.1);
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.1);
   padding: 1px 7px;
   border-radius: 10px;
 `;
 
 export const GBToggleArrow = styled.span`
   font-size: 8px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   transition: transform 0.25s ease;
   transform: ${p => p.$open ? "rotate(0deg)" : "rotate(180deg)"};
   display: inline-block;
@@ -1142,18 +1159,18 @@ export const GBPreviewList = styled.div`
   min-height: 0;
   overflow-y: auto;
   &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.28); border-radius: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba(var(--pp-accent-rgb),0.28); border-radius: 3px; }
 `;
 
 export const GBPreviewCard = styled.div`
   display: flex;
   gap: 9px;
   padding: 9px 11px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
   transition: border-color 0.18s, background 0.18s;
-  &:hover { background: ${C.card}; border-color: ${C.border2}; }
+  &:hover { background: ${"var(--pp-card)"}; border-color: ${"var(--pp-border2)"}; }
 `;
 
 export const GBPreviewAvatarWrap = styled.div`
@@ -1167,15 +1184,15 @@ export const GBPreviewBody = styled.div`flex: 1; min-width: 0; display: flex; fl
 
 export const GBPreviewMeta = styled.div`display: flex; align-items: center; gap: 6px;`;
 
-export const GBPreviewName = styled.span`font-size: 11px; font-weight: 700; color: ${C.accent};`;
+export const GBPreviewName = styled.span`font-size: 11px; font-weight: 700; color: ${"var(--pp-accent)"};`;
 
-export const GBPreviewTime = styled.span`font-size: 9.5px; color: ${C.txt3};`;
+export const GBPreviewTime = styled.span`font-size: 9.5px; color: ${"var(--pp-txt3)"};`;
 
 export const GBPreviewText = styled.p`
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1183,7 +1200,7 @@ export const GBPreviewText = styled.p`
 
 export const GBEmpty = styled.div`
   font-size: ${p => p.$large ? "13px" : "11.5px"};
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   ${p => p.$large && "text-align: center; padding: 20px 0;"}
 `;
 
@@ -1198,19 +1215,19 @@ export const GBInput = styled.textarea`
   width: 100%;
   resize: none;
   height: 44px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 12px;
   line-height: 1.4;
   padding: 10px 36px 10px 12px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
-  &:focus { border-color: ${C.border2}; box-shadow: 0 0 0 2px rgba(124,58,237,0.08); }
-  &::placeholder { color: ${C.txt3}; }
+  caret-color: ${"var(--pp-accent)"};
+  &:focus { border-color: ${"var(--pp-border2)"}; box-shadow: 0 0 0 2px rgba(var(--pp-accent-rgb),0.08); }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
 `;
 
 export const GBInputFooter = styled.div`
@@ -1221,13 +1238,13 @@ export const GBInputFooter = styled.div`
 
 export const GBCounter = styled.span`
   font-size: 10px;
-  color: ${p => p.$warn ? "#b45309" : C.txt3};
+  color: ${p => p.$warn ? "#b45309" : "var(--pp-txt3)"};
 `;
 
 export const PrimaryBtn = styled.button`
-  background: rgba(124,58,237,0.1);
-  border: 1px solid rgba(124,58,237,0.3);
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid rgba(var(--pp-accent-rgb),0.3);
+  color: ${"var(--pp-accent)"};
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
@@ -1238,15 +1255,15 @@ export const PrimaryBtn = styled.button`
   transition: all 0.18s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); border-color: ${C.border2}; transform: translateY(-1px); }
+  &:hover:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.18); border-color: ${"var(--pp-border2)"}; transform: translateY(-1px); }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
   &:active:not(:disabled) { transform: translateY(0); }
 `;
 
 export const SecondaryBtn = styled.button`
   background: transparent;
-  border: 1px solid ${C.border};
-  color: ${C.txt3};
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-txt3)"};
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
@@ -1257,16 +1274,16 @@ export const SecondaryBtn = styled.button`
   transition: all 0.18s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: ${C.card}; color: ${C.txt2}; border-color: ${C.border2}; }
+  &:hover:not(:disabled) { background: ${"var(--pp-card)"}; color: ${"var(--pp-txt2)"}; border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
 export const FormatToolbar = styled.div`display: flex; gap: 4px; margin-bottom: 4px;`;
 
 export const FormatBtn = styled.button`
-  background: ${C.surface};
-  border: 1px solid ${C.border};
-  color: ${C.txt2};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-txt2)"};
   font-size: 12px;
   width: 26px; height: 26px;
   border-radius: 5px;
@@ -1276,53 +1293,53 @@ export const FormatBtn = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
-  &:hover { background: ${C.card}; border-color: ${C.border2}; color: ${C.accent}; }
+  &:hover { background: ${"var(--pp-card)"}; border-color: ${"var(--pp-border2)"}; color: ${"var(--pp-accent)"}; }
 `;
 
 export const BioTextarea = styled.textarea`
   width: 100%;
   min-height: 120px;
   resize: vertical;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 8px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 12px;
   line-height: 1.5;
   padding: 8px 10px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
-  &:focus { border-color: ${C.border2}; box-shadow: 0 0 0 2px rgba(124,58,237,0.08); }
-  &::placeholder { color: ${C.txt3}; }
+  caret-color: ${"var(--pp-accent)"};
+  &:focus { border-color: ${"var(--pp-border2)"}; box-shadow: 0 0 0 2px rgba(var(--pp-accent-rgb),0.08); }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
 `;
 
 export const BioFooter = styled.div`display: flex; align-items: center; justify-content: space-between; margin-top: 6px;`;
 
-export const BioCounter = styled.span`font-size: 11px; color: ${C.txt3};`;
+export const BioCounter = styled.span`font-size: 11px; color: ${"var(--pp-txt3)"};`;
 
 export const BioActions = styled.div`display: flex; gap: 6px;`;
 
 export const Description = styled.p`
   margin: 0;
   font-size: 12px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   line-height: 1.7;
   white-space: pre-wrap;
 `;
 
-export const EmptyText = styled.span`font-size: 12px; color: ${C.txt3};`;
+export const EmptyText = styled.span`font-size: 12px; color: ${"var(--pp-txt3)"};`;
 
 export const BioErrorMsg = styled.div`margin-top: 6px; font-size: 11px; color: #dc2626;`;
 
 export const BBContent = styled.div`
   font-size: 13px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   line-height: 1.7;
   word-break: break-word;
   & img { max-width: 100%; border-radius: 6px; }
-  & a { color: ${C.accent}; text-decoration: underline; }
+  & a { color: ${"var(--pp-accent)"}; text-decoration: underline; }
   & details > summary { list-style: none; }
   & details > summary::-webkit-details-marker { display: none; }
 `;
@@ -1333,8 +1350,8 @@ export const BBToolbar = styled.div`
   gap: 3px;
   flex-wrap: wrap;
   padding: 7px 9px;
-  background: ${C.card};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-card)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 8px 8px 0 0;
   border-bottom: none;
   flex-shrink: 0;
@@ -1359,23 +1376,23 @@ export const BBToolBtn = styled.button`
   border-radius: 7px;
   font-size: 11px;
   font-weight: 700;
-  color: ${p => p.$active ? C.accent : C.txt2};
-  background: ${p => p.$active ? "rgba(124,58,237,0.1)" : C.surface};
-  border: 1px solid ${p => p.$active ? C.border2 : C.border};
+  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt2)"};
+  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.1)" : "var(--pp-surface)"};
+  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "var(--pp-border)"};
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
   &:hover {
-    background: rgba(124,58,237,0.1);
-    border-color: rgba(124,58,237,0.35);
-    color: ${C.accent};
+    background: rgba(var(--pp-accent-rgb),0.1);
+    border-color: rgba(var(--pp-accent-rgb),0.35);
+    color: ${"var(--pp-accent)"};
   }
 `;
 
 export const BBToolSep = styled.div`
   width: 1px;
   height: 18px;
-  background: ${C.border};
+  background: ${"var(--pp-border)"};
   margin: 0 3px;
   flex-shrink: 0;
 `;
@@ -1385,8 +1402,8 @@ export const BBColorPanel = styled.div`
   top: calc(100% + 5px);
   left: 0;
   z-index: 40;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
   padding: 8px;
   display: grid;
@@ -1411,8 +1428,8 @@ export const BBSizePanel = styled.div`
   top: calc(100% + 5px);
   left: 0;
   z-index: 40;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
   padding: 5px;
   display: flex;
@@ -1427,42 +1444,42 @@ export const BBSizeOption = styled.button`
   padding: 5px 10px;
   border-radius: 7px;
   cursor: pointer;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-weight: 600;
   font-family: inherit;
   white-space: nowrap;
   transition: background 0.1s;
-  &:hover { background: rgba(124,58,237,0.08); color: ${C.accent}; }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.08); color: ${"var(--pp-accent)"}; }
 `;
 
 export const BBTextarea = styled.textarea`
   width: 100%;
   min-height: 200px;
   resize: vertical;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-top: none;
   border-radius: 0 0 8px 8px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: monospace, inherit;
   font-size: 12px;
   line-height: 1.5;
   padding: 10px 12px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
-  &:focus { border-color: ${C.border2}; box-shadow: 0 0 0 2px rgba(124,58,237,0.08); }
-  &::placeholder { color: ${C.txt3}; font-family: inherit; }
+  caret-color: ${"var(--pp-accent)"};
+  &:focus { border-color: ${"var(--pp-border2)"}; box-shadow: 0 0 0 2px rgba(var(--pp-accent-rgb),0.08); }
+  &::placeholder { color: ${"var(--pp-txt3)"}; font-family: inherit; }
 `;
 
 export const SmContent = styled.div`display: flex; flex-wrap: wrap; align-items: center; gap: 8px;`;
 
-export const SmEmpty = styled.div`font-size: 12px; color: ${C.txt3};`;
+export const SmEmpty = styled.div`font-size: 12px; color: ${"var(--pp-txt3)"};`;
 
 export const SmSub = styled.div`
   font-size: 9.5px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: 100%;
@@ -1471,7 +1488,7 @@ export const SmSub = styled.div`
 export const SmName = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1485,14 +1502,14 @@ export const SmRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid ${C.border};
+  border-bottom: 1px solid ${"var(--pp-border)"};
   &:last-child { border-bottom: none; }
 `;
 
 export const SmPrimaryBtn = styled.button`
-  background: rgba(124,58,237,0.1);
-  border: 1px solid rgba(124,58,237,0.3);
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid rgba(var(--pp-accent-rgb),0.3);
+  color: ${"var(--pp-accent)"};
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
@@ -1503,14 +1520,14 @@ export const SmPrimaryBtn = styled.button`
   transition: all 0.18s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); border-color: ${C.border2}; }
+  &:hover:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.18); border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
 export const SmSecBtn = styled.button`
   background: transparent;
-  border: 1px solid ${C.border};
-  color: ${C.txt3};
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-txt3)"};
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
@@ -1521,7 +1538,7 @@ export const SmSecBtn = styled.button`
   transition: all 0.18s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: ${C.card}; color: ${C.txt2}; border-color: ${C.border2}; }
+  &:hover:not(:disabled) { background: ${"var(--pp-card)"}; color: ${"var(--pp-txt2)"}; border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
@@ -1550,9 +1567,9 @@ export const GuestBookOverlay = styled.div`
   top: 0; bottom: 0;
   left: 470px; right: 0;
   z-index: 20;
-  background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
-  border: 1px solid ${C.border};
+  border: 1px solid ${"var(--pp-border)"};
   box-shadow: -4px 0 24px rgba(100,50,200,0.08);
   display: flex;
   flex-direction: column;
@@ -1570,10 +1587,10 @@ export const GBOverlayClose = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(120,80,220,0.08);
-  border: 1px solid ${C.border};
+  background: rgba(var(--pp-accent-rgb),0.08);
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 8px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   font-size: 18px;
   cursor: pointer;
   z-index: 2;
@@ -1599,7 +1616,7 @@ export const GBTitle = styled.h2`
 export const GBSubtitle = styled.p`
   margin: 5px 0 14px;
   font-size: 11px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-align: center;
   letter-spacing: 0.3px;
 `;
@@ -1612,9 +1629,9 @@ export const GBHeaderControls = styled.div`
 `;
 
 export const GBSortBtn = styled.button`
-  background: ${C.surface};
-  border: 1px solid ${C.border};
-  color: ${C.txt2};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-txt2)"};
   font-size: 12px;
   font-weight: 500;
   padding: 5px 12px;
@@ -1627,14 +1644,14 @@ export const GBSortBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.15s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { background: ${C.card}; border-color: ${C.border2}; color: ${C.txt}; }
+  &:hover { background: ${"var(--pp-card)"}; border-color: ${"var(--pp-border2)"}; color: ${"var(--pp-txt)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
 export const GBPinnedBtn = styled.button`
-  background: ${C.surface};
-  border: 1px solid ${C.border};
-  color: ${C.txt2};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-txt2)"};
   font-size: 12px;
   font-weight: 500;
   padding: 5px 12px;
@@ -1644,15 +1661,15 @@ export const GBPinnedBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.15s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { background: ${C.card}; border-color: ${C.border2}; color: ${C.txt}; }
+  &:hover { background: ${"var(--pp-card)"}; border-color: ${"var(--pp-border2)"}; color: ${"var(--pp-txt)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
 export const GBComposeArea = styled.div`
   margin: 0 16px 4px;
   padding: 12px 14px 8px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 14px;
   flex-shrink: 0;
 `;
@@ -1662,8 +1679,8 @@ export const GBComposeRow = styled.div`display: flex; align-items: center; gap: 
 export const GBAvatarPlaceholder = styled.div`
   width: 44px; height: 44px;
   border-radius: 50%;
-  background: rgba(124,58,237,0.1);
-  border: 2px solid ${C.border2};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 2px solid ${"var(--pp-border2)"};
   flex-shrink: 0;
 `;
 
@@ -1675,18 +1692,18 @@ export const GBEmojiBtn = styled.button`
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 18px;
   cursor: pointer;
   padding: 0;
   line-height: 1;
-  &:hover { color: ${C.accent}; }
+  &:hover { color: ${"var(--pp-accent)"}; }
 `;
 
 export const GBPostBtn = styled.button`
-  background: rgba(124,58,237,0.1);
-  border: 1px solid rgba(124,58,237,0.3);
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid rgba(var(--pp-accent-rgb),0.3);
+  color: ${"var(--pp-accent)"};
   font-size: 14px;
   font-weight: 700;
   padding: 10px 22px;
@@ -1698,7 +1715,7 @@ export const GBPostBtn = styled.button`
   transition: all 0.15s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); border-color: ${C.border2}; }
+  &:hover:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.18); border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
@@ -1712,14 +1729,14 @@ export const GBComposeTools = styled.div`
 export const GBToolBtn = styled.button`
   background: none;
   border: none;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
   padding: 4px 8px;
   border-radius: 6px;
   transition: all 0.15s;
-  &:hover { background: ${C.card}; color: ${C.txt2}; }
+  &:hover { background: ${"var(--pp-card)"}; color: ${"var(--pp-txt2)"}; }
 `;
 
 export const GBOrnamentDivider = styled.div`
@@ -1730,19 +1747,19 @@ export const GBOrnamentDivider = styled.div`
   flex-shrink: 0;
 `;
 
-export const GBDividerLine = styled.div`flex: 1; height: 1px; background: ${C.border};`;
+export const GBDividerLine = styled.div`flex: 1; height: 1px; background: ${"var(--pp-border)"};`;
 
-export const GBDividerGem = styled.span`color: ${C.accentLt}; font-size: 11px;`;
+export const GBDividerGem = styled.span`color: ${"var(--pp-accentLt)"}; font-size: 11px;`;
 
 export const GBCommentCard = styled.div`
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
   padding: 12px 14px;
   transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
   &:hover {
-    border-color: ${C.border2};
-    background: ${C.card};
+    border-color: ${"var(--pp-border2)"};
+    background: ${"var(--pp-card)"};
     box-shadow: 0 2px 12px rgba(100,50,200,0.08);
   }
 `;
@@ -1755,14 +1772,14 @@ export const GBCommentBody = styled.div`flex: 1; min-width: 0; display: flex; fl
 
 export const GBCommentMeta = styled.div`display: flex; align-items: center; gap: 8px; flex-wrap: wrap;`;
 
-export const GBCommentName = styled.span`font-size: 14px; font-weight: 700; color: ${C.accent};`;
+export const GBCommentName = styled.span`font-size: 14px; font-weight: 700; color: ${"var(--pp-accent)"};`;
 
-export const GBCommentTime = styled.span`font-size: 11px; color: ${C.txt3};`;
+export const GBCommentTime = styled.span`font-size: 11px; color: ${"var(--pp-txt3)"};`;
 
 export const GBCommentText = styled.p`
   margin: 0;
   font-size: 13px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   line-height: 1.55;
   word-break: break-word;
 `;
@@ -1772,13 +1789,13 @@ export const GBReactions = styled.div`display: flex; gap: 14px; margin-top: 2px;
 export const GBReactionBtn = styled.button`
   all: unset;
   font-size: 12px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
   transition: color 0.15s, transform 0.15s;
-  &:hover { color: ${C.accent}; transform: scale(1.2); }
+  &:hover { color: ${"var(--pp-accent)"}; transform: scale(1.2); }
   &:active { transform: scale(0.88); }
 `;
 
@@ -1797,7 +1814,7 @@ export const CommentDeleteBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 15px;
   cursor: pointer;
   border-radius: 50%;
@@ -1807,11 +1824,11 @@ export const CommentDeleteBtn = styled.button`
 
 export const GBMenuDot = styled.button`
   all: unset;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 18px;
   cursor: pointer;
   transition: color 0.15s;
-  &:hover { color: ${C.txt}; }
+  &:hover { color: ${"var(--pp-txt)"}; }
 `;
 
 export const GBOverlayScroll = styled.div`
@@ -1829,9 +1846,9 @@ export const GBStatsFooter = styled.div`
   display: flex;
   align-items: center;
   padding: 12px 20px;
-  border-top: 1px solid ${C.border};
+  border-top: 1px solid ${"var(--pp-border)"};
   flex-shrink: 0;
-  background: linear-gradient(135deg, #ede8ff, #fce8ff, #e8f0ff);
+  background: var(--pp-gradSidebar);
 `;
 
 export const GBStat = styled.div`
@@ -1844,20 +1861,20 @@ export const GBStat = styled.div`
 
 export const GBStatLabel = styled.div`
   font-size: 10px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
 
-export const GBStatValue = styled.div`font-size: 20px; font-weight: 700; color: ${C.txt};`;
+export const GBStatValue = styled.div`font-size: 20px; font-weight: 700; color: ${"var(--pp-txt)"};`;
 
-export const GBStatDivider = styled.div`width: 1px; height: 32px; background: ${C.border}; flex-shrink: 0;`;
+export const GBStatDivider = styled.div`width: 1px; height: 32px; background: ${"var(--pp-border)"}; flex-shrink: 0;`;
 
 export const GBLeaveGiftBtn = styled.button`
   margin-left: auto;
-  background: rgba(124,58,237,0.08);
-  border: 1px solid ${C.border};
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.08);
+  border: 1px solid ${"var(--pp-border)"};
+  color: ${"var(--pp-accent)"};
   font-size: 13px;
   font-weight: 600;
   padding: 8px 16px;
@@ -1867,7 +1884,7 @@ export const GBLeaveGiftBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.15s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { background: rgba(124,58,237,0.16); border-color: ${C.border2}; }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.16); border-color: ${"var(--pp-border2)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
@@ -1884,12 +1901,12 @@ export const AboutToggleBtn = styled.button`
   border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
-  color: ${p => p.$active ? C.accent : C.txt3};
+  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
   background: ${p => p.$active
-    ? "linear-gradient(145deg, rgba(124,58,237,0.14), rgba(157,111,245,0.08))"
-    : C.surface};
-  border: 1px solid ${p => p.$active ? C.border2 : C.border};
-  box-shadow: ${p => p.$active ? "0 0 18px rgba(124,58,237,0.12), inset 0 1px 0 rgba(255,255,255,0.6)" : "none"};
+    ? "linear-gradient(145deg, rgba(var(--pp-accent-rgb),0.14), rgba(157,111,245,0.08))"
+    : "var(--pp-surface)"};
+  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "var(--pp-border)"};
+  box-shadow: ${p => p.$active ? "0 0 18px rgba(var(--pp-accent-rgb),0.12), inset 0 1px 0 rgba(255,255,255,0.6)" : "none"};
   cursor: pointer;
   margin-left: auto;
   transition: all 0.18s;
@@ -1903,10 +1920,10 @@ export const AboutToggleBtn = styled.button`
     pointer-events: none;
   }
   &:hover {
-    background: rgba(124,58,237,0.1);
-    border-color: rgba(124,58,237,0.35);
-    color: ${C.accent};
-    box-shadow: 0 4px 14px rgba(124,58,237,0.14);
+    background: rgba(var(--pp-accent-rgb),0.1);
+    border-color: rgba(var(--pp-accent-rgb),0.35);
+    color: ${"var(--pp-accent)"};
+    box-shadow: 0 4px 14px rgba(var(--pp-accent-rgb),0.14);
   }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
@@ -1916,9 +1933,9 @@ export const AboutOverlay = styled.div`
   top: 0; bottom: 0;
   left: 470px; right: 0;
   z-index: 20;
-  background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
-  border: 1px solid ${C.border};
+  border: 1px solid ${"var(--pp-border)"};
   box-shadow: -4px 0 24px rgba(100,50,200,0.08);
   display: flex;
   flex-direction: column;
@@ -1944,14 +1961,14 @@ export const GlobalCloseBtn = styled.button`
   top: -14px;
   right: -14px;
   z-index: 30;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
   width: 30px; height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 18px;
   cursor: pointer;
   transition: all 0.15s;
@@ -1985,7 +2002,7 @@ export const PanelTitle = styled.h2`
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   letter-spacing: 0.2px;
 `;
 
@@ -1994,15 +2011,15 @@ export const PanelTabs = styled.div`
   gap: 2px;
   padding: 0 14px 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid ${C.border};
+  border-bottom: 1px solid ${"var(--pp-border)"};
 `;
 
 export const PanelTab = styled.button`
   position: relative;
   overflow: hidden;
-  background: ${p => p.$active ? "rgba(124,58,237,0.12)" : "transparent"};
-  border: 1px solid ${p => p.$active ? C.border2 : "transparent"};
-  color: ${p => p.$active ? C.accent : C.txt3};
+  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.12)" : "transparent"};
+  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "transparent"};
+  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
   font-size: 12px;
   font-weight: ${p => p.$active ? "700" : "500"};
   padding: 5px 14px;
@@ -2014,7 +2031,7 @@ export const PanelTab = styled.button`
   gap: 6px;
   transition: all 0.15s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { color: ${C.txt}; background: ${C.card}; }
+  &:hover { color: ${"var(--pp-txt)"}; background: ${"var(--pp-card)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
@@ -2030,8 +2047,8 @@ export const TabUnreadBadge = styled.span`
 `;
 
 export const TabCountBadge = styled.span`
-  background: rgba(124,58,237,0.12);
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.12);
+  color: ${"var(--pp-accent)"};
   font-size: 9px;
   font-weight: 700;
   min-width: 15px; height: 15px;
@@ -2043,7 +2060,7 @@ export const TabCountBadge = styled.span`
 export const PanelEmpty = styled.div`
   padding: 28px 14px;
   font-size: 12px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-align: center;
 `;
 
@@ -2054,15 +2071,15 @@ export const MailListCol = styled.div`
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, #ede8ff 0%, #f4eeff 100%);
-  border-right: 1px solid ${C.border};
+  background: var(--pp-gradSidebar);
+  border-right: 1px solid ${"var(--pp-border)"};
   overflow: hidden;
 `;
 
 export const NewMailBtn = styled.button`
-  background: rgba(124,58,237,0.1);
-  border: 1px solid ${C.border2};
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid ${"var(--pp-border2)"};
+  color: ${"var(--pp-accent)"};
   font-size: 11px;
   font-weight: 700;
   padding: 4px 12px;
@@ -2072,7 +2089,7 @@ export const NewMailBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.18s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { background: rgba(124,58,237,0.18); border-color: ${C.accent}; }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.18); border-color: ${"var(--pp-accent)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
@@ -2091,12 +2108,12 @@ export const MailThreadRow = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  background: ${p => p.$active ? "rgba(124,58,237,0.12)" : p.$unread ? C.card : C.surface};
-  border: 1px solid ${p => p.$active ? C.border2 : C.border};
+  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.12)" : p.$unread ? "var(--pp-card)" : "var(--pp-surface)"};
+  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "var(--pp-border)"};
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.15s;
-  &:hover { background: rgba(138, 75, 245, 0.03); border-color: ${C.border2}; }
+  &:hover { background: rgba(138, 75, 245, 0.03); border-color: ${"var(--pp-border2)"}; }
 `;
 
 export const MailThumbWrap = styled.div`
@@ -2109,8 +2126,8 @@ export const MailThreadThumb = styled.div`
   width: 38px; height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1.5px solid ${C.border2};
-  background: ${C.card};
+  border: 1.5px solid ${"var(--pp-border2)"};
+  background: ${"var(--pp-card)"};
   canvas { border-radius: 50%; }
 `;
 
@@ -2120,7 +2137,7 @@ export const MailUnreadDot = styled.div`
   width: 9px; height: 9px;
   background: #e03131;
   border-radius: 50%;
-  border: 2px solid ${C.bg};
+  border: 2px solid ${"var(--pp-bg)"};
 `;
 
 const MAIL_STATUS_COLOR = {
@@ -2134,7 +2151,7 @@ export const MailStatusDot = styled.div`
   bottom: -1px; right: -1px;
   width: 10px; height: 10px;
   border-radius: 50%;
-  border: 2px solid ${C.bg};
+  border: 2px solid ${"var(--pp-bg)"};
   background: ${({ $status }) => (MAIL_STATUS_COLOR[$status] || MAIL_STATUS_COLOR.offline).bg};
   box-shadow: ${({ $status }) => (MAIL_STATUS_COLOR[$status] || MAIL_STATUS_COLOR.offline).shadow};
 `;
@@ -2157,13 +2174,13 @@ export const MailThreadMetaTop = styled.div`
 export const MailThreadName = styled.div`
   font-size: 12px;
   font-weight: ${p => p.$unread ? "700" : "500"};
-  color: ${p => p.$unread ? C.accent : C.txt2};
+  color: ${p => p.$unread ? "var(--pp-accent)" : "var(--pp-txt2)"};
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 
 export const MailThreadTime = styled.div`
   font-size: 10px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   flex-shrink: 0;
   white-space: nowrap;
 `;
@@ -2171,13 +2188,13 @@ export const MailThreadTime = styled.div`
 export const MailThreadSubject = styled.div`
   font-size: 11px;
   font-weight: ${p => p.$unread ? "600" : "400"};
-  color: ${p => p.$unread ? C.txt : C.txt2};
+  color: ${p => p.$unread ? "var(--pp-txt)" : "var(--pp-txt2)"};
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 
 export const MailThreadPreview = styled.div`
   font-size: 10.5px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 `;
 
@@ -2198,7 +2215,7 @@ export const MailDetailCol = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
@@ -2215,12 +2232,12 @@ export const MailPlaceholder = styled.div`
 export const MailPlaceholderIcon = styled.div`
   font-size: 42px;
   opacity: 0.3;
-  color: ${C.accentLt};
+  color: ${"var(--pp-accentLt)"};
 `;
 
 export const MailPlaceholderText = styled.div`
   font-size: 13px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
 `;
 
 export const MailDetailHeader = styled.div`
@@ -2228,7 +2245,7 @@ export const MailDetailHeader = styled.div`
   align-items: center;
   gap: 12px;
   padding: 16px 20px 14px;
-  border-bottom: 1px solid ${C.border};
+  border-bottom: 1px solid ${"var(--pp-border)"};
   flex-shrink: 0;
 `;
 
@@ -2236,18 +2253,18 @@ export const MailBackBtn = styled.button`
   all: unset;
   font-size: 12px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   cursor: pointer;
   flex-shrink: 0;
   transition: color 0.15s;
-  &:hover { color: ${C.accent}; }
+  &:hover { color: ${"var(--pp-accent)"}; }
 `;
 
 export const MailDetailSubject = styled.div`
   flex: 1;
   font-size: 14px;
   font-weight: 700;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 `;
@@ -2255,7 +2272,7 @@ export const MailDetailSubject = styled.div`
 export const MailDetailWith = styled.div`
   font-size: 15px;
   font-weight: 600;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2277,7 +2294,7 @@ export const MailMessageList = styled.div`
 export const MailLoadingMore = styled.div`
   text-align: center;
   font-size: 11px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   padding: 4px 0 8px;
 `;
 
@@ -2296,7 +2313,7 @@ export const MailMsgThumb = styled.div`
   height: 42px;
   border-radius: 50%;
   overflow: hidden;
-  background: ${C.card};
+  background: ${"var(--pp-card)"};
 `;
 
 export const MailMsgContent = styled.div`
@@ -2316,19 +2333,19 @@ export const MailMsgHeader = styled.div`
 export const MailMsgName = styled.span`
   font-size: 13px;
   font-weight: 600;
-  color: ${p => p.$mine ? C.accent : C.txt2};
+  color: ${p => p.$mine ? "var(--pp-accent)" : "var(--pp-txt2)"};
 `;
 
 export const MailBubbleBody = styled.div`
   font-size: 13px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   line-height: 1.5;
   word-break: break-word;
 `;
 
 export const MailBubbleTime = styled.span`
   font-size: 11px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
 `;
 
 export const MailMessageCompact = styled.div`
@@ -2350,7 +2367,7 @@ export const MailCompactTime = styled.span`
   text-align: center;
   font-size: 9px;
   white-space: nowrap;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.1s;
@@ -2360,7 +2377,7 @@ export const MailCompactTime = styled.span`
 
 export const MailReplyBox = styled.div`
   padding: 12px 18px 14px;
-  border-top: 1px solid ${C.border};
+  border-top: 1px solid ${"var(--pp-border)"};
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -2370,19 +2387,19 @@ export const MailReplyBox = styled.div`
 export const MailReplyTextarea = styled.textarea`
   width: 100%;
   resize: none;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 13px;
   line-height: 1.5;
   padding: 10px 14px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
-  &:focus { border-color: ${C.border2}; background: ${C.card}; }
-  &::placeholder { color: ${C.txt3}; }
+  caret-color: ${"var(--pp-accent)"};
+  &:focus { border-color: ${"var(--pp-border2)"}; background: ${"var(--pp-card)"}; }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
   &:disabled { opacity: 0.5; }
 `;
 
@@ -2392,7 +2409,7 @@ export const MailReplyFooter = styled.div`
   justify-content: space-between;
 `;
 
-export const MailReplyCounter = styled.div`font-size: 11px; color: ${C.txt3};`;
+export const MailReplyCounter = styled.div`font-size: 11px; color: ${"var(--pp-txt3)"};`;
 
 export const MailReplyError = styled.div`font-size: 11px; color: #dc2626;`;
 
@@ -2409,7 +2426,7 @@ export const MailNewPanel = styled.div`
 export const MailNewTitle = styled.div`
   font-size: 15px;
   font-weight: 700;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   flex-shrink: 0;
 `;
 
@@ -2423,7 +2440,7 @@ export const MailToRow = styled.div`
 export const MailToLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.5px;
   flex-shrink: 0;
@@ -2432,23 +2449,23 @@ export const MailToLabel = styled.div`
 
 export const MailToInput = styled.input`
   flex: 1;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 8px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 13px;
   padding: 8px 12px;
   outline: none;
-  &:focus { border-color: ${C.border2}; background: ${C.card}; }
-  &::placeholder { color: ${C.txt3}; }
+  &:focus { border-color: ${"var(--pp-border2)"}; background: ${"var(--pp-card)"}; }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
   &:disabled { opacity: 0.5; }
 `;
 
 export const MailFindBtn = styled.button`
-  background: rgba(124,58,237,0.1);
-  border: 1px solid ${C.border2};
-  color: ${C.accent};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid ${"var(--pp-border2)"};
+  color: ${"var(--pp-accent)"};
   font-size: 12px;
   font-weight: 700;
   padding: 0 14px;
@@ -2459,7 +2476,7 @@ export const MailFindBtn = styled.button`
   flex-shrink: 0;
   font-family: inherit;
   &:disabled { opacity: 0.4; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); }
+  &:hover:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.18); }
 `;
 
 export const MailLookupHint = styled.div`
@@ -2472,19 +2489,19 @@ export const MailNewTextarea = styled.textarea`
   flex: 1;
   min-height: 120px;
   resize: none;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 13px;
   line-height: 1.5;
   padding: 10px 14px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
-  &:focus { border-color: ${C.border2}; background: ${C.card}; }
-  &::placeholder { color: ${C.txt3}; }
+  caret-color: ${"var(--pp-accent)"};
+  &:focus { border-color: ${"var(--pp-border2)"}; background: ${"var(--pp-card)"}; }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
   &:disabled { opacity: 0.5; }
 `;
 
@@ -2497,7 +2514,7 @@ export const FriendsPanelInner = styled.div`
   flex-direction: column;
   padding: 22px 20px 0;
   gap: 14px;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
@@ -2509,33 +2526,33 @@ export const FriendsSearchRow = styled.div`
 
 export const FriendsSearchInput = styled.input`
   width: 100%;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   font-family: inherit;
   font-size: 13px;
   padding: 10px 38px 10px 16px;
   box-sizing: border-box;
   outline: none;
-  caret-color: ${C.accent};
+  caret-color: ${"var(--pp-accent)"};
   transition: border-color 0.18s, background 0.18s;
-  &:focus { border-color: ${C.border2}; background: ${C.card}; }
-  &::placeholder { color: ${C.txt3}; }
+  &:focus { border-color: ${"var(--pp-border2)"}; background: ${"var(--pp-card)"}; }
+  &::placeholder { color: ${"var(--pp-txt3)"}; }
 `;
 
 export const FriendsSearchIcon = styled.span`
   position: absolute;
   right: 13px; top: 50%;
   transform: translateY(-50%);
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 18px;
   pointer-events: none;
 `;
 
 export const FriendsSearchHint = styled.div`
   font-size: 11px;
-  color: ${p => p.$error ? "#ef4444" : C.txt3};
+  color: ${p => p.$error ? "#ef4444" : "var(--pp-txt3)"};
   padding: 2px 2px 0;
   flex-shrink: 0;
 `;
@@ -2555,7 +2572,7 @@ export const FriendsListScroll = styled.div`
 export const FriendsGroupLabel = styled.div`
   font-size: 9px;
   font-weight: 700;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 1px;
   padding: 6px 2px 2px;
@@ -2566,8 +2583,8 @@ export const FriendCardTile = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 0;
   padding: 8px 10px;
   cursor: pointer;
@@ -2575,8 +2592,8 @@ export const FriendCardTile = styled.div`
   opacity: ${p => p.$offline ? 0.6 : 1};
   min-width: 0;
   &:hover {
-    background: ${C.card};
-    border-color: ${C.border2};
+    background: ${"var(--pp-card)"};
+    border-color: ${"var(--pp-border2)"};
     box-shadow: 0 2px 12px rgba(100,50,200,0.08);
   }
 `;
@@ -2585,16 +2602,16 @@ export const FriendCardRow = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 0;
   padding: 11px 14px;
   grid-column: 1 / -1;
   cursor: pointer;
   transition: all 0.18s;
   &:hover {
-    background: ${C.card};
-    border-color: ${C.border2};
+    background: ${"var(--pp-card)"};
+    border-color: ${"var(--pp-border2)"};
     box-shadow: 0 2px 12px rgba(100,50,200,0.08);
   }
 `;
@@ -2611,7 +2628,7 @@ export const FriendOnlineDot = styled.div`
   width: 11px; height: 11px;
   background: ${p => p.$color || "#22c55e"};
   border-radius: 50%;
-  border: 2px solid ${C.surface};
+  border: 2px solid ${"var(--pp-surface)"};
   box-shadow: 0 0 6px #22c55e;
 `;
 
@@ -2626,7 +2643,7 @@ export const FriendCardInfo = styled.div`
 export const FriendCardName = styled.div`
   font-size: 10px;
   font-weight: 600;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2635,7 +2652,7 @@ export const FriendCardName = styled.div`
 
 export const FriendCardLocation = styled.div`
   font-size: 11px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   display: flex;
   align-items: center;
   gap: 5px;
@@ -2644,7 +2661,7 @@ export const FriendCardLocation = styled.div`
 export const FriendLocationDot = styled.span`
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: ${p => p.$online ? "#22c55e" : C.border2};
+  background: ${p => p.$online ? "#22c55e" : "var(--pp-border2)"};
   flex-shrink: 0;
 `;
 
@@ -2660,7 +2677,7 @@ export const WishlistPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
@@ -2680,7 +2697,7 @@ export const WishlistMsg = styled.div`
   text-align: center;
   padding: 40px 0;
   font-size: 13px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
 `;
 
 export const WishlistItemCard = styled.div`
@@ -2689,11 +2706,11 @@ export const WishlistItemCard = styled.div`
   gap: 5px;
   padding: 5px;
   border-radius: 14px;
-  background: linear-gradient(to top, #ddd0f8, #f8f3ff);
-  border: 1px solid ${C.border};
+  background: var(--pp-gradCard);
+  border: 1px solid ${"var(--pp-border)"};
   min-height: 88px;
   transition: border-color 0.15s, box-shadow 0.15s;
-  &:hover { border-color: ${C.border2}; box-shadow: 0 2px 10px rgba(120,60,220,0.1); }
+  &:hover { border-color: ${"var(--pp-border2)"}; box-shadow: 0 2px 10px rgba(120,60,220,0.1); }
 `;
 
 export const WishlistNameRow = styled.div`
@@ -2720,16 +2737,16 @@ export const WishlistTag = styled.div`
   flex-shrink: 0;
   font-size: 10px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.4px;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.08);
-  border: 1px solid rgba(124,58,237,0.18);
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.08);
+  border: 1px solid rgba(var(--pp-accent-rgb),0.18);
   border-radius: 4px;
   padding: 2px 7px;
 `;
 
 export const WishlistRemoveBtn = styled.button`
   background: none; border: none; cursor: pointer; flex-shrink: 0;
-  font-size: 13px; color: ${C.txt3};
+  font-size: 13px; color: ${"var(--pp-txt3)"};
   padding: 4px 8px; border-radius: 6px; margin-right: 4px;
   transition: color .13s, background .13s;
   &:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
@@ -2741,7 +2758,7 @@ export const LookPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
@@ -2764,8 +2781,8 @@ export const LookGrid = styled.div`
 `;
 
 export const LookFeatureCard = styled.div`
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
   padding: 13px 12px 12px;
   display: flex;
@@ -2776,7 +2793,7 @@ export const LookFeatureCard = styled.div`
 export const LookFeatureLabel = styled.div`
   font-size: 9.5px;
   font-weight: 700;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.9px;
 `;
@@ -2797,8 +2814,8 @@ export const LookSlot = styled.div`
   width: 76px;
   height: 76px;
   border-radius: 10px;
-  background: ${C.card};
-  border: 1px dashed ${C.border2};
+  background: ${"var(--pp-card)"};
+  border: 1px dashed ${"var(--pp-border2)"};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2808,24 +2825,24 @@ export const LookSlot = styled.div`
   overflow: hidden;
   &:hover {
     border-style: solid;
-    border-color: ${C.accent};
-    background: rgba(124,58,237,0.1);
-    box-shadow: 0 0 12px rgba(124,58,237,0.14);
+    border-color: ${"var(--pp-accent)"};
+    background: rgba(var(--pp-accent-rgb),0.1);
+    box-shadow: 0 0 12px rgba(var(--pp-accent-rgb),0.14);
   }
 `;
 
 export const LookSlotPlus = styled.span`
   font-size: 22px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   line-height: 1;
   pointer-events: none;
-  ${LookSlot}:hover & { color: ${C.accent}; }
+  ${LookSlot}:hover & { color: ${"var(--pp-accent)"}; }
 `;
 
 export const LookSlotSubLabel = styled.div`
   font-size: 9px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -2839,13 +2856,13 @@ export const LookSliderRow = styled.div`
 export const LookSliderLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   min-width: 42px;
 `;
 
 export const LookSlider = styled.input`
   flex: 1;
-  accent-color: ${C.accent};
+  accent-color: ${"var(--pp-accent)"};
   cursor: pointer;
   height: 4px;
 `;
@@ -2853,7 +2870,7 @@ export const LookSlider = styled.input`
 export const LookSliderValue = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   min-width: 28px;
   text-align: right;
 `;
@@ -2894,9 +2911,9 @@ export const InvNudeBtn = styled.button`
 export const InvResetBtn = styled.button`
   padding: 7px 10px;
   border-radius: 8px;
-  border: 1px solid ${C.border};
+  border: 1px solid ${"var(--pp-border)"};
   background: transparent;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -2905,16 +2922,16 @@ export const InvResetBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.13s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover { color: ${C.txt2}; border-color: ${C.border2}; }
+  &:hover { color: ${"var(--pp-txt2)"}; border-color: ${"var(--pp-border2)"}; }
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
 export const InvApplyBtn = styled.button`
   padding: 7px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(124,58,237,0.3);
-  background: rgba(124,58,237,0.1);
-  color: ${C.accent};
+  border: 1px solid rgba(var(--pp-accent-rgb),0.3);
+  background: rgba(var(--pp-accent-rgb),0.1);
+  color: ${"var(--pp-accent)"};
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -2923,7 +2940,7 @@ export const InvApplyBtn = styled.button`
   position: relative; overflow: hidden;
   transition: all 0.13s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover:not(:disabled) { background: rgba(124,58,237,0.18); border-color: ${C.border2}; }
+  &:hover:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.18); border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
   &:disabled { opacity: 0.35; cursor: not-allowed; }
 `;
@@ -2936,7 +2953,7 @@ export const InvContentCol = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
+  background: var(--pp-gradPanel);
 `;
 
 export const InvCatScroll = styled.div`
@@ -2954,12 +2971,12 @@ export const InvCatGrid = styled.div`
 
 export const InvCatCard = styled.div`
   position: relative;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
   overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
-  &:hover { border-color: ${C.border2}; box-shadow: 0 4px 18px rgba(100,50,200,0.1); }
+  &:hover { border-color: ${"var(--pp-border2)"}; box-shadow: 0 4px 18px rgba(100,50,200,0.1); }
 `;
 
 export const InvCatDeco = styled.img`
@@ -2983,20 +3000,20 @@ export const InvCatCardTop = styled.div`
   gap: 8px;
   padding: 12px 14px;
   cursor: pointer;
-  border-bottom: 1px solid ${C.border};
-  background: rgba(124,58,237,0.05);
+  border-bottom: 1px solid ${"var(--pp-border)"};
+  background: rgba(var(--pp-accent-rgb),0.05);
   transition: background 0.13s;
-  &:hover { background: rgba(124,58,237,0.1); }
+  &:hover { background: rgba(var(--pp-accent-rgb),0.1); }
 `;
 
-export const InvCatLabel = styled.span`font-size: 13px; font-weight: 700; color: ${C.txt}; flex: 1;`;
-export const InvCatArrow = styled.span`font-size: 13px; color: ${C.txt3}; transition: transform 0.13s; ${InvCatCardTop}:hover & { transform: translateX(2px); }`;
+export const InvCatLabel = styled.span`font-size: 13px; font-weight: 700; color: ${"var(--pp-txt)"}; flex: 1;`;
+export const InvCatArrow = styled.span`font-size: 13px; color: ${"var(--pp-txt3)"}; transition: transform 0.13s; ${InvCatCardTop}:hover & { transform: translateX(2px); }`;
 
 export const InvCatSubList = styled.div`padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 1px;`;
 
 export const InvCatSubItem = styled.div`
   font-size: 11.5px;
-  color: ${C.txt2};
+  color: ${"var(--pp-txt2)"};
   padding: 4px 0;
   cursor: pointer;
   display: flex;
@@ -3004,10 +3021,10 @@ export const InvCatSubItem = styled.div`
   gap: 5px;
   width: fit-content;
   transition: color 0.1s;
-  &:hover { color: ${C.accent}; font-weight: 600; }
+  &:hover { color: ${"var(--pp-accent)"}; font-weight: 600; }
 `;
 
-export const InvSubCount = styled.span`font-size: 10px; color: ${C.txt3}; font-weight: 500;`;
+export const InvSubCount = styled.span`font-size: 10px; color: ${"var(--pp-txt3)"}; font-weight: 500;`;
 
 export const InvQuickNavRow = styled.div`
   display: grid;
@@ -3021,14 +3038,14 @@ export const InvQuickNavBtn = styled.div`
   align-items: center;
   gap: 8px;
   padding: 11px 14px;
-  background: ${C.surface};
-  border: 1px solid ${C.border};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
   border-radius: 12px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   &:hover {
-    border-color: ${C.border2};
-    background: ${C.card};
+    border-color: ${"var(--pp-border2)"};
+    background: ${"var(--pp-card)"};
     box-shadow: 0 4px 18px rgba(100,50,200,0.1);
   }
 `;
@@ -3037,7 +3054,7 @@ export const InvQuickNavLabel = styled.span`
   flex: 1;
   font-size: 12px;
   font-weight: 700;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
 `;
 
 export const InvQuickNavRight = styled.div`
@@ -3048,15 +3065,15 @@ export const InvQuickNavRight = styled.div`
 
 export const InvQuickNavCount = styled.span`
   font-size: 11px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-weight: 500;
 `;
 
 export const InvQuickNavArrow = styled.span`
   font-size: 13px;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   transition: transform 0.13s;
-  ${InvQuickNavBtn}:hover & { transform: translateX(2px); color: ${C.accent}; }
+  ${InvQuickNavBtn}:hover & { transform: translateX(2px); color: ${"var(--pp-accent)"}; }
 `;
 
 export const InvItemScroll = styled.div`
@@ -3069,7 +3086,7 @@ export const InvItemScroll = styled.div`
   ${thinScrollbar}
 `;
 
-export const InvMsg = styled.div`text-align: center; color: ${C.txt3}; padding: 20px 0; font-size: 13px;`;
+export const InvMsg = styled.div`text-align: center; color: ${"var(--pp-txt3)"}; padding: 20px 0; font-size: 13px;`;
 export const InvErrTxt = styled.div`font-size: 12px; color: #dc2626; padding: 8px 12px;`;
 
 export const InvItemList = styled.div`display: flex; flex-direction: column; gap: 6px;`;
@@ -3080,13 +3097,13 @@ export const InvItemCard = styled.div`
   gap: 5px;
   padding: 5px;
   border-radius: 14px;
-  background: linear-gradient(to top, #ddd0f8, #f8f3ff);
-  border: 1px solid ${p => p.$expanded ? C.border2 : C.border};
+  background: var(--pp-gradCard);
+  border: 1px solid ${p => p.$expanded ? "var(--pp-border2)" : "var(--pp-border)"};
   min-height: 88px;
   cursor: pointer;
   opacity: ${p => p.$locked ? 0.65 : 1};
   transition: border-color 0.15s, box-shadow 0.15s;
-  &:hover { border-color: ${C.border2}; box-shadow: 0 2px 10px rgba(120,60,220,0.1); }
+  &:hover { border-color: ${"var(--pp-border2)"}; box-shadow: 0 2px 10px rgba(120,60,220,0.1); }
 `;
 
 export const InvThumbImg = styled.img`flex-shrink: 0; width: 76px; height: 76px; object-fit: contain;`;
@@ -3095,7 +3112,7 @@ export const InvMidSection = styled.div`
   flex: 1;
   min-width: 0;
   border-radius: 10px;
-  background: linear-gradient(to top, #ede5ff, #ffffff);
+  background: var(--pp-gradInner);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -3107,7 +3124,7 @@ export const InvMidSection = styled.div`
 export const InvItemName = styled.div`
   font-size: 13px;
   font-weight: 700;
-  color: ${C.txt};
+  color: ${"var(--pp-txt)"};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3118,9 +3135,9 @@ export const InvWearingBadge = styled.div`
   align-items: center;
   font-size: 10px;
   font-weight: 700;
-  color: ${C.accent};
-  background: rgba(124,58,237,0.1);
-  border: 1px solid ${C.border2};
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  border: 1px solid ${"var(--pp-border2)"};
   border-radius: 4px;
   padding: 2px 7px;
   width: fit-content;
@@ -3140,7 +3157,7 @@ export const InvPricesArea = styled.div`
 export const InvPricePanel = styled.div`
   border-radius: 10px;
   overflow: hidden;
-  background: linear-gradient(to top, #ede5ff, #ffffff);
+  background: var(--pp-gradInner);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3168,12 +3185,12 @@ export const InvBadgeAndPrice = styled.div`display: flex; gap: 6px; align-items:
 
 export const InvCoinImg = styled.img`width: 32px; height: 32px; object-fit: contain;`;
 
-export const InvPriceAmt = styled.div`font-size: 13px; font-weight: 700; color: ${C.coin};`;
+export const InvPriceAmt = styled.div`font-size: 13px; font-weight: 700; color: ${"var(--pp-coin)"};`;
 
 export const InvSellPanel = styled.button`
   width: 50%;
   border-radius: 10px;
-  background: linear-gradient(to top, #ede5ff, #ffffff);
+  background: var(--pp-gradInner);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3181,12 +3198,12 @@ export const InvSellPanel = styled.button`
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
-  color: ${C.txt3};
+  color: ${"var(--pp-txt3)"};
   font-family: inherit;
   position: relative; overflow: hidden;
   transition: box-shadow 0.13s, color 0.13s;
   &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
-  &:hover:not(:disabled) { box-shadow: 0 2px 10px rgba(120,60,220,0.12); color: ${C.accent}; }
+  &:hover:not(:disabled) { box-shadow: 0 2px 10px rgba(120,60,220,0.12); color: ${"var(--pp-accent)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
@@ -3196,12 +3213,12 @@ export const InvSellPanel = styled.button`
 export const InvBreadcrumbCol = styled.div`
   width: 160px;
   flex-shrink: 0;
-  border-left: 1px solid ${C.border};
+  border-left: 1px solid ${"var(--pp-border)"};
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: linear-gradient(160deg, #ede8ff 0%, #f4eeff 100%);
+  background: var(--pp-gradSidebar);
   border-radius: 0 22px 22px 0;
   overflow-y: auto;
   ${thinScrollbar}
@@ -3222,12 +3239,12 @@ export const InvCrumbStep = styled.button`
   border-radius: 14px;
   font-size: 16px;
   font-weight: 700;
-  color: ${p => p.$active ? C.accent : C.txt3};
+  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
   background: ${p => p.$active
-    ? "linear-gradient(145deg, rgba(124,58,237,0.14), rgba(157,111,245,0.08))"
-    : C.surface};
-  border: 1px solid ${p => p.$active ? C.border2 : C.border};
-  box-shadow: ${p => p.$active ? "0 0 18px rgba(124,58,237,0.12), inset 0 1px 0 rgba(255,255,255,0.6)" : "none"};
+    ? "linear-gradient(145deg, rgba(var(--pp-accent-rgb),0.14), rgba(157,111,245,0.08))"
+    : "var(--pp-surface)"};
+  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "var(--pp-border)"};
+  box-shadow: ${p => p.$active ? "0 0 18px rgba(var(--pp-accent-rgb),0.12), inset 0 1px 0 rgba(255,255,255,0.6)" : "none"};
   cursor: ${p => p.$clickable ? "pointer" : "default"};
   transition: all 0.18s;
   word-break: break-word;
@@ -3242,12 +3259,92 @@ export const InvCrumbStep = styled.button`
   }
   ${p => p.$clickable && css`
     &:hover {
-      background: rgba(124,58,237,0.1);
-      border-color: rgba(124,58,237,0.35);
-      color: ${C.accent};
-      box-shadow: 0 4px 14px rgba(124,58,237,0.14);
+      background: rgba(var(--pp-accent-rgb),0.1);
+      border-color: rgba(var(--pp-accent-rgb),0.35);
+      color: ${"var(--pp-accent)"};
+      box-shadow: 0 4px 14px rgba(var(--pp-accent-rgb),0.14);
       transform: translateY(-2px);
     }
     &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
   `}
+`;
+
+/* ── Theme picker ── */
+
+export const ThemePanelInner = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--pp-gradPanel);
+  border-radius: 0 22px 22px 0;
+  overflow: hidden;
+`;
+
+export const ThemeGrid = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  align-content: start;
+  ${thinScrollbar}
+`;
+
+export const ThemeSwatch = styled.button`
+  all: unset;
+  box-sizing: border-box;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid ${p => p.$active ? p.$accent : "transparent"};
+  box-shadow: ${p => p.$active ? `0 0 0 2px ${p.$accent}44, 0 4px 14px ${p.$accent}33` : "0 2px 8px rgba(0,0,0,0.08)"};
+  transition: transform 0.16s, box-shadow 0.16s, border-color 0.16s;
+  background: ${p => p.$bg};
+  display: flex;
+  flex-direction: column;
+  &:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.14); }
+`;
+
+export const ThemeSwatchTop = styled.div`
+  height: 44px;
+  background: ${p => p.$card};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+`;
+
+export const ThemeSwatchDot = styled.div`
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: ${p => p.$color};
+  flex-shrink: 0;
+`;
+
+export const ThemeSwatchBottom = styled.div`
+  padding: 8px 10px 9px;
+  background: ${p => p.$bg};
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+`;
+
+export const ThemeSwatchName = styled.div`
+  font-size: 10px;
+  font-weight: 700;
+  color: ${p => p.$txt};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const ThemeSwatchBar = styled.div`
+  height: 3px;
+  border-radius: 2px;
+  background: ${p => p.$accent};
+  width: ${p => p.$w || "60%"};
+  opacity: 0.7;
 `;
