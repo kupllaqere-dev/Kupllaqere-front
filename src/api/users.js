@@ -58,6 +58,17 @@ export async function saveProfileView({ poseIndex, zoomIndex, panX, panY }) {
   return res.json();
 }
 
+export async function saveTheme(themeName) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/auth/theme`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ themeName }),
+  });
+  if (!res.ok) throw new Error("Failed to save theme");
+  return res.json();
+}
+
 export async function clearProfileView() {
   const token = localStorage.getItem("fv_token");
   const res = await fetch(`${API}/api/auth/profile-view`, {

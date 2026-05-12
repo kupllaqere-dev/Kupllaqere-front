@@ -30,7 +30,7 @@ import {
 } from "../../api/mail";
 import { lookupUser, updatePresence } from "../../api/auth";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../../api/store";
-import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache } from "../../api/users";
+import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache, saveTheme } from "../../api/users";
 import ComposeMailModal from "../ComposeMailModal";
 
 import {
@@ -414,10 +414,19 @@ export default function PlayerProfile({
           setPanX(view.panX ?? 0);
           setPanY(view.panY ?? 0);
         }
+        if (view.themeName) {
+          const idx = PALETTES.findIndex(p => p.name === view.themeName);
+          if (idx >= 0) setThemeIdx(idx);
+        }
       }
       setViewLoaded(true);
     }).catch(() => { setViewLoaded(true); });
   }, [targetUserId]);
+
+  const handleSelectTheme = useCallback((idx) => {
+    setThemeIdx(idx);
+    saveTheme(PALETTES[idx].name).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onMove = (e) => {
@@ -1132,7 +1141,7 @@ export default function PlayerProfile({
 
           {isSelfView && (
             <div style={{ display: activeTab === "themes" ? "contents" : "none" }}>
-              <ThemesTab themeIdx={themeIdx} setThemeIdx={setThemeIdx} />
+              <ThemesTab themeIdx={themeIdx} setThemeIdx={handleSelectTheme} />
             </div>
           )}
 
