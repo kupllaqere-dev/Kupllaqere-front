@@ -416,6 +416,7 @@ export default function PlayerProfile({
 
   useEffect(() => {
     if (!targetUserId) return;
+    invalidateProfileViewCache(targetUserId);
     fetchProfileView(targetUserId).then((view) => {
       if (view) {
         setHasLockedView(view.locked ?? false);
