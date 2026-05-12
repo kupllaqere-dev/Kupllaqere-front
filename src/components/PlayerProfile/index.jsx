@@ -149,7 +149,18 @@ export default function PlayerProfile({
   const [wishlistItems, setWishlistItems] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
-  const [themeIdx, setThemeIdx] = useState(0);
+  const [themeIdx, setThemeIdx] = useState(() => {
+    if (currentUserId && targetUserId && String(currentUserId) === String(targetUserId)) {
+      try {
+        const stored = localStorage.getItem("fv_theme");
+        if (stored) {
+          const idx = PALETTES.findIndex(p => p.name === stored);
+          if (idx >= 0) return idx;
+        }
+      } catch { /* ignore */ }
+    }
+    return 0;
+  });
 
   const [mailConversations, setMailConversations] = useState([]);
   const [mailLoading, setMailLoading] = useState(false);
@@ -416,7 +427,10 @@ export default function PlayerProfile({
         }
         if (view.themeName) {
           const idx = PALETTES.findIndex(p => p.name === view.themeName);
-          if (idx >= 0) setThemeIdx(idx);
+          if (idx >= 0) {
+            setThemeIdx(idx);
+            try { localStorage.setItem("fv_theme", view.themeName); } catch { /* ignore */ }
+          }
         }
       }
       setViewLoaded(true);
@@ -425,8 +439,11 @@ export default function PlayerProfile({
 
   const handleSelectTheme = useCallback((idx) => {
     setThemeIdx(idx);
-    saveTheme(PALETTES[idx].name).catch(() => {});
-  }, []);
+    const name = PALETTES[idx].name;
+    try { localStorage.setItem("fv_theme", name); } catch { /* ignore */ }
+    invalidateProfileViewCache(targetUserId);
+    saveTheme(name).catch(() => {});
+  }, [targetUserId]);
 
   useEffect(() => {
     const onMove = (e) => {
