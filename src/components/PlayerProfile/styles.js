@@ -1547,8 +1547,8 @@ export const SmError = styled.div`font-size: 11px; color: #dc2626;`;
 
 export const GuestBookOverlay = styled.div`
   position: absolute;
-  top: 0; bottom: 0; right: 0;
-  left: 430px;
+  top: 0; bottom: 0;
+  left: 470px; right: 0;
   z-index: 20;
   background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
   border-radius: 0 22px 22px 0;
@@ -1557,9 +1557,8 @@ export const GuestBookOverlay = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform-origin: right bottom;
-  transform: ${p => p.$open ? "scale(1)" : "scale(0)"};
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: ${p => p.$open ? "translateX(0)" : "translateX(100%)"};
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: ${p => p.$open ? "auto" : "none"};
 `;
 
@@ -1914,8 +1913,8 @@ export const AboutToggleBtn = styled.button`
 
 export const AboutOverlay = styled.div`
   position: absolute;
-  top: 0; bottom: 0; right: 0;
-  left: 430px;
+  top: 0; bottom: 0;
+  left: 470px; right: 0;
   z-index: 20;
   background: linear-gradient(160deg, #fdfbff 0%, #f4eeff 100%);
   border-radius: 0 22px 22px 0;
@@ -1924,9 +1923,8 @@ export const AboutOverlay = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform-origin: right bottom;
-  transform: ${p => p.$open ? "scale(1)" : "scale(0)"};
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: ${p => p.$open ? "translateX(0)" : "translateX(100%)"};
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: ${p => p.$open ? "auto" : "none"};
 `;
 
