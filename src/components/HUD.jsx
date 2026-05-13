@@ -2,14 +2,12 @@ import * as S from "./HUDStyles";
 import { useState, useCallback, useEffect } from "react";
 import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
-import MailModal from "./MailModal";
 import { fetchUnreadCount } from "../api/mail";
 import { lookupUser } from "../api/auth";
 
 function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showMail, setShowMail] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [viewingProfile, setViewingProfile] = useState(null);
@@ -33,11 +31,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
     socket.socket.on("mail:new", handler);
     return () => socket.socket.off("mail:new", handler);
   }, [socket]);
-
-  function openMail() {
-    setShowProfile(false);
-    setShowMail(true);
-  }
 
   async function handleOpenProfile(user) {
     let data = user;
@@ -71,7 +64,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         targetUserId={currentUserId}
         unreadMailCount={unreadCount}
         onUnreadChange={refreshUnread}
-        onOpenMail={openMail}
         onOpenAppearance={() => { setShowProfile(false); }}
         onOpenAlbum={() => { setShowProfile(false); }}
         onOpenMarketplace={() => { setShowProfile(false); setShowStore(true); }}
@@ -94,12 +86,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         targetUserId={viewingProfile.userId}
         socket={socket}
         level={viewingProfile.level}
-      />
-    )}
-    {showMail && (
-      <MailModal
-        onClose={() => { setShowMail(false); refreshUnread(); }}
-        onUnreadChange={refreshUnread}
       />
     )}
     {showStore && (
