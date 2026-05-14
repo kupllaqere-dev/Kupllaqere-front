@@ -860,7 +860,15 @@ export const SoulmateHeartBg = styled.span`
   }
 `;
 
-export const SoulmateAvatarWrap = styled.div`position: relative; flex-shrink: 0;`;
+export const SoulmateAvatarWrap = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--pp-accent);
+`;
 
 export const SoulmateSpinRing = styled.div`
   position: absolute;

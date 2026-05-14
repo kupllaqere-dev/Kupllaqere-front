@@ -366,7 +366,7 @@ export default function PlayerProfile({
     const poses = activeTab === "inventory" ? invBakedPosesRef.current : bakedPosesRef.current;
     const baked = poses[poseIndex];
     if (baked) ctx.drawImage(baked, 0, 0, canvas.width, canvas.height);
-  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages]);
+  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages, viewLoaded]);
 
   useEffect(() => {
     if (!invPreviewOutfit || Object.keys(invPreviewOutfit).length === 0) {

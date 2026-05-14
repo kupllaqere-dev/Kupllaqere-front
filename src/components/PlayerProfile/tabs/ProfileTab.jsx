@@ -28,13 +28,22 @@ import {
   GBStatValue, GBStatDivider, GBLeaveGiftBtn, BioErrorMsg,
   AboutToggleBtn, AboutOverlay, AboutOverlayScroll,
   BBContent,
+  SkeletonLine, SkeletonCircle,
 } from "../styles";
 
 function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, smError,
   smSendRequest, smAccept, smDecline, smCancel, smRemove, playerName }) {
 
   if (!currentUserId) return <SoulmateEmptyBox><SmEmpty>Sign in to use soul mates.</SmEmpty></SoulmateEmptyBox>;
-  if (!smState) return <SoulmateEmptyBox><SmEmpty>Loading…</SmEmpty></SoulmateEmptyBox>;
+  if (!smState) return (
+    <SoulmateEmptyBox style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <SkeletonCircle $size="44px" />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+        <SkeletonLine $h="14px" $w="55%" />
+        <SkeletonLine $h="11px" $w="35%" />
+      </div>
+    </SoulmateEmptyBox>
+  );
 
   const { mine, sent, received = [], target, relationship } = smState;
 
@@ -43,12 +52,10 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
       <SoulmateHeartBg>♥</SoulmateHeartBg>
       <SoulmateAvatarWrap>
         <PlayerThumbnail playerName={name} size={44} />
-        <SoulmateSpinRing />
       </SoulmateAvatarWrap>
       <SoulmateInfoBlock>
         <SoulmateName>{name} <SoulmateMark>♥</SoulmateMark></SoulmateName>
         <SoulmateDuration>{sub}</SoulmateDuration>
-        <SoulmateMoodTag>Obsessed 💜</SoulmateMoodTag>
       </SoulmateInfoBlock>
       <SoulmateCardActions>
         <SmDangerBtn disabled={smBusy} onClick={onBreakUp}>Break Up</SmDangerBtn>
