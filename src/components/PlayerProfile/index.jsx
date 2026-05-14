@@ -846,8 +846,8 @@ export default function PlayerProfile({
 
       <Overlay onClick={onClose}>
         <ProfileOuter>
-        <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
         {viewLoaded && <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
+          <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
 
           {/* ── Sidebar ── */}
           <Sidebar>
@@ -1082,6 +1082,12 @@ export default function PlayerProfile({
               smRemove={smRemove}
               targetUserId={targetUserId}
               currentUserId={currentUserId}
+              selectedBadge={selectedBadge}
+              handleBadgeClick={handleBadgeClick}
+              badgesExpanded={badgesExpanded}
+              setBadgesExpanded={setBadgesExpanded}
+              badgeSaving={badgeSaving}
+              showcaseItems={showcaseItems}
               gbOpen={gbOpen}
               setGbOpen={setGbOpen}
               gbComments={gbComments}

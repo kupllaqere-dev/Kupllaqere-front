@@ -561,7 +561,7 @@ export const ProfileContent = styled.main`
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 22px 22px 22px 20px;
+  padding: 52px 22px 22px 20px;
   overflow-y: auto;
   background: var(--pp-gradPanel);
   position: relative;
@@ -593,8 +593,7 @@ export const CloseBtn = styled.button`
 
 export const ProfileHeader = styled.header`
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: 14px;
   padding-bottom: 16px;
   border-bottom: 1px solid ${"var(--pp-border)"};
@@ -602,8 +601,8 @@ export const ProfileHeader = styled.header`
 
 export const HeaderLeft = styled.div`
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: baseline;
+  gap: 10px;
 `;
 
 export const ProfileEmblem = styled.div`
@@ -631,14 +630,11 @@ export const PlayerName = styled.h2`
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.3px;
-  background: linear-gradient(120deg, #7c3aed, #c026d3, #0ea5e9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: ${"var(--pp-accent)"};
 `;
 
 export const PlayerNameMark = styled.span`
-  -webkit-text-fill-color: ${"var(--pp-accent)"};
+  color: ${"var(--pp-accentLt)"};
   font-size: 20px;
 `;
 
@@ -649,13 +645,9 @@ export const ProfileMetaRow = styled.div`
 `;
 
 export const LevelBadge = styled.span`
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  color: ${"var(--pp-accent)"};
-  background: rgba(var(--pp-accent-rgb),0.1);
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid ${"var(--pp-border2)"};
+  color: ${"var(--pp-txt3)"};
 `;
 
 export const MetaSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
@@ -1960,16 +1952,189 @@ export const AboutOverlayScroll = styled.div`
   ${thinScrollbar}
 `;
 
+export const SidePanelNav = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 52px 14px 18px;
+  gap: 10px;
+`;
+
+export const SidePanelBtn = styled.button`
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  background: ${"var(--pp-card)"};
+  border: 1px solid ${"var(--pp-border)"};
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s;
+  &::before {
+    content: '';
+    position: absolute; top: -20%; left: -60%;
+    width: 32%; height: 140%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform: skewX(-18deg) translateX(-100%);
+    pointer-events: none;
+  }
+  &:hover {
+    background: rgba(var(--pp-accent-rgb), 0.08);
+    border-color: ${"var(--pp-border2)"};
+  }
+  &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
+`;
+
+export const SidePanelBtnIcon = styled.span`
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+export const SidePanelBtnImg = styled.div`
+  width: ${p => p.$size || 22}px;
+  height: ${p => p.$size || 22}px;
+  background: ${"var(--pp-accent)"};
+  mask-image: url(${p => p.$src});
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: url(${p => p.$src});
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+`;
+
+export const SidePanelBtnLabel = styled.span`
+  flex: 1;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: ${"var(--pp-txt)"};
+`;
+
+export const SidePanelBtnArrow = styled.span`
+  font-size: 16px;
+  color: ${"var(--pp-accent)"};
+  line-height: 1;
+`;
+
+export const SidePanelDivider = styled.div`
+  margin: 4px 14px;
+  height: 1px;
+  background: ${"var(--pp-border)"};
+`;
+
+export const ClubSection = styled.div`
+  margin: 0 14px 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: ${"var(--pp-card)"};
+  border: 1px solid ${"var(--pp-border)"};
+  border-radius: 14px;
+`;
+
+export const ClubSectionTitle = styled.div`
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: ${"var(--pp-txt3)"};
+`;
+
+export const ClubCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 11px;
+`;
+
+export const ClubAvatar = styled.div`
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(var(--pp-accent-rgb), 0.12);
+  border: 1px solid ${"var(--pp-border2)"};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+`;
+
+export const ClubInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const ClubName = styled.div`
+  font-size: 13px;
+  font-weight: 800;
+  color: ${"var(--pp-txt)"};
+`;
+
+export const ClubNameMark = styled.span`
+  font-size: 11px;
+  color: ${"var(--pp-accent)"};
+`;
+
+export const ClubRole = styled.div`
+  font-size: 11px;
+  color: ${"var(--pp-txt3)"};
+`;
+
+export const ClubViewBtn = styled.button`
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: ${"var(--pp-accent)"};
+  background: rgba(var(--pp-accent-rgb), 0.08);
+  border: 1px solid ${"var(--pp-border2)"};
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s;
+  &::before {
+    content: '';
+    position: absolute; top: -20%; left: -60%;
+    width: 32%; height: 140%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform: skewX(-18deg) translateX(-100%);
+    pointer-events: none;
+  }
+  &:hover {
+    background: rgba(var(--pp-accent-rgb), 0.15);
+    border-color: ${"var(--pp-accent)"};
+  }
+  &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
+`;
+
 export const ProfileOuter = styled.div`
   position: relative;
 `;
 
 export const GlobalCloseBtn = styled.button`
   position: absolute;
-  top: -14px;
-  right: -14px;
+  top: 12px;
+  right: 12px;
   z-index: 30;
-  background: ${"var(--pp-surface)"};
+  background: ${"var(--pp-card)"};
   border: 1px solid ${"var(--pp-border)"};
   border-radius: 10px;
   width: 30px; height: 30px;
@@ -1981,7 +2146,6 @@ export const GlobalCloseBtn = styled.button`
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
-  box-shadow: 0 2px 8px rgba(100,50,200,0.1);
   &:hover {
     background: #ffe4e4;
     border-color: rgba(220,38,38,0.35);
@@ -2002,7 +2166,7 @@ export const PanelHeaderRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 18px 14px;
+  padding: 22px 58px 14px 18px;
   flex-shrink: 0;
 `;
 
@@ -2520,7 +2684,7 @@ export const FriendsPanelInner = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 22px 20px 0;
+  padding: 52px 20px 0;
   gap: 14px;
   background: var(--pp-gradPanel);
   border-radius: 0 22px 22px 0;
@@ -3222,7 +3386,7 @@ export const InvBreadcrumbCol = styled.div`
   width: 160px;
   flex-shrink: 0;
   border-left: 1px solid ${"var(--pp-border)"};
-  padding: 14px 12px;
+  padding: 52px 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;

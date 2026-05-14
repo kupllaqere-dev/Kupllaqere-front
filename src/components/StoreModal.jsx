@@ -258,7 +258,6 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                 <CatGrid>
                   <NewItemsCard onClick={goToNew}>
                     <NewItemsLeft>
-                      <NewItemsEmoji>✨</NewItemsEmoji>
                       <div>
                         <NewItemsTitle>New Items</NewItemsTitle>
                         <NewItemsSub>Browse all latest arrivals, sorted by release</NewItemsSub>
@@ -459,7 +458,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
           <AvatarPanel>
             <AvatarArea>
-              <AvatarBg src="/store-background.png" alt="" />
+              <AvatarBg src="/inventory-background.png" alt="" />
               <AvatarCanvas gender={gender} outfit={previewOutfit} width={320} height={722} pose={pose} />
             </AvatarArea>
             <PoseBar>
@@ -533,18 +532,18 @@ export default StoreModal;
 
 /* ─── palette ─── */
 const C = {
-  bg:       "#f7f3ff",
+  bg:       "#fdf8f3",
   surface:  "#ffffff",
-  card:     "#f0eaff",
-  cardHov:  "#e8deff",
-  border:   "rgba(130,80,220,0.14)",
-  border2:  "rgba(130,80,220,0.26)",
-  accent:   "#7c3aed",
-  accentLt: "#9d6ff5",
-  accentPk: "#c026d3",
-  txt:      "#2e1065",
-  txt2:     "#5b3fa0",
-  txt3:     "#a98fd4",
+  card:     "#f5e8d8",
+  cardHov:  "#eddcc8",
+  border:   "rgba(140,80,30,0.14)",
+  border2:  "rgba(140,80,30,0.26)",
+  accent:   "#92400e",
+  accentLt: "#b45309",
+  accentPk: "#b45309",
+  txt:      "#2c1810",
+  txt2:     "#5c3418",
+  txt3:     "#a07050",
   coin:     "#b45309",
   gem:      "#0e7490",
 };
@@ -553,10 +552,10 @@ const C = {
 const thinScrollbar = css`
   &::-webkit-scrollbar { width: 4px; height: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(80,40,160,0.2); border-radius: 4px; }
-  &::-webkit-scrollbar-thumb:hover { background: rgba(80,40,160,0.4); }
+  &::-webkit-scrollbar-thumb { background: rgba(120,60,20,0.2); border-radius: 4px; }
+  &::-webkit-scrollbar-thumb:hover { background: rgba(120,60,20,0.4); }
   scrollbar-width: thin;
-  scrollbar-color: rgba(80,40,160,0.2) transparent;
+  scrollbar-color: rgba(120,60,20,0.2) transparent;
 `;
 
 /* ─── animations ─── */
@@ -569,7 +568,7 @@ const glassShine = keyframes`
 /* ─── shell ─── */
 const Overlay = styled.div`
   position:fixed;inset:0;z-index:9999;
-  background:rgba(40,15,90,0.52);
+  background:rgba(40,20,10,0.52);
   backdrop-filter:blur(10px);
   display:flex;align-items:center;justify-content:center;
 `;
@@ -583,7 +582,7 @@ const Container = styled.div`
   max-height:92vh;
   height:92vh;
   display:flex;flex-direction:column;
-  box-shadow:0 32px 80px rgba(80,30,180,0.18),0 4px 16px rgba(80,30,180,0.1),inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow:0 32px 80px rgba(80,40,10,0.18),0 4px 16px rgba(80,40,10,0.1),inset 0 1px 0 rgba(255,255,255,0.9);
   overflow:hidden;
   color:${C.txt};
   animation:${fadeIn} 0.22s ease;
@@ -594,7 +593,7 @@ const Header = styled.div`
   padding:16px 24px;
   border-bottom:1px solid ${C.border};
   flex-shrink:0;
-  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
+  background:linear-gradient(135deg,#e8d0b8,#f0dcc8,#f5eee8);
 `;
 
 const HeaderLeft = styled.div`display:flex;align-items:center;gap:10px;`;
@@ -604,7 +603,7 @@ const StoreName = styled.h2`
   font-size: 28px;
   font-weight: 900;
   letter-spacing: 0.2px;
-  background: linear-gradient(120deg, #7c3aed, #c026d3, #0ea5e9);
+  background: linear-gradient(120deg, #92400e, #b45309, #c2540a);
   /* background:  #ff7eb9; */
   -webkit-text-fill-color: transparent;
   -webkit-background-clip: text;
@@ -612,12 +611,12 @@ const StoreName = styled.h2`
 `;
 
 const CloseBtn = styled.button`
-  background:rgba(120,80,220,0.08);border:1px solid ${C.border};
+  background:rgba(140,80,30,0.08);border:1px solid ${C.border};
   color:${C.txt2};font-size:13px;cursor:pointer;
   width:30px;height:30px;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
   transition:all .15s;
-  &:hover{background:rgba(120,80,220,0.16);color:${C.txt};}
+  &:hover{background:rgba(140,80,30,0.16);color:${C.txt};}
 `;
 
 const Body = styled.div`display:flex;flex:1;overflow:hidden;`;
@@ -628,7 +627,7 @@ const Sidebar = styled.div`
   border-right:1px solid ${C.border};
   padding:16px 10px;
   display:flex;flex-direction:column;gap:8px;
-  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
+  background:linear-gradient(135deg,#e8d0b8,#f0dcc8,#f5eee8);
 `;
 
 const SidebarLabel = styled.div`
@@ -640,9 +639,9 @@ const CrumbStep = styled.button`
   position: relative;
   overflow: hidden;
   background: ${p => p.$active
-    ? "linear-gradient(145deg,rgba(124,58,237,0.16),rgba(157,111,245,0.1))"
-    : "linear-gradient(145deg,rgba(255,255,255,0.72),rgba(237,230,255,0.55))"};
-  border: 1px solid ${p => p.$active ? "rgba(124,58,237,0.38)" : "rgba(124,58,237,0.18)"};
+    ? "linear-gradient(145deg,rgba(146,64,14,0.16),rgba(180,83,9,0.1))"
+    : "linear-gradient(145deg,rgba(255,255,255,0.72),rgba(240,220,200,0.55))"};
+  border: 1px solid ${p => p.$active ? "rgba(146,64,14,0.38)" : "rgba(146,64,14,0.18)"};
   border-radius: 14px;
   color: ${p => p.$active ? C.txt : C.txt2};
   font-size: 24px;
@@ -655,7 +654,7 @@ const CrumbStep = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.65);
+  box-shadow: 0 2px 8px rgba(146,64,14,0.08), inset 0 1px 0 rgba(255,255,255,0.65);
   transition: transform .18s, box-shadow .18s, border-color .18s, background .18s;
 
   &::before {
@@ -672,9 +671,9 @@ const CrumbStep = styled.button`
 
   ${p => p.$clickable && css`
     &:hover {
-      border-color: rgba(124,58,237,0.48);
-      background: linear-gradient(145deg,rgba(124,58,237,0.12),rgba(157,111,245,0.07));
-      box-shadow: 0 6px 20px rgba(124,58,237,0.16), inset 0 1px 0 rgba(255,255,255,0.75);
+      border-color: rgba(146,64,14,0.48);
+      background: linear-gradient(145deg,rgba(146,64,14,0.12),rgba(180,83,9,0.07));
+      box-shadow: 0 6px 20px rgba(146,64,14,0.16), inset 0 1px 0 rgba(255,255,255,0.75);
       transform: translateY(-2px);
       color: ${C.txt};
     }
@@ -693,7 +692,7 @@ const ContentArea = styled.div`flex:1;overflow:hidden;display:flex;flex-directio
 const HomeView = styled.div`
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:32px;padding:40px;
-  background:linear-gradient(160deg,#fdfbff 0%,#f4eeff 100%);
+  background:linear-gradient(160deg,#fdf5ee 0%,#faf0e8 100%);
 `;
 
 const HomeTitle = styled.div`
@@ -706,9 +705,9 @@ const ShopBox = styled.div`
   position:relative;overflow:hidden;
   width:210px;height:220px;
   background:${p => p.$disabled
-    ? "linear-gradient(145deg,#faf6ff,#f5f0ff)"
-    : "linear-gradient(145deg,#f0e8ff,#e8dcff)"};
-  border:1px solid ${p => p.$disabled ? C.border : "rgba(124,58,237,0.28)"};
+    ? "linear-gradient(145deg,#fdf5ee,#f5e8d8)"
+    : "linear-gradient(145deg,#f0d4b8,#e8c898)"};
+  border:1px solid ${p => p.$disabled ? C.border : "rgba(146,64,14,0.28)"};
   border-radius:18px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   cursor:${p => p.$disabled ? "default" : "pointer"};
@@ -716,9 +715,9 @@ const ShopBox = styled.div`
   transition:all .2s;
   ${p => !p.$disabled && css`
     &:hover{
-      border-color:rgba(124,58,237,0.55);
+      border-color:rgba(146,64,14,0.55);
       transform:translateY(-3px);
-      box-shadow:0 12px 40px rgba(124,58,237,0.15);
+      box-shadow:0 12px 40px rgba(146,64,14,0.15);
     }
   `}
 `;
@@ -726,7 +725,7 @@ const ShopBox = styled.div`
 const ShopBoxGlow = styled.div`
   position:absolute;top:-40px;left:50%;transform:translateX(-50%);
   width:130px;height:130px;border-radius:50%;
-  background:radial-gradient(circle,rgba(124,58,237,0.18) 0%,transparent 70%);
+  background:radial-gradient(circle,rgba(146,64,14,0.18) 0%,transparent 70%);
   pointer-events:none;
 `;
 
@@ -737,7 +736,7 @@ const ShopBoxSub = styled.div`font-size:12px;color:${C.txt2};`;
 /* CATEGORIES */
 const CatScroll = styled.div`
   flex:1;overflow-y:auto;padding:24px;
-  background:linear-gradient(160deg,#fdfbff 0%,#f8f3ff 100%);
+  background:linear-gradient(160deg,#fdf5ee 0%,#faf0e8 100%);
   ${thinScrollbar}
 `;
 
@@ -752,16 +751,16 @@ const CatGrid = styled.div`
 /* New Items featured banner — spans full grid width */
 const NewItemsCard = styled.div`
   grid-column: 1 / -1;
-  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
-  border:1px solid rgba(124,58,237,0.25);
+  background:linear-gradient(135deg,#e8d0b8,#f0dcc8,#f5eee8);
+  border:1px solid rgba(146,64,14,0.25);
   border-radius:14px;
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 22px;
   cursor:pointer;
   transition:all .17s;
   &:hover{
-    border-color:rgba(124,58,237,0.5);
-    box-shadow:0 4px 24px rgba(124,58,237,0.12);
+    border-color:rgba(146,64,14,0.5);
+    box-shadow:0 4px 24px rgba(146,64,14,0.12);
     transform:translateY(-1px);
   }
 `;
@@ -776,7 +775,7 @@ const CatCard = styled.div`
   position:relative;
   background:${C.surface};border:1px solid ${C.border};border-radius:14px;
   overflow:hidden;transition:border-color .15s,box-shadow .15s;
-  &:hover{border-color:rgba(124,58,237,0.35);box-shadow:0 4px 18px rgba(100,50,200,0.1);}
+  &:hover{border-color:rgba(146,64,14,0.35);box-shadow:0 4px 18px rgba(100,50,20,0.1);}
 `;
 
 const CatCardDeco = styled.img`
@@ -803,13 +802,13 @@ const CatCardTop = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, #ede8ff, #fce8ff, #e8f0ff);
+  background: linear-gradient(135deg, #e8d0b8, #f0dcc8, #f5eee8);
   padding: 13px 14px;
   cursor: pointer;
   border-bottom: 1px solid ${C.border};
   transition: background 0.13s;
   &:hover {
-    background: linear-gradient(120deg, #ae97ff, #f8c8ff, #bfd5ff);
+    background: linear-gradient(120deg, #c8a070, #f0d0b0, #e8c898);
   }
 `;
 
@@ -832,7 +831,7 @@ const CatSubItem = styled.div`
 /* ITEMS */
 const ItemScroll = styled.div`
   flex:1;overflow-y:auto;padding: 6px;display:flex;flex-direction:column;gap:0;
-  background:linear-gradient(160deg,#fdfbff 0%,#f8f3ff 100%);
+  background:linear-gradient(160deg,#fdf5ee 0%,#faf0e8 100%);
   ${thinScrollbar}
 `;
 
@@ -852,12 +851,12 @@ const ItemGroup = styled.div`display:flex;flex-direction:column;gap:0;`;
 const ItemCard = styled.div`
   display:flex;align-items:center;gap:5px;padding:5px;
   border-radius:${p => p.$expanded ? "14px 14px 0 0" : "14px"};
-  background:linear-gradient(to top,#ddd0f8,#f8f3ff);
+  background:linear-gradient(to top,#d4a878,#faf0e8);
   border:1px solid ${C.border};
   border-bottom:${p => p.$expanded ? `1px solid transparent` : `1px solid ${C.border}`};
   min-height:88px;cursor:pointer;
   transition:border-color .15s,box-shadow .15s;
-  &:hover{border-color:${C.border2};box-shadow:0 2px 10px rgba(120,60,220,0.1);}
+  &:hover{border-color:${C.border2};box-shadow:0 2px 10px rgba(120,60,20,0.1);}
 `;
 
 const CardThumbImg = styled.img`
@@ -866,7 +865,7 @@ const CardThumbImg = styled.img`
 
 const CardMidSection = styled.div`
   flex:1;min-width:0;border-radius:10px;
-  background:linear-gradient(to top,#ede5ff,#ffffff);
+  background:linear-gradient(to top,#e8c898,#ffffff);
   display:flex;align-items:center;
   padding:8px 12px;align-self:stretch;
 `;
@@ -883,7 +882,7 @@ const CardPricesArea = styled.div`
 
 const CardPricePanel = styled.div`
   border-radius:10px;overflow:hidden;
-  background:linear-gradient(to top,#ede5ff,#ffffff);
+  background:linear-gradient(to top,#e8c898,#ffffff);
   display:flex;flex-direction:column;align-items:center;
   gap:6px;padding:12px 24px;
   width: 50%;
@@ -902,7 +901,7 @@ const CardPriceAmt = styled.div`
 
 const CardOwnedPanel = styled.div`
   border-radius:10px;
-  background:linear-gradient(to top,#ede5ff,#ffffff);
+  background:linear-gradient(to top,#e8c898,#ffffff);
   display:flex;align-items:center;justify-content:center;
   padding:8px 12px;align-self:stretch;
   font-size:11px;font-weight:600;color:${C.txt3};
@@ -924,13 +923,13 @@ const LevelBadge = styled.div`
 /* ── expanded area ── */
 const ExpandedArea = styled.div`
   border:1px solid ${C.border};border-top:none;
-  background:linear-gradient(to top,#e8dcff,#f8f3ff);
+  background:linear-gradient(to top,#e8c898,#faf0e8);
   /* padding:10px 12px 12px; */
   display:flex;flex-direction:column;gap:10px;
 `;
 
 const ExpandInfoBox = styled.div`
-  /* background:linear-gradient(to top,#ede5ff,#ffffff); */
+  /* background:linear-gradient(to top,#e8c898,#ffffff); */
   border-radius: 10px;
   overflow: hidden;
   padding: 9px 12px;
@@ -964,7 +963,7 @@ const ExpandVariantsRow = styled.div`
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  background: #ded1fd;
+  background: #d4a878;
   width: 100%;
   /* border-radius: 8px; */
   padding: 12px 8px;
@@ -999,7 +998,7 @@ const AddButtonsBar = styled.div`
 const AddVariantBtn = styled.button`
   width:50%;border-radius:0 0 10px 10px;padding:7px 0;
   font-size:12px;font-weight:700;cursor:pointer;
-  background:linear-gradient(to top,#ede5ff,#ffffff);
+  background:linear-gradient(to top,#e8c898,#ffffff);
   color:${p => p.$gem ? C.gem : C.coin};
   border:1px solid ${C.border};
   transition:border-color .13s,background .13s;
@@ -1013,7 +1012,7 @@ const AddVariantBtn = styled.button`
 const WishlistVariantBtn = styled.button`
   padding:7px 24px;border-radius:0 0 10px 10px;
   font-size:12px;font-weight:700;cursor:pointer;
-  background:${p => p.$active ? "linear-gradient(to top,#e6d9ff,#f5f0ff)" : "linear-gradient(to top,#ede5ff,#ffffff)"};
+  background:${p => p.$active ? "linear-gradient(to top,#e8c898,#f5e8d8)" : "linear-gradient(to top,#e8c898,#ffffff)"};
   color:${p => p.$active ? C.accent : C.txt3};
   border:1px solid ${C.border};
   border-right:none;
@@ -1029,7 +1028,7 @@ const AvatarPanel = styled.div`
   border-left:1px solid ${C.border};
   display:flex;flex-direction:column;
   position:relative;
-  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
+  background:linear-gradient(135deg,#e8d0b8,#f0dcc8,#f5eee8);
 `;
 
 const AvatarArea = styled.div`
@@ -1046,17 +1045,17 @@ const AvatarBg = styled.img`
 const PoseBar = styled.div`
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:8px 12px;border-top:1px solid ${C.border};
-  background:linear-gradient(135deg,#ede8ff,#fce8ff,#e8f0ff);
+  background:linear-gradient(135deg,#e8d0b8,#f0dcc8,#f5eee8);
   flex-shrink:0;
 `;
 
 const PoseArrow = styled.button`
-  background:rgba(124,58,237,0.08);border:1px solid ${C.border};
+  background:rgba(146,64,14,0.08);border:1px solid ${C.border};
   color:${C.txt2};font-size:18px;line-height:1;
   width:28px;height:28px;border-radius:7px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   transition:all .13s;
-  &:hover{background:rgba(124,58,237,0.16);color:${C.txt};}
+  &:hover{background:rgba(146,64,14,0.16);color:${C.txt};}
 `;
 
 const PoseDot = styled.button`
@@ -1064,9 +1063,9 @@ const PoseDot = styled.button`
   height:8px;
   border-radius:4px;
   border:none;cursor:pointer;padding:0;
-  background:${p => p.$active ? C.accent : "rgba(124,58,237,0.2)"};
+  background:${p => p.$active ? C.accent : "rgba(146,64,14,0.2)"};
   transition:all .18s;
-  &:hover{background:${p => p.$active ? C.accent : "rgba(124,58,237,0.4)"};}
+  &:hover{background:${p => p.$active ? C.accent : "rgba(146,64,14,0.4)"};}
 `;
 
 const AvatarBottom = styled.div`
@@ -1083,11 +1082,11 @@ const BalImg = styled.img`width:16px;height:16px;object-fit:contain;`;
 
 const CartButton = styled.button`
   position:relative;padding:8px 16px;border-radius:9px;
-  border:1px solid rgba(124,58,237,0.3);
-  background:rgba(124,58,237,0.1);
+  border:1px solid rgba(146,64,14,0.3);
+  background:rgba(146,64,14,0.1);
   color:${C.accent};font-size:13px;font-weight:600;cursor:pointer;
   white-space:nowrap;transition:all .14s;
-  &:hover{background:rgba(124,58,237,0.18);}
+  &:hover{background:rgba(146,64,14,0.18);}
 `;
 
 const CartDot = styled.div`
@@ -1098,21 +1097,21 @@ const CartDot = styled.div`
 /* ─── cart slide ─── */
 const CartSlide = styled.div`
   position:absolute;inset:0;z-index:20;
-  background:rgba(200,185,240,0.35);
+  background:rgba(200,160,120,0.35);
   backdrop-filter:blur(4px);
   display:flex;align-items:flex-end;
 `;
 
 const CartBox = styled.div`
   width:100%;
-  background:linear-gradient(180deg,#fdfbff 0%,#f5eeff 100%);
+  background:linear-gradient(180deg,#fdf5ee 0%,#faf0e8 100%);
   border-top:1px solid ${C.border};
   border-radius:16px 16px 0 0;
   padding:18px 18px 22px;
   display:flex;flex-direction:column;gap:10px;
   max-height:72%;overflow-y:auto;
   animation:${fadeIn} 0.2s ease;
-  box-shadow:0 -8px 32px rgba(100,50,200,0.1);
+  box-shadow:0 -8px 32px rgba(100,50,20,0.1);
   ${thinScrollbar}
 `;
 
@@ -1128,11 +1127,11 @@ const CartItems = styled.div`display:flex;flex-direction:column;gap:6px;`;
 
 const CartLine = styled.div`
   display:flex;align-items:center;gap:10px;
-  background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.12);
+  background:rgba(146,64,14,0.06);border:1px solid rgba(146,64,14,0.12);
   border-radius:8px;padding:7px 10px;
 `;
 
-const CartImg = styled.img`width:34px;height:34px;object-fit:contain;border-radius:6px;background:rgba(120,80,220,0.08);flex-shrink:0;`;
+const CartImg = styled.img`width:34px;height:34px;object-fit:contain;border-radius:6px;background:rgba(140,80,30,0.08);flex-shrink:0;`;
 const CartName = styled.div`font-size:12px;color:${C.txt};flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
 const CartRm = styled.button`
   background:none;border:none;color:${C.txt3};font-size:14px;cursor:pointer;padding:0;flex-shrink:0;
@@ -1160,8 +1159,8 @@ const BuyBtns = styled.div`display:flex;gap:8px;`;
 const BuyBtn = styled.button`
   flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
   padding:9px 8px;border-radius:9px;
-  border:1px solid rgba(124,58,237,0.3);
-  background:rgba(124,58,237,0.1);
+  border:1px solid rgba(146,64,14,0.3);
+  background:rgba(146,64,14,0.1);
   color:${C.accent};
   font-size:12px;font-weight:600;cursor:pointer;transition:opacity .13s;
   &:disabled{opacity:0.3;cursor:not-allowed;}

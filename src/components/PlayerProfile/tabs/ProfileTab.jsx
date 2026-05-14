@@ -1,24 +1,28 @@
 import { useState } from "react";
-import { BIO_MAX, COMMENT_MAX } from "../constants";
+import { BIO_MAX, COMMENT_MAX, BADGES, BADGE_RARITY } from "../constants";
 import { formatRelativeTime } from "../utils";
 import { bbcodeToHtml } from "../bbcode";
 import BBCodeEditor from "../BBCodeEditor";
 import PlayerThumbnail from "../../PlayerThumbnail";
 import {
-  ProfileContent, ProfileHeader, HeaderLeft, ProfileEmblem, EmblemDiamond,
-  HeaderTitles, PlayerName, PlayerNameMark, ProfileMetaRow, LevelBadge, MetaSep,
-  RankBadgeDiamond, ProfileStats, ProfileStat, ProfileStatVal, ProfileStatLbl,
+  ProfileContent, ProfileHeader, HeaderLeft,
+  PlayerName, PlayerNameMark, LevelBadge,
   SectionBlock, SectionHeaderRow, SectionTitle,
   SoulmateEmptyBox, SmEmpty, SoulmateCard, SoulmateHeartBg, SoulmateAvatarWrap,
-  SoulmateSpinRing, SoulmateInfoBlock, SoulmateName, SoulmateMark, SoulmateDuration,
-  SoulmateMoodTag, SoulmateCardActions, SmDangerBtn, SmError, SmSub, SmRow, SmName,
+  SoulmateInfoBlock, SoulmateName, SoulmateMark, SoulmateDuration,
+  SoulmateCardActions, SmDangerBtn, SmError, SmSub, SmRow, SmName,
   SmActions, SmPrimaryBtn, SmSecBtn, SmContent,
-  RightPanel, RightSection, SectionEditBtn,
+  SectionCountPill,
+  BadgesScrollWrap, BadgesRow, BadgeCard, BadgeCardIconWrap, BadgeImg, BadgeCardName, BadgeCardRarity, BadgeExpandBtn,
+  ShowcaseScrollWrap, ShowcaseRow, ShowcaseCard, ShowcaseCardShine, ShowcaseItemImg,
+  ShowcaseCardLabel, ShowcaseCardType, ShowcaseAdd, ShowcaseCardAddLabel,
+  CompanionCard, CompanionPetWrap, CompanionPetAura, CompanionPetEmoji,
+  CompanionInfoBlock, CompanionNameRow, CompanionNameText, CompanionMoodText,
+  CompanionLevelText, CompanionXPWrap, XPBarOuter, XPBarFill, XPLabelsRow,
+  RightPanel, SectionEditBtn,
   BioFooter, BioCounter, BioActions, SecondaryBtn, PrimaryBtn, EmptyText,
-  OrnamentDivider, OrnamentLine, OrnamentGem, GBToggleBtn, GBCountPill, GBToggleArrow,
-  GBPreviewList, GBEmpty, GBPreviewCard, GBPreviewAvatarWrap, GBPreviewBody,
-  GBPreviewMeta, GBPreviewName, GBPreviewTime, GBPreviewText, GBInputArea, GBInput,
-  GBInputFooter, GBCounter, GuestBookOverlay, GBOverlayClose, GBHeader, GBTitle,
+  GBInput, GBEmpty,
+  GBCounter, GuestBookOverlay, GBOverlayClose, GBHeader, GBTitle,
   GBSubtitle, GBHeaderControls, GBSortBtn, GBPinnedBtn, GBComposeArea, GBComposeRow,
   GBAvatarPlaceholder, GBComposeInputWrap, GBEmojiBtn, GBPostBtn, GBComposeTools,
   GBToolBtn, GBOrnamentDivider, GBDividerLine, GBDividerGem, GBOverlayScroll,
@@ -26,10 +30,32 @@ import {
   GBCommentName, GBCommentTime, GBCommentText, GBReactions, GBReactionBtn,
   GBCommentActions, CommentDeleteBtn, GBMenuDot, GBStatsFooter, GBStat, GBStatLabel,
   GBStatValue, GBStatDivider, GBLeaveGiftBtn, BioErrorMsg,
-  AboutToggleBtn, AboutOverlay, AboutOverlayScroll,
+  AboutOverlay, AboutOverlayScroll,
+  SidePanelNav, SidePanelBtn, SidePanelBtnIcon, SidePanelBtnImg, SidePanelBtnLabel, SidePanelBtnArrow,
+  SidePanelDivider, ClubSection, ClubSectionTitle, ClubCard, ClubAvatar, ClubInfo,
+  ClubName, ClubNameMark, ClubRole, ClubViewBtn,
   BBContent,
   SkeletonLine, SkeletonCircle,
 } from "../styles";
+
+function SoulmateFullCard({ name, sub, onBreakUp, smBusy, smError }) {
+  return (
+    <SoulmateCard>
+      <SoulmateHeartBg>♥</SoulmateHeartBg>
+      <SoulmateAvatarWrap>
+        <PlayerThumbnail playerName={name} size={44} />
+      </SoulmateAvatarWrap>
+      <SoulmateInfoBlock>
+        <SoulmateName>{name} <SoulmateMark>♥</SoulmateMark></SoulmateName>
+        <SoulmateDuration>{sub}</SoulmateDuration>
+      </SoulmateInfoBlock>
+      <SoulmateCardActions>
+        <SmDangerBtn disabled={smBusy} onClick={onBreakUp}>Break Up</SmDangerBtn>
+      </SoulmateCardActions>
+      {smError && <SmError style={{ width: "100%", marginTop: 4 }}>{smError}</SmError>}
+    </SoulmateCard>
+  );
+}
 
 function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, smError,
   smSendRequest, smAccept, smDecline, smCancel, smRemove, playerName }) {
@@ -47,25 +73,8 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
 
   const { mine, sent, received = [], target, relationship } = smState;
 
-  const FullCard = ({ name, sub, onBreakUp }) => (
-    <SoulmateCard>
-      <SoulmateHeartBg>♥</SoulmateHeartBg>
-      <SoulmateAvatarWrap>
-        <PlayerThumbnail playerName={name} size={44} />
-      </SoulmateAvatarWrap>
-      <SoulmateInfoBlock>
-        <SoulmateName>{name} <SoulmateMark>♥</SoulmateMark></SoulmateName>
-        <SoulmateDuration>{sub}</SoulmateDuration>
-      </SoulmateInfoBlock>
-      <SoulmateCardActions>
-        <SmDangerBtn disabled={smBusy} onClick={onBreakUp}>Break Up</SmDangerBtn>
-      </SoulmateCardActions>
-      {smError && <SmError style={{ width: "100%", marginTop: 4 }}>{smError}</SmError>}
-    </SoulmateCard>
-  );
-
   if (isSelfView || !targetUserId) {
-    if (mine) return <FullCard name={mine.name} sub="Your Soul Mate" onBreakUp={smRemove} />;
+    if (mine) return <SoulmateFullCard name={mine.name} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} />;
     if (received.length > 0) return (
       <SoulmateEmptyBox>
         <SmSub>Incoming requests</SmSub>
@@ -93,7 +102,7 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
     return <SoulmateEmptyBox><SmEmpty>No soul mate yet.</SmEmpty></SoulmateEmptyBox>;
   }
 
-  if (relationship === "soulmate") return <FullCard name={playerName || "Player"} sub="Your Soul Mate" onBreakUp={smRemove} />;
+  if (relationship === "soulmate") return <SoulmateFullCard name={playerName || "Player"} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} />;
   if (relationship === "i_sent") return (
     <SoulmateEmptyBox>
       <SmContent>
@@ -147,6 +156,8 @@ export default function ProfileTab({
   smState, smBusy, smError,
   smSendRequest, smAccept, smDecline, smCancel, smRemove,
   targetUserId, currentUserId,
+  selectedBadge, handleBadgeClick, badgesExpanded, setBadgesExpanded, badgeSaving,
+  showcaseItems,
   gbOpen, setGbOpen,
   gbComments, gbLoading,
   gbInput, setGbInput,
@@ -174,36 +185,49 @@ export default function ProfileTab({
         {/* Header */}
         <ProfileHeader>
           <HeaderLeft>
-            <ProfileEmblem>
-              <EmblemDiamond>◆</EmblemDiamond>
-            </ProfileEmblem>
-            <HeaderTitles>
-              <PlayerName>
-                {playerName || "Player"}
-                <PlayerNameMark> ✦</PlayerNameMark>
-              </PlayerName>
-              <ProfileMetaRow>
-                <LevelBadge>Lv. 78</LevelBadge>
-                <MetaSep>•</MetaSep>
-                <RankBadgeDiamond>◆ Diamond Tier</RankBadgeDiamond>
-              </ProfileMetaRow>
-            </HeaderTitles>
+            <PlayerName>
+              {playerName || "Player"}
+              <PlayerNameMark> ✦</PlayerNameMark>
+            </PlayerName>
+            <LevelBadge>Lv. 78</LevelBadge>
           </HeaderLeft>
-          <ProfileStats>
-            <ProfileStat>
-              <ProfileStatVal>1,204</ProfileStatVal>
-              <ProfileStatLbl>Followers</ProfileStatLbl>
-            </ProfileStat>
-            <ProfileStat>
-              <ProfileStatVal>348</ProfileStatVal>
-              <ProfileStatLbl>Following</ProfileStatLbl>
-            </ProfileStat>
-            <ProfileStat>
-              <ProfileStatVal>89</ProfileStatVal>
-              <ProfileStatLbl>Days</ProfileStatLbl>
-            </ProfileStat>
-          </ProfileStats>
         </ProfileHeader>
+
+        {/* Badges */}
+        <SectionBlock>
+          <SectionHeaderRow>
+            <SectionTitle>Badges</SectionTitle>
+            <SectionCountPill>{badgesExpanded ? BADGES.length : Math.min(BADGES.length, 6)}</SectionCountPill>
+          </SectionHeaderRow>
+          <BadgesScrollWrap>
+            <BadgesRow>
+              {(badgesExpanded ? BADGES : BADGES.slice(0, 6)).map((name) => (
+                <BadgeCard
+                  key={name}
+                  $selected={selectedBadge === name}
+                  $clickable={!!handleBadgeClick}
+                  $saving={badgeSaving}
+                  $rarity={BADGE_RARITY[name] || "common"}
+                  onClick={() => handleBadgeClick?.(name)}
+                  title={handleBadgeClick ? (selectedBadge === name ? "Click to unselect" : "Click to display this badge") : name}
+                >
+                  <BadgeCardIconWrap>
+                    <BadgeImg src={`/assets/badges/${name}.png`} alt={name} />
+                  </BadgeCardIconWrap>
+                  <BadgeCardName>{name.charAt(0).toUpperCase() + name.slice(1)}</BadgeCardName>
+                  <BadgeCardRarity $rarity={BADGE_RARITY[name] || "common"}>
+                    {BADGE_RARITY[name] || "common"}
+                  </BadgeCardRarity>
+                </BadgeCard>
+              ))}
+            </BadgesRow>
+          </BadgesScrollWrap>
+          {BADGES.length > 6 && (
+            <BadgeExpandBtn onClick={() => setBadgesExpanded(v => !v)}>
+              {badgesExpanded ? "Show less ▲" : "Show all ▼"}
+            </BadgeExpandBtn>
+          )}
+        </SectionBlock>
 
         {/* Soul Mate */}
         <SectionBlock>
@@ -226,81 +250,99 @@ export default function ProfileTab({
           />
         </SectionBlock>
 
+        {/* Showcase */}
+        <SectionBlock>
+          <SectionHeaderRow>
+            <SectionTitle>Showcase</SectionTitle>
+            {isSelfView && <SectionEditBtn>Edit</SectionEditBtn>}
+          </SectionHeaderRow>
+          <ShowcaseScrollWrap>
+            <ShowcaseRow>
+              {showcaseItems.map((item, i) => (
+                <ShowcaseCard
+                  key={i}
+                  $clickable={isSelfView}
+                  onClick={isSelfView ? () => {} : undefined}
+                  title={isSelfView ? "Click to select item" : ""}
+                >
+                  <ShowcaseCardShine />
+                  {item ? (
+                    <>
+                      <ShowcaseItemImg src={item.imageUrl} alt={item.name} />
+                      <ShowcaseCardLabel>{item.name}</ShowcaseCardLabel>
+                      <ShowcaseCardType>Item</ShowcaseCardType>
+                    </>
+                  ) : isSelfView ? (
+                    <>
+                      <ShowcaseAdd>+</ShowcaseAdd>
+                      <ShowcaseCardAddLabel>Add Item</ShowcaseCardAddLabel>
+                    </>
+                  ) : null}
+                </ShowcaseCard>
+              ))}
+            </ShowcaseRow>
+          </ShowcaseScrollWrap>
+        </SectionBlock>
+
+        {/* Companion */}
+        <SectionBlock>
+          <SectionHeaderRow>
+            <SectionTitle>Companion</SectionTitle>
+          </SectionHeaderRow>
+          <CompanionCard>
+            <CompanionPetWrap>
+              <CompanionPetAura />
+              <CompanionPetEmoji>🐱</CompanionPetEmoji>
+            </CompanionPetWrap>
+            <CompanionInfoBlock>
+              <CompanionNameRow>
+                <CompanionNameText>Companion</CompanionNameText>
+                <CompanionMoodText>😺 Playful</CompanionMoodText>
+              </CompanionNameRow>
+              <CompanionLevelText>Level — · Familiar</CompanionLevelText>
+              <CompanionXPWrap>
+                <XPBarOuter>
+                  <XPBarFill style={{ "--xp": "0%" }} />
+                </XPBarOuter>
+                <XPLabelsRow>
+                  <span>XP — / —</span>
+                  <span>—%</span>
+                </XPLabelsRow>
+              </CompanionXPWrap>
+            </CompanionInfoBlock>
+          </CompanionCard>
+        </SectionBlock>
+
       </ProfileContent>
 
       {/* ── Right Panel ── */}
       <RightPanel>
+        <SidePanelNav>
+          <SidePanelBtn onClick={() => setAboutOpen(v => !v)}>
+            <SidePanelBtnIcon><SidePanelBtnImg $src="/assets/menus/about.png" $size={22} /></SidePanelBtnIcon>
+            <SidePanelBtnLabel>About</SidePanelBtnLabel>
+            <SidePanelBtnArrow>›</SidePanelBtnArrow>
+          </SidePanelBtn>
+          <SidePanelBtn onClick={() => setGbOpen(v => !v)}>
+            <SidePanelBtnIcon><SidePanelBtnImg $src="/assets/menus/guestbook.png" $size={22} /></SidePanelBtnIcon>
+            <SidePanelBtnLabel>Guestbook</SidePanelBtnLabel>
+            <SidePanelBtnArrow>›</SidePanelBtnArrow>
+          </SidePanelBtn>
+        </SidePanelNav>
 
-        {/* About */}
-        <RightSection>
-          <SectionHeaderRow>
-            <SectionTitle>About</SectionTitle>
-            <AboutToggleBtn
-              $active={aboutOpen}
-              onClick={() => setAboutOpen(v => !v)}
-              title="View about"
-            >
-              ▸
-            </AboutToggleBtn>
-          </SectionHeaderRow>
-        </RightSection>
+        <SidePanelDivider />
 
-        <OrnamentDivider>
-          <OrnamentLine /><OrnamentGem>✦</OrnamentGem><OrnamentLine />
-        </OrnamentDivider>
-
-        {/* Guestbook preview */}
-        <RightSection $flex>
-          <SectionHeaderRow>
-            <SectionTitle>Guestbook</SectionTitle>
-            <GBToggleBtn onClick={() => setGbOpen((v) => !v)} $active={gbOpen}>
-              <GBCountPill>{gbComments.length}</GBCountPill>
-              <GBToggleArrow $open={gbOpen}>▲</GBToggleArrow>
-            </GBToggleBtn>
-          </SectionHeaderRow>
-
-          <GBPreviewList>
-            {gbLoading ? (
-              <GBEmpty>Loading…</GBEmpty>
-            ) : gbComments.length === 0 ? (
-              <GBEmpty>No comments yet.</GBEmpty>
-            ) : (
-              gbComments.slice(0, 3).map((c) => (
-                <GBPreviewCard key={c._id}>
-                  <GBPreviewAvatarWrap>
-                    <PlayerThumbnail playerName={c.authorName} size={28} />
-                  </GBPreviewAvatarWrap>
-                  <GBPreviewBody>
-                    <GBPreviewMeta>
-                      <GBPreviewName>{c.authorName}</GBPreviewName>
-                      {c.createdAt && <GBPreviewTime>{formatRelativeTime(c.createdAt)}</GBPreviewTime>}
-                    </GBPreviewMeta>
-                    <GBPreviewText>{c.message}</GBPreviewText>
-                  </GBPreviewBody>
-                </GBPreviewCard>
-              ))
-            )}
-          </GBPreviewList>
-
-          {canComment && (
-            <GBInputArea>
-              <GBInput
-                value={gbInput}
-                maxLength={COMMENT_MAX}
-                onChange={(e) => setGbInput(e.target.value)}
-                placeholder="Write a comment…"
-                disabled={gbSubmitting}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
-              />
-              <GBInputFooter>
-                <GBCounter $warn={gbInput.length > 90}>{gbInput.length}/{COMMENT_MAX}</GBCounter>
-                <PrimaryBtn onClick={handleSubmitComment} disabled={gbSubmitting || !gbInput.trim()}>
-                  {gbSubmitting ? "…" : "Post"}
-                </PrimaryBtn>
-              </GBInputFooter>
-            </GBInputArea>
-          )}
-        </RightSection>
+        <ClubSectionTitle style={{ padding: "0 14px", marginBottom: 6 }}>Club</ClubSectionTitle>
+        <ClubSection>
+          <ClubCard>
+            <ClubAvatar>🏛️</ClubAvatar>
+            <ClubInfo>
+              <ClubName>Filip's</ClubName>
+              <ClubRole>Member</ClubRole>
+            </ClubInfo>
+          </ClubCard>
+          <ClubViewBtn>View Club</ClubViewBtn>
+        </ClubSection>
       </RightPanel>
 
       {/* ── About Expanded Overlay ── */}
