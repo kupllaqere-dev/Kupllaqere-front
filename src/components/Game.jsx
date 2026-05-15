@@ -512,14 +512,15 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           </S.PlayerMenuButton>
         </S.PlayerMenu>
       )}
-      {/* <ChatBox
+      <ChatBox
         messages={chatMessages}
         whispers={whisperMessages}
         players={onlinePlayers}
         myId={socketRef.current?.id}
+        myName={user?.name || "Player"}
         onSend={handleSend}
         onWhisper={handleWhisper}
-      /> */}
+      />
       {viewedProfile && (
         <PlayerProfile
           onClose={() => setViewedProfile(null)}

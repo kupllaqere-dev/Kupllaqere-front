@@ -116,7 +116,7 @@ export default class MultiplayerHandler {
     });
 
     socket.onChatMessage((msg) => {
-      cb.setChatMessages((prev) => [...prev.slice(-99), msg]);
+      cb.setChatMessages((prev) => [...prev.slice(-29), msg]);
       if (msg.from.id === socket.id) {
         bubbles.show(scene, localPlayer, msg.text);
       } else {
@@ -124,20 +124,16 @@ export default class MultiplayerHandler {
       }
     });
 
-    socket.onChatHistory((history) => cb.setChatMessages(history));
-
     socket.onWhisper((whisper) => {
       const targetName =
         whisper.from.id === socket.id
           ? this.onlinePlayersRef.find((p) => p.id === whisper.to)?.name || "?"
           : whisper.from.name;
       cb.setWhisperMessages((prev) => [
-        ...prev.slice(-99),
+        ...prev.slice(-29),
         { ...whisper, id: Date.now().toString(36), toName: targetName },
       ]);
     });
-
-    socket.requestChatHistory();
   }
 
   wireTeleport(scene, localPlayer, playerManager, callbacks) {
