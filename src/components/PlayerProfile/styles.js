@@ -3047,6 +3047,67 @@ export const LookSliderValue = styled.div`
   text-align: right;
 `;
 
+export const LookSlotImg = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  pointer-events: none;
+`;
+
+export const LookPickerRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 2px;
+  ${thinScrollbar}
+  scrollbar-width: thin;
+  &::-webkit-scrollbar { height: 3px; }
+`;
+
+export const LookPickerXBtn = styled.button`
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(220,38,38,0.3);
+  background: rgba(220,38,38,0.07);
+  color: #dc2626;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.13s, border-color 0.13s;
+  &:hover { background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.55); }
+`;
+
+export const LookPickerThumb = styled.img`
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: ${"var(--pp-card)"};
+  border: 1.5px solid ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-border)"};
+  box-shadow: ${({ $selected }) => $selected ? "0 0 0 2px rgba(var(--pp-accent-rgb),0.22)" : "none"};
+  cursor: pointer;
+  transition: border-color 0.14s, transform 0.1s, box-shadow 0.14s;
+  &:hover { border-color: ${"var(--pp-accent)"}; transform: scale(1.07); }
+`;
+
+export const LookPickerEmpty = styled.div`
+  font-size: 10px;
+  color: ${"var(--pp-txt3)"};
+  font-style: italic;
+  white-space: nowrap;
+  padding: 4px 2px;
+`;
+
 /* ── Inventory action bar ── */
 
 export const InvActionBar = styled.div`

@@ -33,7 +33,9 @@ import ChatBox from "./ChatBox";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
 
-export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, onSocketReady }) {
+const APPEARANCE_SUBS = ["eyes", "eyebrows", "nose", "mouth", "beard"];
+
+export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const sceneRef = useRef(null);
@@ -317,55 +319,96 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     const mp = mpRef.current;
     if (!scene || !lp || !lm) return;
 
-    // Equip locally on the Phaser sprite
+    const slotKey = item.category === "appearance" ? item.subcategory : item.category;
     const effectiveId = item.itemId ?? item._id;
-    lm.equip(scene, lp.sprite, "local", item.category, item.imageUrl, effectiveId);
 
-    // Update equipped state
-    const next = { ...equippedRef.current, [item.category]: item._id ?? effectiveId };
-    equippedRef.current = next;
-    onEquippedChange(next);
-
-    const nextOutfit = { ...outfitRef.current, [item.category]: { itemId: effectiveId, imageUrl: item.imageUrl } };
-    outfitRef.current = nextOutfit;
-    onOutfitChange(nextOutfit);
-
-    const changePayload = { ...getOutfitPayload(lm), [item.category]: { itemId: effectiveId, imageUrl: item.imageUrl } };
-
-    mp.sendOutfitChange(changePayload);
-    pendingOutfitPayloadRef.current = changePayload;
-    clearTimeout(outfitSaveTimerRef.current);
-    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
-  }, []);
-
-  const handleUnequip = useCallback((category) => {
-    const lm = layerManagerRef.current;
-    const mp = mpRef.current;
-    if (!lm) return;
-
-    lm.unequip("local", category);
+    lm.equip(scene, lp.sprite, "local", slotKey, item.imageUrl, effectiveId);
 
     const next = { ...equippedRef.current };
-    delete next[category];
+    next[slotKey] = item._id ?? effectiveId;
     equippedRef.current = next;
     onEquippedChange(next);
 
     const nextOutfit = { ...outfitRef.current };
-    delete nextOutfit[category];
+    nextOutfit[slotKey] = { itemId: effectiveId, imageUrl: item.imageUrl };
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
-    const changePayload = getOutfitPayload(lm);
-    delete changePayload[category];
+    // Use nextOutfit directly — getOutfitPayload(lm) is unreliable here because
+    // LayerManager._createLayerSprite is async when textures aren't yet cached.
+    mp.sendOutfitChange(nextOutfit);
+    pendingOutfitPayloadRef.current = nextOutfit;
+    clearTimeout(outfitSaveTimerRef.current);
+    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
+  }, []);
 
-    mp.sendOutfitChange(changePayload);
-    pendingOutfitPayloadRef.current = changePayload;
+  const handleUnequip = useCallback((categoryOrSlot) => {
+    const lm = layerManagerRef.current;
+    const mp = mpRef.current;
+    if (!lm) return;
+
+    const slotsToRemove = categoryOrSlot === "appearance"
+      ? ["appearance", ...APPEARANCE_SUBS]
+      : [categoryOrSlot];
+
+    for (const slot of slotsToRemove) lm.unequip("local", slot);
+
+    const next = { ...equippedRef.current };
+    for (const slot of slotsToRemove) delete next[slot];
+    equippedRef.current = next;
+    onEquippedChange(next);
+
+    const nextOutfit = { ...outfitRef.current };
+    for (const slot of slotsToRemove) delete nextOutfit[slot];
+    outfitRef.current = nextOutfit;
+    onOutfitChange(nextOutfit);
+
+    mp.sendOutfitChange(nextOutfit);
+    pendingOutfitPayloadRef.current = nextOutfit;
+    clearTimeout(outfitSaveTimerRef.current);
+    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
+  }, []);
+
+  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots) => {
+    const scene = sceneRef.current;
+    const lp = localPlayerRef.current;
+    const lm = layerManagerRef.current;
+    const mp = mpRef.current;
+    if (!scene || !lp || !lm) return;
+
+    // Clear explicitly removed slots (face subs handled inside unequip → rebake)
+    for (const slotKey of clearSlots) lm.unequip("local", slotKey);
+
+    for (const [slotKey, item] of Object.entries(equippedSlots)) {
+      const effectiveId = item.itemId ?? item._id;
+      lm.equip(scene, lp.sprite, "local", slotKey, item.imageUrl, effectiveId);
+    }
+
+    const next = { ...equippedRef.current };
+    for (const slotKey of clearSlots) delete next[slotKey];
+    for (const [slotKey, item] of Object.entries(equippedSlots)) {
+      next[slotKey] = item._id ?? item.itemId;
+    }
+    equippedRef.current = next;
+    onEquippedChange(next);
+
+    const nextOutfit = { ...outfitRef.current };
+    for (const slotKey of clearSlots) delete nextOutfit[slotKey];
+    for (const [slotKey, item] of Object.entries(equippedSlots)) {
+      nextOutfit[slotKey] = { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl };
+    }
+    outfitRef.current = nextOutfit;
+    onOutfitChange(nextOutfit);
+
+    mp.sendOutfitChange(nextOutfit);
+    pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
     outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
   }, []);
 
   equipRef.current = handleEquip;
   unequipRef.current = handleUnequip;
+  if (applyLookBatchRef) applyLookBatchRef.current = handleApplyLookBatch;
 
   const handleSend = useCallback((text) => {
     socketRef.current?.sendChatMessage(text);
@@ -411,7 +454,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
                 userId: other.userId,
                 name: playerMenu.name,
                 gender: other.sprite.gender,
-                outfit: getOutfitPayload(lm, playerMenu.id),
+                outfit: lm.getFullOutfit(playerMenu.id),
                 bio: other.bio || "",
                 selectedBadge: other.selectedBadge || null,
               });
@@ -494,14 +537,3 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   );
 }
 
-/** Build the full outfit payload from current layers */
-function getOutfitPayload(layerManager, ownerId = "local") {
-  const layers = layerManager?.layers.get(ownerId);
-  if (!layers) return {};
-  const payload = {};
-  for (const [category, { key, imageUrl }] of layers) {
-    const itemId = key.replace("item_", "");
-    payload[category] = { itemId, imageUrl };
-  }
-  return payload;
-}

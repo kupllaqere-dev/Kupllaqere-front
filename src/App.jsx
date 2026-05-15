@@ -25,6 +25,7 @@ function App() {
   const [gameSocket, setGameSocket] = useState(null);
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
+  const applyLookBatchRef = useRef(null);
 
   function handleLogin(userData, token, refreshToken) {
     setUser(userData);
@@ -80,6 +81,10 @@ function App() {
     unequipRef.current?.(category);
   }, []);
 
+  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots) => {
+    applyLookBatchRef.current?.(equippedSlots, clearSlots);
+  }, []);
+
   const handleSaveBio = useCallback(async (bio) => {
     const result = await updateBio(bio);
     setUser((prev) => {
@@ -128,6 +133,7 @@ function App() {
         equipped={equipped}
         onEquip={handleEquip}
         onUnequip={handleUnequip}
+        onApplyLookBatch={handleApplyLookBatch}
         playerName={user?.name}
         gender={user?.gender}
         outfit={outfit}
@@ -148,6 +154,7 @@ function App() {
         onOutfitChange={setOutfit}
         equipRef={equipRef}
         unequipRef={unequipRef}
+        applyLookBatchRef={applyLookBatchRef}
         onSocketReady={setGameSocket}
       />
     </>

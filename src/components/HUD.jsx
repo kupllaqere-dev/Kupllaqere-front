@@ -6,7 +6,7 @@ import MapsModal from "./MapsModal";
 import { fetchUnreadCount } from "../api/mail";
 import { lookupUser } from "../api/auth";
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
@@ -71,6 +71,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         onOpenMarketplace={() => { setShowProfile(false); setShowStore(true); }}
         onEquip={onEquip}
         onUnequip={onUnequip}
+        onApplyLookBatch={onApplyLookBatch}
         equipped={equipped}
         level={level}
         onOpenProfile={handleOpenProfile}

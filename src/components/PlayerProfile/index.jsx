@@ -37,6 +37,7 @@ import {
   FRAME_W, FRAME_H, ZOOM_LEVELS, POSE_ORDER, LAYER_ORDER, BADGES,
   INV_CATEGORY_LABELS, INV_SUBCATEGORY_LABELS, INV_CATEGORIES,
   BADGE_RARITY, SHOWCASE_SLOTS, PRESENCE_LABELS,
+  LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
 } from "./constants";
 import { loadImage, extractFrame } from "./utils";
 import { PALETTES, paletteToVars } from "./themes";
@@ -79,6 +80,7 @@ export default function PlayerProfile({
   onOpenMarketplace = null,
   onEquip = null,
   onUnequip = null,
+  onApplyLookBatch = null,
   equipped = null,
   level = 1,
   onOpenProfile = null,
@@ -87,6 +89,7 @@ export default function PlayerProfile({
   const textareaRef = useRef(null);
   const bakedPosesRef = useRef([]);
   const invBakedPosesRef = useRef([]);
+  const lookBakedPosesRef = useRef([]);
 
   const isSelfView = !!(
     currentUserId && targetUserId &&
@@ -133,6 +136,9 @@ export default function PlayerProfile({
   const [gbSubmitting, setGbSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
+
+  const [lookSelectedEntries, setLookSelectedEntries] = useState({});
+  const [lookPreviewLayerImages, setLookPreviewLayerImages] = useState([]);
 
   const [invItems, setInvItems] = useState([]);
   const [invLoading, setInvLoading] = useState(false);
@@ -325,11 +331,30 @@ export default function PlayerProfile({
     loadImage(src).then((img) => { if (img) setBaseImg(img); });
   }, [gender]);
 
+  const APPEARANCE_SUBS_ORDER = ["eyebrows", "eyes", "nose", "mouth", "beard"];
+
+  const buildLayerEntries = (outfitMap) => {
+    const entries = [];
+    for (const cat of LAYER_ORDER) {
+      if (cat === "appearance") {
+        const hasSub = APPEARANCE_SUBS_ORDER.some(s => outfitMap[s]?.imageUrl);
+        if (hasSub) {
+          for (const sub of APPEARANCE_SUBS_ORDER) {
+            if (outfitMap[sub]?.imageUrl) entries.push({ category: sub, url: outfitMap[sub].imageUrl });
+          }
+        } else if (outfitMap["appearance"]?.imageUrl) {
+          entries.push({ category: "appearance", url: outfitMap["appearance"].imageUrl });
+        }
+      } else if (outfitMap[cat]?.imageUrl) {
+        entries.push({ category: cat, url: outfitMap[cat].imageUrl });
+      }
+    }
+    return entries;
+  };
+
   useEffect(() => {
     if (!outfit) { setLayerImages([]); return; }
-    const entries = LAYER_ORDER
-      .filter((cat) => outfit[cat]?.imageUrl)
-      .map((cat) => ({ category: cat, url: outfit[cat].imageUrl }));
+    const entries = buildLayerEntries(outfit);
     let cancelled = false;
     Promise.all(
       entries.map(({ category, url }) =>
@@ -367,23 +392,85 @@ export default function PlayerProfile({
     invBakedPosesRef.current = bakeAllPoses(baseImg, invPreviewLayerImages);
   }, [baseImg, invPreviewLayerImages]);
 
+  // Look tab: reset/init selections on tab enter; reinit once inventory loads
+  useEffect(() => {
+    if (activeTab !== "look") return;
+    if (!invLoaded) { setLookSelectedEntries({}); return; }
+    const initial = {};
+    for (const feat of LOOK_FEATURES) {
+      const itemId = equipped?.[feat.key];
+      if (itemId) {
+        const eStr = itemId.toString();
+        const item = invItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+        if (item) initial[feat.key] = item;
+      }
+    }
+    setLookSelectedEntries(initial);
+  }, [activeTab, invLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build look preview layers: each appearance subcategory gets its own layer slot
+  useEffect(() => {
+    const baseOutfit = outfit || {};
+    const layerUrls = [];
+    for (const cat of LAYER_ORDER) {
+      if (cat === "appearance") {
+        let anyAdded = false;
+        for (const feat of LOOK_FEATURES) {
+          if (LOOK_FEATURE_CATEGORY[feat.key] !== "appearance") continue;
+          const entry = lookSelectedEntries[feat.key];
+          if (entry?.imageUrl) { layerUrls.push(entry.imageUrl); anyAdded = true; }
+        }
+        if (!anyAdded) {
+          const anyTouched = LOOK_FEATURES.some(
+            f => LOOK_FEATURE_CATEGORY[f.key] === "appearance" && f.key in lookSelectedEntries
+          );
+          if (!anyTouched) {
+            for (const sub of APPEARANCE_SUBS_ORDER) {
+              if (baseOutfit[sub]?.imageUrl) layerUrls.push(baseOutfit[sub].imageUrl);
+            }
+            if (!APPEARANCE_SUBS_ORDER.some(s => baseOutfit[s]?.imageUrl) && baseOutfit["appearance"]?.imageUrl) {
+              layerUrls.push(baseOutfit["appearance"].imageUrl);
+            }
+          }
+        }
+      } else if (cat === "hair") {
+        const entry = lookSelectedEntries["hair"];
+        if (entry?.imageUrl) layerUrls.push(entry.imageUrl);
+        else if (!("hair" in lookSelectedEntries) && baseOutfit[cat]?.imageUrl) layerUrls.push(baseOutfit[cat].imageUrl);
+      } else {
+        if (baseOutfit[cat]?.imageUrl) layerUrls.push(baseOutfit[cat].imageUrl);
+      }
+    }
+    if (layerUrls.length === 0) { setLookPreviewLayerImages([]); return; }
+    let cancelled = false;
+    Promise.all(layerUrls.map(url => loadImage(url).then(img => img ? { img } : null)))
+      .then(results => { if (!cancelled) setLookPreviewLayerImages(results.filter(Boolean)); });
+    return () => { cancelled = true; };
+  }, [lookSelectedEntries, outfit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!baseImg) { lookBakedPosesRef.current = []; return; }
+    lookBakedPosesRef.current = bakeAllPoses(baseImg, lookPreviewLayerImages);
+  }, [baseImg, lookPreviewLayerImages]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const poses = activeTab === "inventory" ? invBakedPosesRef.current : bakedPosesRef.current;
+    const poses =
+      activeTab === "inventory" ? invBakedPosesRef.current :
+      activeTab === "look"      ? lookBakedPosesRef.current :
+                                  bakedPosesRef.current;
     const baked = poses[poseIndex];
     if (baked) ctx.drawImage(baked, 0, 0, canvas.width, canvas.height);
-  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages, viewLoaded]);
+  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages, lookPreviewLayerImages, viewLoaded]);
 
   useEffect(() => {
     if (!invPreviewOutfit || Object.keys(invPreviewOutfit).length === 0) {
       setInvPreviewLayerImages([]); return;
     }
-    const entries = LAYER_ORDER
-      .filter(cat => invPreviewOutfit[cat]?.imageUrl)
-      .map(cat => ({ category: cat, url: invPreviewOutfit[cat].imageUrl }));
+    const entries = buildLayerEntries(invPreviewOutfit);
     let cancelled = false;
     Promise.all(entries.map(({ category, url }) =>
       loadImage(url).then((img) => img ? { category, img } : null)
@@ -627,17 +714,17 @@ export default function PlayerProfile({
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (activeTab !== "inventory" || invLoaded) return;
+    if ((activeTab !== "inventory" && activeTab !== "look") || invLoaded) return;
     setInvLoading(true);
     fetchInventory()
       .then(data => {
         const loadedItems = data.items || [];
         setInvItems(loadedItems);
         const initial = {};
-        for (const [cat, itemId] of Object.entries(equipped || {})) {
+        for (const [slotKey, itemId] of Object.entries(equipped || {})) {
           const eStr = itemId?.toString();
           const entry = loadedItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
-          if (entry) initial[cat] = entry;
+          if (entry) initial[slotKey] = entry;
         }
         setInvSelectedEntries(initial);
         setInvPreviewOutfit(outfit || {});
@@ -646,6 +733,21 @@ export default function PlayerProfile({
       .catch(() => {})
       .finally(() => setInvLoading(false));
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync inventory state when the user switches to the inventory tab after
+  // changes were made on the look tab. Running on every outfit change would
+  // trigger bakeAllPoses on each look-apply, causing unnecessary repaints.
+  useEffect(() => {
+    if (!invLoaded || activeTab !== "inventory") return;
+    const initial = {};
+    for (const [slotKey, itemId] of Object.entries(equipped || {})) {
+      const eStr = itemId?.toString();
+      const entry = invItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+      if (entry) initial[slotKey] = entry;
+    }
+    setInvSelectedEntries(initial);
+    setInvPreviewOutfit(outfit || {});
+  }, [activeTab, equipped, outfit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeTab !== "wishlist" || wishlistLoaded) return;
@@ -686,14 +788,61 @@ export default function PlayerProfile({
     }
   };
 
+  const lookSelectEntry = (featureKey, entry) => {
+    setLookSelectedEntries(prev => ({ ...prev, [featureKey]: entry || null }));
+  };
+
+  const lookHasChanges = LOOK_FEATURES.some(feat => {
+    const entry = lookSelectedEntries[feat.key];
+    if (entry === undefined) return false;
+    const equippedId = equipped?.[feat.key];
+    if (entry === null) return !!equippedId;
+    if (!equippedId) return true;
+    const eStr = equippedId.toString();
+    return eStr !== entry._id?.toString() && eStr !== entry.itemId?.toString();
+  });
+
+  const lookHandleApply = () => {
+    const equippedSlots = {};
+    const clearSlots = [];
+    for (const feat of LOOK_FEATURES) {
+      const entry = lookSelectedEntries[feat.key];
+      if (entry) equippedSlots[feat.key] = entry;
+      else if (entry === null) clearSlots.push(feat.key);
+    }
+    onApplyLookBatch?.(equippedSlots, clearSlots);
+  };
+
+  const lookHandleReset = () => {
+    const initial = {};
+    for (const feat of LOOK_FEATURES) {
+      const itemId = equipped?.[feat.key];
+      if (itemId) {
+        const eStr = itemId.toString();
+        const item = invItems.find(i => i._id?.toString() === eStr || i.itemId?.toString() === eStr);
+        if (item) initial[feat.key] = item;
+      }
+    }
+    setLookSelectedEntries(initial);
+  };
+
+  const lookHandleRemoveAll = () => {
+    const cleared = {};
+    for (const feat of LOOK_FEATURES) cleared[feat.key] = null;
+    setLookSelectedEntries(cleared);
+  };
+
   const invGoCategories = () => { setInvView("categories"); setInvCategory(null); setInvSubcategory(null); };
   const invGoToCategory = cat => { setInvCategory(cat); setInvSubcategory(null); setInvView("items"); };
   const invGoToSubcategory = (cat, sub) => { setInvCategory(cat); setInvSubcategory(sub); setInvView("items"); };
   const invGoToRecent = () => { setInvView("recentlyAdded"); setInvCategory(null); setInvSubcategory(null); };
   const invGoToEquipped = () => { setInvView("equipped"); setInvCategory(null); setInvSubcategory(null); };
 
+  const invSlotKey = (entry) =>
+    entry.category === "appearance" ? entry.subcategory : entry.category;
+
   const invIsSelected = entry =>
-    invSelectedEntries[entry.category]?._id?.toString() === entry._id?.toString();
+    invSelectedEntries[invSlotKey(entry)]?._id?.toString() === entry._id?.toString();
 
   const invCanUse = entry => {
     if (entry.currency === "gems") return true;
@@ -702,26 +851,26 @@ export default function PlayerProfile({
   };
 
   const invToggleEntry = entry => {
-    const cat = entry.category;
+    const slotKey = invSlotKey(entry);
     if (invIsSelected(entry)) {
-      setInvSelectedEntries(prev => { const n = { ...prev }; delete n[cat]; return n; });
+      setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
       setInvPreviewOutfit(prev => {
         const n = { ...prev };
-        const equippedId = equipped?.[cat];
+        const equippedId = equipped?.[slotKey];
         const isCurrentlyEquipped = equippedId && (
           equippedId.toString() === entry._id?.toString() ||
           equippedId.toString() === entry.itemId?.toString()
         );
-        if (!isCurrentlyEquipped && outfit?.[cat]) {
-          n[cat] = outfit[cat];
+        if (!isCurrentlyEquipped && outfit?.[slotKey]) {
+          n[slotKey] = outfit[slotKey];
         } else {
-          delete n[cat];
+          delete n[slotKey];
         }
         return n;
       });
     } else {
-      setInvSelectedEntries(prev => ({ ...prev, [cat]: entry }));
-      setInvPreviewOutfit(prev => ({ ...prev, [cat]: { imageUrl: entry.imageUrl } }));
+      setInvSelectedEntries(prev => ({ ...prev, [slotKey]: entry }));
+      setInvPreviewOutfit(prev => ({ ...prev, [slotKey]: { imageUrl: entry.imageUrl } }));
     }
   };
 
@@ -778,12 +927,12 @@ export default function PlayerProfile({
       await sellItem({ inventoryId: entry._id });
       setInvItems(prev => prev.filter(i => i._id !== entry._id));
       if (invIsSelected(entry)) {
-        const cat = entry.category;
-        setInvSelectedEntries(prev => { const n = { ...prev }; delete n[cat]; return n; });
+        const slotKey = invSlotKey(entry);
+        setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
         setInvPreviewOutfit(prev => {
           const n = { ...prev };
-          if (outfit?.[cat]) n[cat] = outfit[cat];
-          else delete n[cat];
+          if (outfit?.[slotKey]) n[slotKey] = outfit[slotKey];
+          else delete n[slotKey];
           return n;
         });
       }
@@ -999,11 +1148,14 @@ export default function PlayerProfile({
               )}
             </Controls>
 
-            {activeTab === "inventory" ? (
+            {activeTab === "inventory" || activeTab === "look" ? (
               <InvActionBar>
-                <InvNudeBtn onClick={invHandleNude}>Remove All</InvNudeBtn>
-                <InvResetBtn onClick={invHandleReset}>Reset</InvResetBtn>
-                <InvApplyBtn onClick={invHandleApply} disabled={!invHasChanges}>Apply</InvApplyBtn>
+                <InvNudeBtn onClick={activeTab === "look" ? lookHandleRemoveAll : invHandleNude}>Remove All</InvNudeBtn>
+                <InvResetBtn onClick={activeTab === "look" ? lookHandleReset : invHandleReset}>Reset</InvResetBtn>
+                <InvApplyBtn
+                  onClick={activeTab === "look" ? lookHandleApply : invHandleApply}
+                  disabled={activeTab === "look" ? !lookHasChanges : !invHasChanges}
+                >Apply</InvApplyBtn>
               </InvActionBar>
             ) : (
               <StatusCard>
@@ -1149,7 +1301,12 @@ export default function PlayerProfile({
 
           {isSelfView && (
             <div style={{ display: activeTab === "look" ? "contents" : "none" }}>
-              <LookTab />
+              <LookTab
+                invItems={invItems}
+                invLoading={invLoading}
+                lookSelectedEntries={lookSelectedEntries}
+                onSelectItem={lookSelectEntry}
+              />
             </div>
           )}
 

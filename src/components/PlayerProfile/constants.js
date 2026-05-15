@@ -71,3 +71,19 @@ export const LOOK_FEATURES = [
   { key: "nose",      label: "Nose" },
   { key: "mouth",     label: "Mouth" },
 ];
+
+export const LOOK_FEATURE_CATEGORY = {
+  hair:     "hair",
+  eyebrows: "appearance",
+  eyes:     "appearance",
+  nose:     "appearance",
+  mouth:    "appearance",
+};
+
+export const LOOK_FEATURE_SUBCATEGORY = {
+  hair:     null,
+  eyebrows: "eyebrows",
+  eyes:     "eyes",
+  nose:     "nose",
+  mouth:    "mouth",
+};
