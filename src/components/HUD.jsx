@@ -2,6 +2,7 @@ import * as S from "./HUDStyles";
 import { useState, useCallback, useEffect } from "react";
 import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
+import MapsModal from "./MapsModal";
 import { fetchUnreadCount } from "../api/mail";
 import { lookupUser } from "../api/auth";
 
@@ -9,6 +10,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
+  const [showMaps, setShowMaps] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [viewingProfile, setViewingProfile] = useState(null);
 
@@ -88,6 +90,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
         level={viewingProfile.level}
       />
     )}
+    {showMaps && (
+      <MapsModal onClose={() => setShowMaps(false)} />
+    )}
     {showStore && (
       <StoreModal
         onClose={() => setShowStore(false)}
@@ -117,6 +122,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, playerName, outfit, gende
 
           <S.Bubble onClick={() => setShowStore(true)} title="Store">
             <img src="/icons/shop.png" />
+          </S.Bubble>
+
+          <S.Bubble onClick={() => setShowMaps(true)} title="Maps" style={{ fontSize: "26px" }}>
+            🗺
           </S.Bubble>
 
           <S.ProfileWrapper>

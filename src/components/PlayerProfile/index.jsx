@@ -149,7 +149,16 @@ export default function PlayerProfile({
   const [wishlistItems, setWishlistItems] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
-  const [themeIdx, setThemeIdx] = useState(0);
+  const [themeIdx, setThemeIdx] = useState(() => {
+    try {
+      const saved = localStorage.getItem("fv_theme");
+      if (saved) {
+        const idx = PALETTES.findIndex(p => p.name === saved);
+        if (idx >= 0) return idx;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
 
   const [mailConversations, setMailConversations] = useState([]);
   const [mailLoading, setMailLoading] = useState(false);
@@ -406,8 +415,6 @@ export default function PlayerProfile({
   useEffect(() => {
     if (!targetUserId) return;
     setViewLoaded(false);
-    setThemeIdx(0);
-    invalidateProfileViewCache(targetUserId);
     fetchProfileView(targetUserId).then((view) => {
       if (view) {
         setHasLockedView(view.locked ?? false);
@@ -846,7 +853,7 @@ export default function PlayerProfile({
 
       <Overlay onClick={onClose}>
         <ProfileOuter>
-        {viewLoaded && <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
+        <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
           <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
 
           {/* ── Sidebar ── */}
@@ -1188,7 +1195,7 @@ export default function PlayerProfile({
             </div>
           )}
 
-        </ProfileWrapper>}
+        </ProfileWrapper>
         </ProfileOuter>
       </Overlay>
     </>

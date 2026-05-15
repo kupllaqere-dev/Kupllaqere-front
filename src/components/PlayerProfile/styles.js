@@ -2181,7 +2181,7 @@ export const PanelTitle = styled.h2`
 export const PanelTabs = styled.div`
   display: flex;
   gap: 2px;
-  padding: 0 14px 10px;
+  padding: 0 0 10px;
   flex-shrink: 0;
   border-bottom: 1px solid ${"var(--pp-border)"};
 `;
