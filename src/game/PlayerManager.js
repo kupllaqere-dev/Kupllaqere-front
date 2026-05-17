@@ -1,5 +1,6 @@
 import { perspectiveScale } from "./perspective";
 import { baseTextureKey, genderScale, setNameBadge, layoutNameBadge } from "./LocalPlayer";
+import makeChatBubble from "./makeChatBubble.js";
 
 const FRAME = { FRONT: 0, FRONT_LEFT: 1, LEFT: 2, BACK: 3, FRONT_RIGHT: 4, RIGHT: 5 };
 
@@ -228,17 +229,12 @@ export default class PlayerManager {
     if (other.chatBubble) other.chatBubble.destroy();
     if (other.chatTimer) clearTimeout(other.chatTimer);
 
-    const bubble = scene.add
-      .text(other.sprite.x, other.sprite.y - other.sprite.displayHeight - 10, text, {
-        fontSize: "11px",
-        color: "#ffffff",
-        backgroundColor: "#222222dd",
-        padding: { x: 8, y: 5 },
-        wordWrap: { width: 180 },
-        align: "center",
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(100);
+    const bubble = makeChatBubble(
+      scene,
+      other.sprite.x,
+      other.sprite.y - other.sprite.displayHeight - 10,
+      text,
+    );
 
     other.chatBubble = bubble;
     other.chatTimer = setTimeout(() => {

@@ -1,3 +1,5 @@
+import makeChatBubble from "./makeChatBubble.js";
+
 export default class ChatBubbleManager {
   constructor() {
     this.bubble = null;
@@ -7,17 +9,12 @@ export default class ChatBubbleManager {
   show(scene, player, text) {
     this.destroy();
 
-    this.bubble = scene.add
-      .text(player.x, player.y - player.displayHeight - 10, text, {
-        fontSize: "11px",
-        color: "#ffffff",
-        backgroundColor: "#222222dd",
-        padding: { x: 8, y: 5 },
-        wordWrap: { width: 180 },
-        align: "center",
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(100);
+    this.bubble = makeChatBubble(
+      scene,
+      player.x,
+      player.y - player.displayHeight - 10,
+      text,
+    );
 
     this.timer = setTimeout(() => {
       if (this.bubble) this.bubble.destroy();
