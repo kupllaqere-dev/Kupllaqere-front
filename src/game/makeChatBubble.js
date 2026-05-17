@@ -4,7 +4,8 @@ const RADIUS = 14;
 const WRAP   = 180;
 
 export default function makeChatBubble(scene, x, y, text) {
-  const txt = scene.add.text(0, 0, text, {
+  const display = text?.startsWith("https://static.klipy.com") ? "🎞 GIF" : text;
+  const txt = scene.add.text(0, 0, display, {
     fontFamily: "'Quicksand', sans-serif",
     fontSize: "13px",
     fontStyle: "600",

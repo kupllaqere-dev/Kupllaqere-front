@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import styled, { keyframes, css } from "styled-components";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 import PlayerThumbnail from "./PlayerThumbnail";
+
+const KLIPY_KEY = "REEXWlCMkIFXqQdJQBzTBCsS8QNdShFb7dUCYfZSPknZA2vSlDJlJ8CpwswaPKry";
 
 const AVATAR_BG = [
   "#4f46e5", "#7c3aed", "#0891b2", "#0d9488",
@@ -368,6 +372,7 @@ const MsgText = styled.span`
 const InputSection = styled.div`
   border-top: ${THEME_BORDER};
   flex-shrink: 0;
+  position: relative;
 `;
 
 const InputRow = styled.form`
@@ -557,6 +562,49 @@ const WhisperNameInput = styled.input`
     border-color: rgba(232,121,249,0.75);
     border-style: solid;
   }
+`;
+
+const GifPickerWrap = styled.div`
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  height: 320px;
+  background: rgba(12, 16, 30, 0.98);
+  backdrop-filter: ${THEME_BLUR};
+  border: ${THEME_BORDER};
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+`;
+
+const GifSearchInput = styled.input`
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: ${THEME_TEXT};
+  font-family: ${FONT};
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 10px;
+  outline: none;
+  &::placeholder { color: rgba(242,238,255,0.25); }
+  &:focus { border-color: rgba(200,162,255,0.35); }
+`;
+
+const EmojiPickerWrap = styled.div`
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 44px;
+  z-index: 200;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
 `;
 
 const ErrorMsgRow = styled.div`
@@ -752,6 +800,71 @@ const TAB_DEFS = [
 ];
 const GROUPS = ["CHANNELS", "GROUPS", "SYSTEM"];
 
+/* ─── GIF Picker ────────────────────────────────────────────── */
+
+function GifPicker({ onSelect }) {
+  const [query, setQuery] = useState("");
+  const [gifs, setGifs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const delay = query.trim() ? 400 : 0;
+    const t = setTimeout(() => {
+      const url = query.trim()
+        ? `https://api.klipy.com/api/v1/${KLIPY_KEY}/gifs/search?q=${encodeURIComponent(query.trim())}&per_page=24`
+        : `https://api.klipy.com/api/v1/${KLIPY_KEY}/gifs/trending?per_page=24`;
+      setLoading(true);
+      fetch(url)
+        .then(r => r.json())
+        .then(d => { if (!cancelled) { setGifs(d.data?.data || []); setLoading(false); } })
+        .catch(() => { if (!cancelled) setLoading(false); });
+    }, delay);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query]);
+
+  return (
+    <GifPickerWrap>
+      <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <GifSearchInput
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search GIFs..."
+          onKeyDown={e => e.stopPropagation()}
+          onKeyUp={e => e.stopPropagation()}
+          autoFocus
+        />
+      </div>
+      <div style={{
+        flex: 1, overflowY: "auto", padding: 8,
+        display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, alignContent: "start",
+      }}>
+        {loading && (
+          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 24, color: "rgba(242,238,255,0.3)", fontFamily: FONT, fontSize: 12 }}>
+            Loading...
+          </div>
+        )}
+        {!loading && gifs.length === 0 && (
+          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 24, color: "rgba(242,238,255,0.3)", fontFamily: FONT, fontSize: 12 }}>
+            No results
+          </div>
+        )}
+        {!loading && gifs.map(gif => (
+          <img
+            key={gif.id}
+            src={gif.file.sm.gif.url}
+            alt={gif.title}
+            style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 7, cursor: "pointer", display: "block" }}
+            onClick={() => onSelect(gif)}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "0.75"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+          />
+        ))}
+      </div>
+    </GifPickerWrap>
+  );
+}
+
 /* ─── Component ─────────────────────────────────────────────── */
 
 export default function ChatBox({ messages, whispers, players, myId, myName, onSend, onWhisper }) {
@@ -764,12 +877,16 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
   const [minimized, setMinimized] = useState(false);
   const [membersExpanded, setMembersExpanded] = useState(false);
   const [localErrors, setLocalErrors] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const inputRef = useRef(null);
   const nameInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const panelRef = useRef(null);
   const sizeRef = useRef(size);
   const instantScrollRef = useRef(true);
+  const emojiPickerRef = useRef(null);
+  const gifPickerRef = useRef(null);
 
   useEffect(() => { sizeRef.current = size; }, [size]);
 
@@ -852,6 +969,18 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (!showEmojiPicker && !showGifPicker) return;
+    function handle(e) {
+      if (showEmojiPicker && emojiPickerRef.current && !emojiPickerRef.current.contains(e.target))
+        setShowEmojiPicker(false);
+      if (showGifPicker && gifPickerRef.current && !gifPickerRef.current.contains(e.target))
+        setShowGifPicker(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showEmojiPicker, showGifPicker]);
 
   function startResize(e) {
     e.preventDefault();
@@ -1134,7 +1263,10 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
                             <MsgSender $self={isSelf} $mode={msgMode}>
                               {msg.from?.name || "???"}
                             </MsgSender>
-                            <MsgText $mode={msgMode}>{msg.text}</MsgText>
+                            {msg.text?.startsWith("https://static.klipy.com")
+                              ? <img src={msg.text} alt="GIF" style={{ maxWidth: 200, maxHeight: 160, borderRadius: 8, display: "block", marginTop: 3 }} />
+                              : <MsgText $mode={msgMode}>{msg.text}</MsgText>
+                            }
                           </MsgContent>
                         </MsgRow>
                       );
@@ -1148,6 +1280,31 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
                   </MessagesArea>
 
                   <InputSection>
+                    {showEmojiPicker && (
+                      <EmojiPickerWrap ref={emojiPickerRef}>
+                        <Picker
+                          data={data}
+                          theme="dark"
+                          previewPosition="none"
+                          skinTonePosition="none"
+                          onEmojiSelect={emoji => {
+                            setText(prev => prev + emoji.native);
+                            setShowEmojiPicker(false);
+                            inputRef.current?.focus();
+                          }}
+                        />
+                      </EmojiPickerWrap>
+                    )}
+                    {showGifPicker && (
+                      <div ref={gifPickerRef}>
+                        <GifPicker onSelect={gif => {
+                          const url = gif.file.hd.gif.url;
+                          if (tab === "whisper" && whisperPartner?.id) onWhisper(whisperPartner.id, url);
+                          else onSend(url);
+                          setShowGifPicker(false);
+                        }} />
+                      </div>
+                    )}
                     <InputRow onSubmit={handleSubmit}>
                       <InputWrapper $mode={inputMode}>
                         {(whisperCmdTarget || (tab === "whisper" && whisperPartner)) && (
@@ -1241,10 +1398,10 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
                             maxLength={200}
                           />
                         )}
-                        <InlineIconBtn type="button" title="Emoji (coming soon)">
+                        <InlineIconBtn type="button" title="Emoji" onClick={() => { setShowEmojiPicker(v => !v); setShowGifPicker(false); }}>
                           😊
                         </InlineIconBtn>
-                        <InlineIconBtn type="button" title="GIF (coming soon)" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "-0.5px" }}>
+                        <InlineIconBtn type="button" title="GIF" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "-0.5px" }} onClick={() => { setShowGifPicker(v => !v); setShowEmojiPicker(false); }}>
                           GIF
                         </InlineIconBtn>
                       </InputWrapper>
