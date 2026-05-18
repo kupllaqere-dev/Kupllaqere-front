@@ -28,10 +28,10 @@ import LayerManager from "../game/LayerManager";
 import GameLoop from "../game/GameLoop";
 import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
-import { sendFriendRequest } from "../api/friends";
 import ChatBox from "./ChatBox";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
+import PlayerContextMenu from "./PlayerContextMenu";
 
 const APPEARANCE_SUBS = ["eyes", "eyebrows", "nose", "mouth", "beard"];
 
@@ -59,6 +59,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const playerMenuDomRef = useRef(null);
   const playerMenuTargetRef = useRef(null);
   const playerManagerRef = useRef(null);
+  const chatBoxRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -438,63 +439,18 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       <S.GameWrapper ref={gameRef} />
       <LoadingOverlay progress={loadProgress} ready={loadingReady} />
       {playerMenu && (
-        <S.PlayerMenu
+        <PlayerContextMenu
           ref={playerMenuDomRef}
-          data-player-menu
-          style={{ left: playerMenu.x, top: playerMenu.y }}
-        >
-          <S.PlayerMenuName>{playerMenu.name}</S.PlayerMenuName>
-          <S.PlayerMenuButton
-            onClick={() => {
-              const pm = playerManagerRef.current;
-              const lm = layerManagerRef.current;
-              const other = pm?.otherPlayers.get(playerMenu.id);
-              if (!other) return;
-              setViewedProfile({
-                userId: other.userId,
-                name: playerMenu.name,
-                gender: other.sprite.gender,
-                outfit: lm.getFullOutfit(playerMenu.id),
-                bio: other.bio || "",
-                selectedBadge: other.selectedBadge || null,
-              });
-              playerMenuTargetRef.current = null;
-              setPlayerMenu(null);
-            }}
-          >
-            View Info
-          </S.PlayerMenuButton>
-          <S.PlayerMenuButton
-            disabled={!playerMenu.userId || playerMenu.status === "pending"}
-            onClick={async () => {
-              if (!playerMenu.userId) return;
-              setPlayerMenu((prev) => prev && { ...prev, status: "pending" });
-              try {
-                const result = await sendFriendRequest(playerMenu.userId);
-                setPlayerMenu(
-                  (prev) =>
-                    prev && {
-                      ...prev,
-                      status:
-                        result.status === "accepted" ? "accepted" : "sent",
-                    },
-                );
-              } catch (err) {
-                setPlayerMenu(
-                  (prev) =>
-                    prev && { ...prev, status: "error", error: err.message },
-                );
-              }
-            }}
-          >
-            {playerMenu.status === "pending" && "Sending…"}
-            {playerMenu.status === "sent" && "Request Sent"}
-            {playerMenu.status === "accepted" && "Friends!"}
-            {playerMenu.status === "error" && (playerMenu.error || "Failed")}
-            {!playerMenu.status && "Add Friend"}
-          </S.PlayerMenuButton>
-          <S.PlayerMenuButton $danger>Block</S.PlayerMenuButton>
-        </S.PlayerMenu>
+          playerMenu={playerMenu}
+          onClose={() => {
+            playerMenuTargetRef.current = null;
+            setPlayerMenu(null);
+          }}
+          onViewProfile={(profile) => setViewedProfile(profile)}
+          onOpenWhisper={({ id, name }) => chatBoxRef.current?.openWhisper({ id, name })}
+          playerManagerRef={playerManagerRef}
+          layerManagerRef={layerManagerRef}
+        />
       )}
       {objectMenu && (
         <S.PlayerMenu
@@ -513,6 +469,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         </S.PlayerMenu>
       )}
       <ChatBox
+        ref={chatBoxRef}
         messages={chatMessages}
         whispers={whisperMessages}
         players={onlinePlayers}

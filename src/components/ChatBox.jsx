@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import styled, { keyframes, css } from "styled-components";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
@@ -49,34 +49,32 @@ const navGlow = keyframes`
 const Wrapper = styled.div`
   position: absolute;
   bottom: 20px;
-  left: 52px;
+  left: 12px;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
   z-index: 1000;
   pointer-events: none;
 `;
 
-const ToggleBtn = styled.button`
-  position: absolute;
-  left: -48px;
-  top: 6px;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${THEME_BG};
-  backdrop-filter: ${THEME_BLUR};
-  border: ${THEME_BORDER};
-  color: rgba(242, 238, 255, 0.6);
-  cursor: pointer;
+const BottomToggleBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-top: 4px;
+  border-radius: 14px;
+  background: ${THEME_BG};
+  backdrop-filter: ${THEME_BLUR};
+  border: ${THEME_BORDER};
+  color: rgba(242,238,255,0.45);
+  cursor: pointer;
   pointer-events: all;
   font-family: ${FONT};
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-  z-index: 11;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
   box-shadow: ${THEME_SHADOW};
   transition: color 0.15s, background 0.15s;
   &:hover { color: ${THEME_TEXT}; background: rgba(30, 36, 60, 0.9); }
@@ -867,7 +865,7 @@ function GifPicker({ onSelect }) {
 
 /* ─── Component ─────────────────────────────────────────────── */
 
-export default function ChatBox({ messages, whispers, players, myId, myName, onSend, onWhisper }) {
+const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId, myName, onSend, onWhisper }, ref) {
   const [tab, setTab] = useState("general");
   const [text, setText] = useState("");
   const [whisperPartner, setWhisperPartner] = useState(null);
@@ -889,6 +887,16 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
   const gifPickerRef = useRef(null);
 
   useEffect(() => { sizeRef.current = size; }, [size]);
+
+  useImperativeHandle(ref, () => ({
+    openWhisper({ id, name }) {
+      instantScrollRef.current = true;
+      setTab("whisper");
+      setSeenWhisperCount(whispers.length);
+      setWhisperPartner({ id, name });
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+  }), [whispers.length]);
 
   useEffect(() => {
     if (whisperCmdTarget) inputRef.current?.focus();
@@ -1105,13 +1113,7 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
 
   return (
     <Wrapper>
-      <ToggleBtn onClick={() => setMinimized(m => !m)} title={minimized ? "Open chat" : "Minimise chat"}>
-        {minimized ? "+" : "−"}
-      </ToggleBtn>
-
-      {minimized
-        ? <div style={{ width: size.width, height: size.height, pointerEvents: "none" }} />
-        : (
+      {!minimized && (
         <div style={{ display: "flex", alignItems: "center" }}>
         <Panel ref={panelRef} style={{ width: size.width + (membersExpanded ? MEMBERS_W : 0), height: size.height, transition: "width 0.2s ease" }}>
           <ResizeHandle onMouseDown={startResize} title="Drag to resize" />
@@ -1188,9 +1190,6 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
                 <div style={{ flex: 1 }} />
                 <IconBtn type="button" title="Settings (coming soon)">
                   <IconSettings />
-                </IconBtn>
-                <IconBtn type="button" title="Minimise chat" onClick={() => setMinimized(true)}>
-                  <IconMinus />
                 </IconBtn>
               </TopBar>
 
@@ -1478,7 +1477,14 @@ export default function ChatBox({ messages, whispers, players, myId, myName, onS
           </PanelBody>
         </Panel>
         </div>
-        )}
+      )}
+      <BottomToggleBtn onClick={() => setMinimized(m => !m)} title={minimized ? "Open Chat" : "Minimise"}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+        </svg>
+      </BottomToggleBtn>
     </Wrapper>
   );
-}
+});
+
+export default ChatBox;
