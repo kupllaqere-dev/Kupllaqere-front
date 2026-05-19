@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import styled, { keyframes, css } from "styled-components";
-import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import EmojiPicker from "emoji-picker-react";
 import PlayerThumbnail from "./PlayerThumbnail";
 
 const KLIPY_KEY = "REEXWlCMkIFXqQdJQBzTBCsS8QNdShFb7dUCYfZSPknZA2vSlDJlJ8CpwswaPKry";
@@ -1281,13 +1280,13 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
                   <InputSection>
                     {showEmojiPicker && (
                       <EmojiPickerWrap ref={emojiPickerRef}>
-                        <Picker
-                          data={data}
+                        <EmojiPicker
                           theme="dark"
-                          previewPosition="none"
-                          skinTonePosition="none"
-                          onEmojiSelect={emoji => {
-                            setText(prev => prev + emoji.native);
+                          height={300}
+                          previewConfig={{ showPreview: false }}
+                          skinTonesDisabled
+                          onEmojiClick={emojiData => {
+                            setText(prev => prev + emojiData.emoji);
                             setShowEmojiPicker(false);
                             inputRef.current?.focus();
                           }}
