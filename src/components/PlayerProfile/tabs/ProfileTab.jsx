@@ -337,7 +337,7 @@ export default function ProfileTab({
           <ClubCard>
             <ClubAvatar>🏛️</ClubAvatar>
             <ClubInfo>
-              <ClubName>Filip's</ClubName>
+              <ClubName>Neclis's</ClubName>
               <ClubRole>Member</ClubRole>
             </ClubInfo>
           </ClubCard>

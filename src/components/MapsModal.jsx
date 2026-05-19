@@ -129,8 +129,8 @@ const CloseBtn = styled.button`
   &:hover { background: rgba(0, 0, 0, 0.7); }
 `;
 
-const DAY_ZONES  = ["Sunhaven", "Crown Keep", "Whisper Forest"];
-const NIGHT_ZONES = ["Void Tower", "The Abyss", "Fallen Ruins"];
+const DAY_ZONES = ["Map1", "Map2", "Map3"];
+const NIGHT_ZONES = ["Map1", "Map2", "Map3"];
 
 export default function MapsModal({ onClose }) {
   const [activeSide, setActiveSide] = useState(null);
