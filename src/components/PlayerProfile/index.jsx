@@ -1017,7 +1017,7 @@ export default function PlayerProfile({
                 <>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-                      <SidebarIcon $active={activeTab === "profile"}>◈</SidebarIcon>
+                      <SidebarIcon $active={activeTab === "profile"}>♟</SidebarIcon>
                       <SidebarLabel $active={activeTab === "profile"}>Profile</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
@@ -1038,19 +1038,19 @@ export default function PlayerProfile({
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "look"} onClick={() => setActiveTab("look")}>
-                      <SidebarIcon $active={activeTab === "look"}>✦</SidebarIcon>
+                      <SidebarIcon $active={activeTab === "look"}>◎</SidebarIcon>
                       <SidebarLabel $active={activeTab === "look"}>Look</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "friends"} onClick={() => setActiveTab("friends")}>
-                      <SidebarIcon $active={activeTab === "friends"}>♡</SidebarIcon>
+                      <SidebarIcon $active={activeTab === "friends"}>⁂</SidebarIcon>
                       <SidebarLabel $active={activeTab === "friends"}>Friends</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")}>
-                      <SidebarIcon $active={activeTab === "inventory"}>⊞</SidebarIcon>
+                      <SidebarIcon $active={activeTab === "inventory"}>⌐</SidebarIcon>
                       <SidebarLabel $active={activeTab === "inventory"}>Inventory</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>

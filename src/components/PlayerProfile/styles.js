@@ -152,7 +152,6 @@ export const SidebarBtn = styled.button`
   height: 100%;
   border-radius: 12px;
   cursor: pointer;
-  gap: 4px;
   position: relative;
   overflow: hidden;
   transition: background 0.2s, box-shadow 0.2s;
@@ -185,19 +184,29 @@ export const SidebarBtn = styled.button`
 `;
 
 export const SidebarIcon = styled.span`
-  font-size: 15px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  font-size: 22px;
   color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
   line-height: 1;
-  transition: color 0.2s;
-  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt)"}; }
+  opacity: 0.6;
+  pointer-events: none;
+  transition: color 0.2s, opacity 0.2s;
+  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt)"}; opacity: 0.8; }
 `;
 
 export const SidebarLabel = styled.span`
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
   letter-spacing: 0.4px;
   text-transform: uppercase;
+  position: relative;
+  z-index: 1;
   transition: color 0.2s;
   ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt2)"}; }
 `;

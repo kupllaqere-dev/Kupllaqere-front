@@ -14,26 +14,26 @@ const Menu = styled.div`
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  width: 180px;
+  width: 200px;
   background: #1a1a2eee;
   border: 1px solid #ffffff22;
-  border-radius: 10px;
-  padding: 14px 8px 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65);
+  border-radius: 12px;
+  padding: 12px 10px 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
   transform: translate(14px, -50%);
 `;
 
 const Header = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   padding-bottom: 12px;
 `;
 
 const AvatarCircle = styled.div`
-  width: 60px;
-  height: 60px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid #ffffff30;
@@ -48,26 +48,55 @@ const PlayerName = styled.div`
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-  text-align: center;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-const Divider = styled.div`
+const DecorativeDivider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #ffffff28, transparent);
+  }
+`;
+
+const DiamondDot = styled.div`
+  width: 5px;
+  height: 5px;
+  background: #ffffff40;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+`;
+
+const ItemDivider = styled.div`
   height: 1px;
-  background: #ffffff18;
-  margin-bottom: 6px;
+  background: #ffffff14;
+  margin: 2px auto;
+  width: 80%;
 `;
 
 const Btn = styled.button`
   background: transparent;
   border: none;
-  color: ${(p) => (p.$danger ? "#ff6b6b" : p.$muted ? "#666" : "#ccc")};
+  color: ${(p) => (p.$danger ? "#ff6b6b" : p.$muted ? "#666" : "#bbb")};
   font-size: 12px;
   padding: 7px 10px;
   text-align: left;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: ${(p) => (p.disabled ? "default" : "pointer")};
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   transition: background 0.1s, color 0.1s;
 
   &:hover:not(:disabled) {
@@ -78,7 +107,78 @@ const Btn = styled.button`
   &:disabled {
     opacity: 0.45;
   }
+
+  svg {
+    flex-shrink: 0;
+    opacity: 0.75;
+  }
 `;
+
+function IconProfile() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
+function IconAddFriend() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="8" r="4" />
+      <path d="M3 20c0-3.5 3.1-6 7-6s7 2.5 7 6" />
+      <line x1="20" y1="8" x2="20" y2="14" />
+      <line x1="17" y1="11" x2="23" y2="11" />
+    </svg>
+  );
+}
+
+function IconPending() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 15 15" />
+    </svg>
+  );
+}
+
+function IconAccept() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="8" r="4" />
+      <path d="M3 20c0-3.5 3.1-6 7-6s7 2.5 7 6" />
+      <polyline points="16 12 18 14 22 10" />
+    </svg>
+  );
+}
+
+function IconRemoveFriend() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="8" r="4" />
+      <path d="M3 20c0-3.5 3.1-6 7-6s7 2.5 7 6" />
+      <line x1="16" y1="11" x2="22" y2="11" />
+    </svg>
+  );
+}
+
+function IconWhisper() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconBlock() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  );
+}
 
 function deriveFriendStatus(data, targetUserId) {
   if (!data || !targetUserId) return "none";
@@ -164,6 +264,13 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
     return "Add Friend";
   }
 
+  function FriendIcon() {
+    if (friendStatus === "friends") return <IconRemoveFriend />;
+    if (friendStatus === "i_sent") return <IconPending />;
+    if (friendStatus === "they_sent") return <IconAccept />;
+    return <IconAddFriend />;
+  }
+
   function handleWhisper() {
     onOpenWhisper({ id: playerMenu.userId, name: playerMenu.name });
     onClose();
@@ -177,24 +284,37 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
     >
       <Header>
         <AvatarCircle>
-          <PlayerThumbnail playerName={playerMenu.name} size={60} />
+          <PlayerThumbnail playerName={playerMenu.name} size={40} />
         </AvatarCircle>
         <PlayerName>{playerMenu.name}</PlayerName>
       </Header>
-      <Divider />
-      <Btn onClick={handleViewProfile}>View Profile</Btn>
+
+      <DecorativeDivider>
+        <DiamondDot />
+      </DecorativeDivider>
+
+      <Btn onClick={handleViewProfile}>
+        <IconProfile />
+        View Profile
+      </Btn>
+      <ItemDivider />
       <Btn
         onClick={handleFriendAction}
         disabled={actionPending || friendStatus === "loading"}
         $danger={friendStatus === "friends"}
         $muted={friendStatus === "i_sent"}
       >
+        <FriendIcon />
         {friendBtnLabel()}
       </Btn>
+      <ItemDivider />
       <Btn onClick={handleWhisper} disabled={!playerMenu.userId}>
+        <IconWhisper />
         Whisper
       </Btn>
+      <ItemDivider />
       <Btn $danger disabled>
+        <IconBlock />
         Block
       </Btn>
     </Menu>
