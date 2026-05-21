@@ -13,7 +13,7 @@ export function useAvatarCanvas(gender, outfit, poseIndex = 0) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    avatarCompositor.composite(gender, outfit).then(baked => {
+    avatarCompositor.compositeIdle(gender, outfit).then(baked => {
       if (cancelled) return;
       const ctx = canvas.getContext("2d");
       const col = POSE_REMAP[poseIndex] ?? 0;

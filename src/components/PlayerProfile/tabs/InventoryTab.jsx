@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import {
   INV_CATEGORIES, INV_CATEGORY_LABELS, INV_CATEGORY_SUBCATEGORIES,
   INV_SUBCATEGORY_LABELS, INV_CATEGORY_DECO,
 } from "../constants";
 import { invGetSellPrice } from "../utils";
+import { avatarCompositor } from "../../../game/avatar/AvatarCompositor";
 import {
   InvContentCol, InvCatScroll, InvMsg, InvQuickNavRow, InvQuickNavBtn, InvQuickNavLabel,
   InvQuickNavRight, InvQuickNavCount, InvQuickNavArrow, InvCatGrid, InvCatCard, InvCatDeco,
@@ -17,7 +19,11 @@ export function InvItemsArea({
   items, loading, view, isSelected, canUse, toggleEntry,
   selling, sellError, onSell, goToCategory, goToSubcategory,
   subCount, goToRecent, goToEquipped, recentCount, equippedCount,
+  onHoverItem,
 }) {
+  useEffect(() => {
+    items.forEach(item => avatarCompositor.preloadImage(item?.imageUrl));
+  }, [items]);
   const isListView = view === "items" || view === "recentlyAdded" || view === "equipped";
   const emptyMsg = view === "equipped" ? "Nothing equipped." : "No items in this category.";
 
@@ -80,7 +86,7 @@ export function InvItemsArea({
               const sp = invGetSellPrice(entry);
               const isSelling = selling === entry._id;
               return (
-                <InvItemCard key={entry._id} $expanded={selected} $locked={!usable} onClick={() => toggleEntry(entry)}>
+                <InvItemCard key={entry._id} $expanded={selected} $locked={!usable} onClick={() => toggleEntry(entry)} onMouseEnter={() => onHoverItem?.(entry)}>
                   <InvThumbImg src={entry.thumbnailUrl || entry.imageUrl} alt={entry.name} crossOrigin="anonymous" />
                   <InvMidSection>
                     <InvItemName>{entry.name}</InvItemName>

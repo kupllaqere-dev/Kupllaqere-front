@@ -35,6 +35,7 @@ import {
 } from "../../api/users";
 import ComposeMailModal from "../ComposeMailModal";
 import AvatarCanvas from "../Avatar/AvatarCanvas";
+import { avatarCompositor } from "../../game/avatar/AvatarCompositor";
 
 import {
   BADGES,
@@ -187,6 +188,7 @@ export default function PlayerProfile({
   // live, before the user hits Apply. Same outfit hash = instant compositor cache hit.
   const displayOutfit = useMemo(() => {
     if (activeTab === "inventory") {
+      if (!invLoaded) return outfit || {};
       const base = { ...(outfit || {}) };
       for (const cat of Object.keys(equipped || {})) {
         if (!invSelectedEntries[cat]) delete base[cat];
@@ -205,7 +207,7 @@ export default function PlayerProfile({
       return base;
     }
     return outfit || {};
-  }, [activeTab, outfit, equipped, invSelectedEntries, lookSelectedEntries]);
+  }, [activeTab, outfit, equipped, invSelectedEntries, lookSelectedEntries, invLoaded]);
 
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
@@ -702,6 +704,15 @@ export default function PlayerProfile({
   const invSlotKey = (entry) =>
     entry.category === "appearance" ? entry.subcategory : entry.category;
 
+  const handleInvHover = useCallback((entry) => {
+    const slotKey = invSlotKey(entry);
+    const previewOutfit = {
+      ...(outfit || {}),
+      [slotKey]: { itemId: entry.itemId ?? entry._id, imageUrl: entry.imageUrl },
+    };
+    avatarCompositor.compositeIdle(gender || "female", previewOutfit).catch(() => {});
+  }, [outfit, gender]);
+
   const invIsSelected = entry =>
     invSelectedEntries[invSlotKey(entry)]?._id?.toString() === entry._id?.toString();
 
@@ -1175,6 +1186,7 @@ export default function PlayerProfile({
                   goToEquipped={invGoToEquipped}
                   recentCount={invItems.length}
                   equippedCount={invEquippedItems.length}
+                  onHoverItem={handleInvHover}
                 />
                 <InvBreadcrumbsBar crumbs={invCrumbs} />
               </HubPanelContainer>

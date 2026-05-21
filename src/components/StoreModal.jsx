@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AvatarCanvas from "./Avatar/AvatarCanvas";
 import styled, { css, keyframes } from "styled-components";
 import { fetchStoreItems, purchaseItems, fetchWishlist, addToWishlist, removeFromWishlist } from "../api/store";
+import { avatarCompositor } from "../game/avatar/AvatarCompositor";
 
 const CATEGORY_LABELS = {
   tops: "Tops",
@@ -90,14 +91,22 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [wishlistedIds, setWishlistedIds] = useState(new Set());
   const [previewOutfit, setPreviewOutfit] = useState(currentOutfit || {});
+  const previewOutfitRef = useRef(previewOutfit);
   const [pose, setPose] = useState(0);
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
   const previewTimerRef = useRef(null);
   const POSE_COUNT = 6;
 
-  // Debounced: rapid mousing over items only composites when the user pauses.
-  // The compositor caches by outfit hash, so re-visiting a seen outfit is instant.
+  useEffect(() => { previewOutfitRef.current = previewOutfit; }, [previewOutfit]);
+
+  const eagerPreload = useCallback((item) => {
+    if (!item?.imageUrl) return;
+    const slotKey = item.category === "appearance" ? item.subcategory : item.category;
+    const outfit = { ...previewOutfitRef.current, [slotKey]: { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl } };
+    avatarCompositor.compositeIdle(gender, outfit).catch(() => {});
+  }, [gender]);
+
   const previewItem = useCallback((item) => {
     clearTimeout(previewTimerRef.current);
     previewTimerRef.current = setTimeout(() => {
@@ -117,6 +126,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
       const data = await fetchStoreItems({ category: cat || "", subcategory: sub || "", page: pg, sort: sort || "" });
       setGroups(prev => reset ? data.groups : [...prev, ...data.groups]);
       setHasMore(data.hasMore);
+      data.groups.forEach(g => g.variants?.forEach(v => avatarCompositor.preloadImage(v.imageUrl)));
     } catch { /* ignore */ }
     finally { setLoading(false); loadingRef.current = false; }
   }, []);
@@ -318,6 +328,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                         <ItemCard
                           $expanded={expanded}
                           onClick={handleCardClick}
+                          onMouseEnter={() => eagerPreload(selVariant)}
                         >
                           <CardThumbImg
                             src={selVariant.thumbnailUrl || selVariant.imageUrl}
@@ -355,8 +366,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                           </CardPricesArea>
                         </ItemCard>
 
-                        {expanded && (
-                          <ExpandedArea>
+                        <ExpandedArea style={{ display: expanded ? "" : "none" }}>
                             {((rarity && RARITY[rarity]) || group.notes) && (
                               <ExpandInfoBox>
                                 {rarity && RARITY[rarity] && (
@@ -393,6 +403,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                                           setSelectedVariants((prev) => ({ ...prev, [key]: v }));
                                           previewItem(v);
                                         }}
+                                        onMouseEnter={() => eagerPreload(v)}
                                         title={v.name}
                                       >
                                         <img
@@ -406,11 +417,9 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                                 </ExpandInfoRow>
                               </ExpandInfoBox>
                             )}
-                          </ExpandedArea>
-                        )}
+                        </ExpandedArea>
 
-                        {expanded && (
-                          <AddButtonsBar>
+                        <AddButtonsBar style={{ display: expanded ? "" : "none" }}>
                             <WishlistVariantBtn
                               $active={wishlistedIds.has(selVariant._id)}
                               onClick={(e) => toggleWishlist(selVariant._id, e)}
@@ -445,8 +454,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                                 )}
                               </ButtonsGroup>
                             )}
-                          </AddButtonsBar>
-                        )}
+                        </AddButtonsBar>
                       </ItemGroup>
                     );
                   })}
