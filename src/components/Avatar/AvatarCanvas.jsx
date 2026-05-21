@@ -19,7 +19,7 @@ export default function AvatarCanvas({ gender, outfit, poseIndex = 0, scale = 1,
       style={{
         width:           FRAME_W * scale,
         height:          FRAME_H * scale,
-        imageRendering:  "pixelated",
+        imageRendering:  "auto",
         display:         "block",
         ...style,
       }}
