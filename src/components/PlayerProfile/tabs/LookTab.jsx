@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY } from "../constants";
 import {
   HubPanelContainer, LookPanelInner, PanelHeaderRow, PanelTitle,
@@ -13,15 +13,19 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
   const [avatarHeight, setAvatarHeight] = useState(50);
   const [openKey, setOpenKey] = useState(null);
 
-  const getItemsForFeature = (featureKey) => {
-    const cat = LOOK_FEATURE_CATEGORY[featureKey];
-    const sub = LOOK_FEATURE_SUBCATEGORY[featureKey];
-    return invItems.filter(item => {
-      if (item.category !== cat) return false;
-      if (sub && item.subcategory !== sub) return false;
-      return true;
-    });
-  };
+  const itemsByFeature = useMemo(() => {
+    const map = {};
+    for (const { key } of LOOK_FEATURES) {
+      const cat = LOOK_FEATURE_CATEGORY[key];
+      const sub = LOOK_FEATURE_SUBCATEGORY[key];
+      map[key] = invItems.filter(item => {
+        if (item.category !== cat) return false;
+        if (sub && item.subcategory !== sub) return false;
+        return true;
+      });
+    }
+    return map;
+  }, [invItems]);
 
   const handleSlotClick = (featureKey) => {
     setOpenKey(prev => (prev === featureKey ? null : featureKey));
@@ -74,7 +78,7 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
             </LookFeatureCard>
 
             {LOOK_FEATURES.map(({ key, label }) => {
-              const items = getItemsForFeature(key);
+              const items = itemsByFeature[key] ?? [];
               const expanded = openKey === key;
               return (
                 <LookFeatureCard key={key}>

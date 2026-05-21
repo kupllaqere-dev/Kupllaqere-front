@@ -2,8 +2,7 @@ export const FRAME_W = 510;
 export const FRAME_H = 900;
 export const ZOOM_LEVELS = [1, 1.2, 1.4, 1.6, 1.8];
 export const POSE_ORDER = [0, 4, 5, 3, 2, 1];
-export const POSE_LABELS = ["Front", "Front Right", "Right", "Back", "Left", "Front Left"];
-export const LAYER_ORDER = ["appearance", "bottoms", "feet", "tops", "hands", "coats", "accessories", "hair", "head"];
+
 export const BADGES = ["diamond", "flame", "medal", "paint", "verified"];
 
 export const INV_CATEGORY_LABELS = {

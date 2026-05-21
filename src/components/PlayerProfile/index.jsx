@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchSoulMateState,
@@ -28,18 +28,21 @@ import {
   replyToThread,
   sendMail,
 } from "../../api/mail";
-import { lookupUser, updatePresence } from "../../api/auth";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../../api/store";
-import { fetchProfileView, saveProfileView, clearProfileView, fetchUserStatus, invalidateProfileViewCache, saveTheme } from "../../api/users";
+import {
+  saveTheme, fetchUserStatus, updatePresence,
+  fetchProfileView, saveProfileView, clearProfileView, invalidateProfileViewCache,
+} from "../../api/users";
 import ComposeMailModal from "../ComposeMailModal";
+import AvatarCanvas from "../Avatar/AvatarCanvas";
 
 import {
-  FRAME_W, FRAME_H, ZOOM_LEVELS, POSE_ORDER, LAYER_ORDER, BADGES,
+  BADGES,
   INV_CATEGORY_LABELS, INV_SUBCATEGORY_LABELS, INV_CATEGORIES,
   BADGE_RARITY, SHOWCASE_SLOTS, PRESENCE_LABELS,
   LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
+  ZOOM_LEVELS, POSE_ORDER,
 } from "./constants";
-import { loadImage, extractFrame } from "./utils";
 import { PALETTES, paletteToVars } from "./themes";
 
 import ProfileTab from "./tabs/ProfileTab";
@@ -54,12 +57,12 @@ import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
   Sidebar, SidebarLogoWrap, SidebarLogoMark, SidebarLogoText,
   SidebarNav, SidebarItem, SidebarBtn, SidebarIcon, SidebarLabel, SidebarNotifDot,
-  AvatarStageCol, StageContainer, StageHalo, StageHaloOuter, AvatarViewport, AvatarCanvas,
-  Controls, ArrowBtn,
   InvActionBar, InvNudeBtn, InvResetBtn, InvApplyBtn,
-  StatusCard, StatusCardTop, StatusPickerWrap, StatusClickTarget, PresenceDot,
-  PresenceLabel, StatusDropdown, StatusOption, OptionDot, StatusSep, StatusLoc, StatusText,
   HubPanelContainer,
+  AvatarStageCol, StageContainer, AvatarViewport, Controls, ArrowBtn,
+  StatusCard, StatusCardTop, StatusSep, StatusLoc, StatusText,
+  PresenceDot, PresenceLabel,
+  StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
 } from "./styles";
 
 export default function PlayerProfile({
@@ -85,30 +88,13 @@ export default function PlayerProfile({
   level = 1,
   onOpenProfile = null,
 }) {
-  const canvasRef = useRef(null);
   const textareaRef = useRef(null);
-  const bakedPosesRef = useRef([]);
-  const invBakedPosesRef = useRef([]);
-  const lookBakedPosesRef = useRef([]);
 
   const isSelfView = !!(
     currentUserId && targetUserId &&
     String(currentUserId) === String(targetUserId)
   );
 
-  const [poseIndex, setPoseIndex] = useState(0);
-  const [zoomIndex, setZoomIndex] = useState(0);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
-  const [hasLockedView, setHasLockedView] = useState(false);
-  const [viewLoaded, setViewLoaded] = useState(false);
-  const [viewSaving, setViewSaving] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const panAtDrag = useRef({ x: 0, y: 0 });
-  const [baseImg, setBaseImg] = useState(null);
-  const [layerImages, setLayerImages] = useState([]);
 
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState(bio);
@@ -136,9 +122,20 @@ export default function PlayerProfile({
   const [gbSubmitting, setGbSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
+  const [poseIndex, setPoseIndex] = useState(0);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [hasLockedView, setHasLockedView] = useState(false);
+  const [viewLoaded, setViewLoaded] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const panAtDrag = useRef({ x: 0, y: 0 });
+  const POSE_COUNT = POSE_ORDER.length;
 
   const [lookSelectedEntries, setLookSelectedEntries] = useState({});
-  const [lookPreviewLayerImages, setLookPreviewLayerImages] = useState([]);
 
   const [invItems, setInvItems] = useState([]);
   const [invLoading, setInvLoading] = useState(false);
@@ -147,8 +144,6 @@ export default function PlayerProfile({
   const [invCategory, setInvCategory] = useState(null);
   const [invSubcategory, setInvSubcategory] = useState(null);
   const [invSelectedEntries, setInvSelectedEntries] = useState({});
-  const [invPreviewOutfit, setInvPreviewOutfit] = useState(outfit || {});
-  const [invPreviewLayerImages, setInvPreviewLayerImages] = useState([]);
   const [invSelling, setInvSelling] = useState(null);
   const [invSellError, setInvSellError] = useState(null);
 
@@ -188,6 +183,30 @@ export default function PlayerProfile({
   const statusPickerRef = useRef(null);
   const statusDropdownRef = useRef(null);
 
+  // Outfit shown in the avatar stage — reflects pending inventory/look selections
+  // live, before the user hits Apply. Same outfit hash = instant compositor cache hit.
+  const displayOutfit = useMemo(() => {
+    if (activeTab === "inventory") {
+      const base = { ...(outfit || {}) };
+      for (const cat of Object.keys(equipped || {})) {
+        if (!invSelectedEntries[cat]) delete base[cat];
+      }
+      for (const [slot, entry] of Object.entries(invSelectedEntries)) {
+        base[slot] = { itemId: entry.itemId ?? entry._id, imageUrl: entry.imageUrl };
+      }
+      return base;
+    }
+    if (activeTab === "look") {
+      const base = { ...(outfit || {}) };
+      for (const [slot, entry] of Object.entries(lookSelectedEntries)) {
+        if (entry === null) delete base[slot];
+        else if (entry) base[slot] = { itemId: entry.itemId ?? entry._id, imageUrl: entry.imageUrl };
+      }
+      return base;
+    }
+    return outfit || {};
+  }, [activeTab, outfit, equipped, invSelectedEntries, lookSelectedEntries]);
+
   useEffect(() => { setBioDraft(bio); }, [bio]);
 
   useEffect(() => {
@@ -198,14 +217,11 @@ export default function PlayerProfile({
   useEffect(() => {
     if (!socket?.socket) return;
     const onFriendStatus = (payload) => {
-      if (String(payload.userId) === String(targetUserId)) {
-        setUserStatus((prev) => ({ ...prev, ...payload }));
-      }
+      if (String(payload.userId) === String(targetUserId))
+        setUserStatus(prev => ({ ...prev, ...payload }));
     };
     const onUserStatus = (payload) => {
-      if (isSelfView) {
-        setUserStatus((prev) => ({ ...prev, ...payload }));
-      }
+      if (isSelfView) setUserStatus(prev => ({ ...prev, ...payload }));
     };
     socket.socket.on("friend:status", onFriendStatus);
     socket.socket.on("user:status",   onUserStatus);
@@ -218,20 +234,51 @@ export default function PlayerProfile({
   useEffect(() => {
     if (!statusPickerOpen) return;
     const handler = (e) => {
-      const inAnchor   = statusPickerRef.current?.contains(e.target);
-      const inDropdown = statusDropdownRef.current?.contains(e.target);
-      if (!inAnchor && !inDropdown) setStatusPickerOpen(false);
+      if (!statusPickerRef.current?.contains(e.target) && !statusDropdownRef.current?.contains(e.target))
+        setStatusPickerOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [statusPickerOpen]);
 
-  const handleChangeStatus = async (newManualStatus) => {
+  useEffect(() => {
+    if (!targetUserId) { setViewLoaded(true); return; }
+    setViewLoaded(false);
+    fetchProfileView(targetUserId).then((view) => {
+      if (view) {
+        setHasLockedView(view.locked ?? false);
+        if (view.locked) {
+          setPoseIndex(view.poseIndex ?? 0);
+          setZoomIndex(view.zoomIndex ?? 0);
+          setPanX(view.panX ?? 0);
+          setPanY(view.panY ?? 0);
+        }
+      }
+      setViewLoaded(true);
+    }).catch(() => { setViewLoaded(true); });
+  }, [targetUserId]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging.current) return;
+      setPanX(panAtDrag.current.x + (e.clientX - dragStart.current.x));
+      setPanY(panAtDrag.current.y + (e.clientY - dragStart.current.y));
+    };
+    const onUp = () => { isDragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const handleChangeStatus = async (newStatus) => {
     if (statusChanging) return;
     setStatusChanging(true);
     setStatusPickerOpen(false);
     try {
-      const result = await updatePresence(newManualStatus);
+      const result = await updatePresence(newStatus);
       setUserStatus(result);
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -239,6 +286,46 @@ export default function PlayerProfile({
       setStatusChanging(false);
     }
   };
+
+  const turnLeft = useCallback(() => setPoseIndex(p => (p === 0 ? POSE_COUNT - 1 : p - 1)), [POSE_COUNT]);
+  const turnRight = useCallback(() => setPoseIndex(p => (p + 1) % POSE_COUNT), [POSE_COUNT]);
+  const zoomOut = useCallback(() => setZoomIndex(z => Math.max(0, z - 1)), []);
+  const zoomIn = useCallback(() => setZoomIndex(z => Math.min(ZOOM_LEVELS.length - 1, z + 1)), []);
+
+  const onViewportMouseDown = useCallback((e) => {
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    panAtDrag.current = { x: panX, y: panY };
+    e.preventDefault();
+  }, [panX, panY]);
+
+  const handleSaveView = useCallback(async () => {
+    if (viewSaving) return;
+    setViewSaving(true);
+    try {
+      await saveProfileView({ poseIndex, zoomIndex, panX, panY });
+      setHasLockedView(true);
+      invalidateProfileViewCache(targetUserId);
+    } catch (err) {
+      console.error("Failed to save view:", err);
+    } finally {
+      setViewSaving(false);
+    }
+  }, [viewSaving, poseIndex, zoomIndex, panX, panY, targetUserId]);
+
+  const handleUnlockView = useCallback(async () => {
+    if (unlocking) return;
+    setUnlocking(true);
+    try {
+      await clearProfileView();
+      setHasLockedView(false);
+      invalidateProfileViewCache(targetUserId);
+    } catch (err) {
+      console.error("Failed to unlock view:", err);
+    } finally {
+      setUnlocking(false);
+    }
+  }, [unlocking, targetUserId]);
 
   const loadSm = useCallback(async () => {
     if (!currentUserId) { setSmState(null); return; }
@@ -324,73 +411,6 @@ export default function PlayerProfile({
     finally { setBadgeSaving(false); }
   };
 
-  useEffect(() => {
-    const src = gender === "male"
-      ? "/assets/character-bases/men-test.png"
-      : "/assets/character-bases/females_new.png";
-    loadImage(src).then((img) => { if (img) setBaseImg(img); });
-  }, [gender]);
-
-  const APPEARANCE_SUBS_ORDER = ["eyebrows", "eyes", "nose", "mouth", "beard"];
-
-  const buildLayerEntries = (outfitMap) => {
-    const entries = [];
-    for (const cat of LAYER_ORDER) {
-      if (cat === "appearance") {
-        const hasSub = APPEARANCE_SUBS_ORDER.some(s => outfitMap[s]?.imageUrl);
-        if (hasSub) {
-          for (const sub of APPEARANCE_SUBS_ORDER) {
-            if (outfitMap[sub]?.imageUrl) entries.push({ category: sub, url: outfitMap[sub].imageUrl });
-          }
-        } else if (outfitMap["appearance"]?.imageUrl) {
-          entries.push({ category: "appearance", url: outfitMap["appearance"].imageUrl });
-        }
-      } else if (outfitMap[cat]?.imageUrl) {
-        entries.push({ category: cat, url: outfitMap[cat].imageUrl });
-      }
-    }
-    return entries;
-  };
-
-  useEffect(() => {
-    if (!outfit) { setLayerImages([]); return; }
-    const entries = buildLayerEntries(outfit);
-    let cancelled = false;
-    Promise.all(
-      entries.map(({ category, url }) =>
-        loadImage(url).then((img) => img ? { category, img } : null)
-      )
-    ).then((results) => {
-      if (!cancelled) setLayerImages(results.filter(Boolean));
-    });
-    return () => { cancelled = true; };
-  }, [outfit]);
-
-  const bakeAllPoses = (base, layers) => POSE_ORDER.map((frameIndex) => {
-    const c = document.createElement("canvas");
-    c.width = FRAME_W;
-    c.height = FRAME_H;
-    const ctx = c.getContext("2d");
-    const cols = Math.floor(base.width / FRAME_W);
-    const { sx, sy } = extractFrame(base, frameIndex, cols);
-    ctx.drawImage(base, sx, sy, FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
-    for (const { img } of layers) {
-      const lc = Math.floor(img.width / FRAME_W);
-      const { sx: lx, sy: ly } = extractFrame(img, frameIndex, lc);
-      ctx.drawImage(img, lx, ly, FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
-    }
-    return c;
-  });
-
-  useEffect(() => {
-    if (!baseImg) { bakedPosesRef.current = []; return; }
-    bakedPosesRef.current = bakeAllPoses(baseImg, layerImages);
-  }, [baseImg, layerImages]);
-
-  useEffect(() => {
-    if (!baseImg) { invBakedPosesRef.current = []; return; }
-    invBakedPosesRef.current = bakeAllPoses(baseImg, invPreviewLayerImages);
-  }, [baseImg, invPreviewLayerImages]);
 
   // Look tab: reset/init selections on tab enter; reinit once inventory loads
   useEffect(() => {
@@ -408,77 +428,6 @@ export default function PlayerProfile({
     setLookSelectedEntries(initial);
   }, [activeTab, invLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Build look preview layers: each appearance subcategory gets its own layer slot
-  useEffect(() => {
-    const baseOutfit = outfit || {};
-    const layerUrls = [];
-    for (const cat of LAYER_ORDER) {
-      if (cat === "appearance") {
-        let anyAdded = false;
-        for (const feat of LOOK_FEATURES) {
-          if (LOOK_FEATURE_CATEGORY[feat.key] !== "appearance") continue;
-          const entry = lookSelectedEntries[feat.key];
-          if (entry?.imageUrl) { layerUrls.push(entry.imageUrl); anyAdded = true; }
-        }
-        if (!anyAdded) {
-          const anyTouched = LOOK_FEATURES.some(
-            f => LOOK_FEATURE_CATEGORY[f.key] === "appearance" && f.key in lookSelectedEntries
-          );
-          if (!anyTouched) {
-            for (const sub of APPEARANCE_SUBS_ORDER) {
-              if (baseOutfit[sub]?.imageUrl) layerUrls.push(baseOutfit[sub].imageUrl);
-            }
-            if (!APPEARANCE_SUBS_ORDER.some(s => baseOutfit[s]?.imageUrl) && baseOutfit["appearance"]?.imageUrl) {
-              layerUrls.push(baseOutfit["appearance"].imageUrl);
-            }
-          }
-        }
-      } else if (cat === "hair") {
-        const entry = lookSelectedEntries["hair"];
-        if (entry?.imageUrl) layerUrls.push(entry.imageUrl);
-        else if (!("hair" in lookSelectedEntries) && baseOutfit[cat]?.imageUrl) layerUrls.push(baseOutfit[cat].imageUrl);
-      } else {
-        if (baseOutfit[cat]?.imageUrl) layerUrls.push(baseOutfit[cat].imageUrl);
-      }
-    }
-    if (layerUrls.length === 0) { setLookPreviewLayerImages([]); return; }
-    let cancelled = false;
-    Promise.all(layerUrls.map(url => loadImage(url).then(img => img ? { img } : null)))
-      .then(results => { if (!cancelled) setLookPreviewLayerImages(results.filter(Boolean)); });
-    return () => { cancelled = true; };
-  }, [lookSelectedEntries, outfit]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!baseImg) { lookBakedPosesRef.current = []; return; }
-    lookBakedPosesRef.current = bakeAllPoses(baseImg, lookPreviewLayerImages);
-  }, [baseImg, lookPreviewLayerImages]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const poses =
-      activeTab === "inventory" ? invBakedPosesRef.current :
-      activeTab === "look"      ? lookBakedPosesRef.current :
-                                  bakedPosesRef.current;
-    const baked = poses[poseIndex];
-    if (baked) ctx.drawImage(baked, 0, 0, canvas.width, canvas.height);
-  }, [activeTab, poseIndex, baseImg, layerImages, invPreviewLayerImages, lookPreviewLayerImages, viewLoaded]);
-
-  useEffect(() => {
-    if (!invPreviewOutfit || Object.keys(invPreviewOutfit).length === 0) {
-      setInvPreviewLayerImages([]); return;
-    }
-    const entries = buildLayerEntries(invPreviewOutfit);
-    let cancelled = false;
-    Promise.all(entries.map(({ category, url }) =>
-      loadImage(url).then((img) => img ? { category, img } : null)
-    )).then(results => {
-      if (!cancelled) setInvPreviewLayerImages(results.filter(Boolean));
-    });
-    return () => { cancelled = true; };
-  }, [invPreviewOutfit]);
 
   const applyFormat = (marker) => {
     const ta = textareaRef.current;
@@ -494,95 +443,12 @@ export default function PlayerProfile({
     }, 0);
   };
 
-  const turnLeft = () => setPoseIndex((i) => (i - 1 + POSE_ORDER.length) % POSE_ORDER.length);
-  const turnRight = () => setPoseIndex((i) => (i + 1) % POSE_ORDER.length);
-  const zoomOut = () => setZoomIndex((i) => Math.max(i - 1, 0));
-  const zoomIn = () => setZoomIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1));
-
-  useEffect(() => {
-    if (!targetUserId) return;
-    setViewLoaded(false);
-    fetchProfileView(targetUserId).then((view) => {
-      if (view) {
-        setHasLockedView(view.locked ?? false);
-        if (view.locked) {
-          setPoseIndex(view.poseIndex ?? 0);
-          setZoomIndex(view.zoomIndex ?? 0);
-          setPanX(view.panX ?? 0);
-          setPanY(view.panY ?? 0);
-        }
-        if (view.themeName) {
-          const idx = PALETTES.findIndex(p => p.name === view.themeName);
-          if (idx >= 0) {
-            setThemeIdx(idx);
-            if (isSelfView) {
-              try { localStorage.setItem("fv_theme", view.themeName); } catch { /* ignore */ }
-            }
-          }
-        }
-      }
-      setViewLoaded(true);
-    }).catch(() => { setViewLoaded(true); });
-  }, [targetUserId, isSelfView]);
-
   const handleSelectTheme = useCallback((idx) => {
     setThemeIdx(idx);
     const name = PALETTES[idx].name;
     try { localStorage.setItem("fv_theme", name); } catch { /* ignore */ }
-    invalidateProfileViewCache(targetUserId);
     saveTheme(name).catch(() => {});
   }, [targetUserId]);
-
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!isDragging.current) return;
-      setPanX(panAtDrag.current.x + (e.clientX - dragStart.current.x));
-      setPanY(panAtDrag.current.y + (e.clientY - dragStart.current.y));
-    };
-    const onUp = () => { isDragging.current = false; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  const onViewportMouseDown = (e) => {
-    if (e.button !== 0) return;
-    isDragging.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    panAtDrag.current = { x: panX, y: panY };
-    e.preventDefault();
-  };
-
-  const handleSaveView = async () => {
-    if (viewSaving) return;
-    setViewSaving(true);
-    try {
-      await saveProfileView({ poseIndex, zoomIndex, panX, panY });
-      invalidateProfileViewCache(targetUserId);
-      setHasLockedView(true);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setViewSaving(false);
-    }
-  };
-
-  const handleUnlockView = async () => {
-    if (unlocking) return;
-    setUnlocking(true);
-    try {
-      await clearProfileView();
-      invalidateProfileViewCache(targetUserId);
-      setHasLockedView(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUnlocking(false);
-    }
-  };
 
   const loadGbComments = useCallback(async () => {
     if (!targetUserId) return;
@@ -727,16 +593,12 @@ export default function PlayerProfile({
           if (entry) initial[slotKey] = entry;
         }
         setInvSelectedEntries(initial);
-        setInvPreviewOutfit(outfit || {});
         setInvLoaded(true);
       })
       .catch(() => {})
       .finally(() => setInvLoading(false));
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync inventory state when the user switches to the inventory tab after
-  // changes were made on the look tab. Running on every outfit change would
-  // trigger bakeAllPoses on each look-apply, causing unnecessary repaints.
   useEffect(() => {
     if (!invLoaded || activeTab !== "inventory") return;
     const initial = {};
@@ -746,7 +608,6 @@ export default function PlayerProfile({
       if (entry) initial[slotKey] = entry;
     }
     setInvSelectedEntries(initial);
-    setInvPreviewOutfit(outfit || {});
   }, [activeTab, equipped, outfit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -854,23 +715,8 @@ export default function PlayerProfile({
     const slotKey = invSlotKey(entry);
     if (invIsSelected(entry)) {
       setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
-      setInvPreviewOutfit(prev => {
-        const n = { ...prev };
-        const equippedId = equipped?.[slotKey];
-        const isCurrentlyEquipped = equippedId && (
-          equippedId.toString() === entry._id?.toString() ||
-          equippedId.toString() === entry.itemId?.toString()
-        );
-        if (!isCurrentlyEquipped && outfit?.[slotKey]) {
-          n[slotKey] = outfit[slotKey];
-        } else {
-          delete n[slotKey];
-        }
-        return n;
-      });
     } else {
       setInvSelectedEntries(prev => ({ ...prev, [slotKey]: entry }));
-      setInvPreviewOutfit(prev => ({ ...prev, [slotKey]: { imageUrl: entry.imageUrl } }));
     }
   };
 
@@ -910,12 +756,10 @@ export default function PlayerProfile({
       if (entry) initial[cat] = entry;
     }
     setInvSelectedEntries(initial);
-    setInvPreviewOutfit(outfit || {});
   };
 
   const invHandleNude = () => {
     setInvSelectedEntries({});
-    setInvPreviewOutfit({});
   };
 
   const invHandleSell = async (entry, e) => {
@@ -929,12 +773,6 @@ export default function PlayerProfile({
       if (invIsSelected(entry)) {
         const slotKey = invSlotKey(entry);
         setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
-        setInvPreviewOutfit(prev => {
-          const n = { ...prev };
-          if (outfit?.[slotKey]) n[slotKey] = outfit[slotKey];
-          else delete n[slotKey];
-          return n;
-        });
       }
     } catch (err) {
       setInvSellError(err.message);
@@ -1116,17 +954,17 @@ export default function PlayerProfile({
           {/* ── Avatar Stage ── */}
           <AvatarStageCol>
             <StageContainer>
-              {/* <StageHalo />
-              <StageHaloOuter /> */}
               <AvatarViewport
                 onMouseDown={onViewportMouseDown}
                 style={{ cursor: "grab" }}
               >
                 <AvatarCanvas
-                  ref={canvasRef}
-                  width={FRAME_W}
-                  height={FRAME_H}
+                  gender={gender || "female"}
+                  outfit={displayOutfit}
+                  poseIndex={poseIndex}
                   style={{
+                    width: "100%",
+                    height: "100%",
                     transform: `translate(${panX}px, ${panY}px) scale(${ZOOM_LEVELS[zoomIndex]})`,
                     transformOrigin: "top center",
                     visibility: viewLoaded ? "visible" : "hidden",
@@ -1140,15 +978,14 @@ export default function PlayerProfile({
               <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
               <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
               <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
-              {isSelfView && hasLockedView && (
-                <ArrowBtn onClick={handleUnlockView} disabled={unlocking} title="Remove locked profile view">🔓</ArrowBtn>
-              )}
-              {isSelfView && (
-                <ArrowBtn onClick={handleSaveView} disabled={viewSaving} title="Lock current view as profile view">🔒</ArrowBtn>
-              )}
+              {isSelfView && (hasLockedView ? (
+                <ArrowBtn onClick={handleUnlockView} disabled={unlocking} title="Unlock view">🔓</ArrowBtn>
+              ) : (
+                <ArrowBtn onClick={handleSaveView} disabled={viewSaving} title="Lock view">🔒</ArrowBtn>
+              ))}
             </Controls>
 
-            {activeTab === "inventory" || activeTab === "look" ? (
+            {isSelfView && (activeTab === "inventory" || activeTab === "look") ? (
               <InvActionBar>
                 <InvNudeBtn onClick={activeTab === "look" ? lookHandleRemoveAll : invHandleNude}>Remove All</InvNudeBtn>
                 <InvResetBtn onClick={activeTab === "look" ? lookHandleReset : invHandleReset}>Reset</InvResetBtn>
@@ -1163,10 +1000,7 @@ export default function PlayerProfile({
                   {isSelfView ? (
                     <StatusPickerWrap ref={statusPickerRef}>
                       <StatusClickTarget
-                        onClick={() => {
-                          if (statusChanging) return;
-                          setStatusPickerOpen((p) => !p);
-                        }}
+                        onClick={() => { if (!statusChanging) setStatusPickerOpen(p => !p); }}
                         style={{ visibility: userStatus ? "visible" : "hidden" }}
                       >
                         <PresenceDot $status={userStatus?.manualStatus || "online"} />
@@ -1184,11 +1018,7 @@ export default function PlayerProfile({
                                 { key: "away",      dot: "away",    label: "Away"      },
                                 { key: "invisible", dot: "offline", label: "Invisible" },
                               ].map(({ key, dot, label }) => (
-                                <StatusOption
-                                  key={key}
-                                  $active={userStatus?.manualStatus === key}
-                                  onClick={() => handleChangeStatus(key)}
-                                >
+                                <StatusOption key={key} $active={userStatus?.manualStatus === key} onClick={() => handleChangeStatus(key)}>
                                   <OptionDot $status={dot} />
                                   {label}
                                 </StatusOption>
@@ -1200,7 +1030,7 @@ export default function PlayerProfile({
                       )}
                     </StatusPickerWrap>
                   ) : (
-                    <span style={{ visibility: userStatus ? "visible" : "hidden" }}>
+                    <span style={{ visibility: userStatus ? "visible" : "hidden", display: "flex", alignItems: "center", gap: 5 }}>
                       <PresenceDot $status={userStatus?.status || "offline"} />
                       <PresenceLabel $status={userStatus?.status || "offline"}>
                         {PRESENCE_LABELS[userStatus?.status || "offline"]}
@@ -1213,7 +1043,6 @@ export default function PlayerProfile({
                 <StatusText>"{bio || "No status set"}"</StatusText>
               </StatusCard>
             )}
-
           </AvatarStageCol>
 
           <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>

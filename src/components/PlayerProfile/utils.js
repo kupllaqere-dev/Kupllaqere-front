@@ -1,26 +1,3 @@
-import { FRAME_W, FRAME_H } from "./constants";
-
-export const imageCache = new Map();
-
-export function loadImage(src) {
-  if (imageCache.has(src)) return imageCache.get(src);
-  const promise = new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  }).catch(() => { imageCache.delete(src); return null; });
-  imageCache.set(src, promise);
-  return promise;
-}
-
-export function extractFrame(img, frameIndex, cols) {
-  const col = frameIndex % cols;
-  const row = Math.floor(frameIndex / cols);
-  return { sx: col * FRAME_W, sy: row * FRAME_H };
-}
-
 export function formatRelativeTime(dateString) {
   if (!dateString) return "";
   const diff = Date.now() - new Date(dateString).getTime();

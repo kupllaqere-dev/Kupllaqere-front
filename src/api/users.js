@@ -1,22 +1,5 @@
 const API = import.meta.env.VITE_API_URL;
 
-// Module-level cache: name -> Promise<{ gender, outfit } | null>
-// Storing the promise itself deduplicates in-flight requests for the same name.
-const appearanceCache = new Map();
-
-export async function fetchPlayerAppearance(name) {
-  if (!name) return null;
-  if (appearanceCache.has(name)) return appearanceCache.get(name);
-
-  const promise = fetch(`${API}/api/users/appearance/${encodeURIComponent(name)}`)
-    .then((res) => (res.ok ? res.json() : null))
-    .catch(() => null);
-
-  appearanceCache.set(name, promise);
-  return promise;
-}
-
-
 export async function fetchUserStatus(userId) {
   if (!userId) return { status: "offline", manualStatus: "online" };
   const token = localStorage.getItem("fv_token");
@@ -27,18 +10,14 @@ export async function fetchUserStatus(userId) {
     .catch(() => ({ status: "offline", manualStatus: "online" }));
 }
 
-// Cache: userId -> Promise<view | null>
-// Invalidated explicitly on save/clear so we never show stale lock state.
 const profileViewCache = new Map();
 
 export async function fetchProfileView(userId) {
   if (!userId) return null;
   if (profileViewCache.has(userId)) return profileViewCache.get(userId);
-
   const promise = fetch(`${API}/api/users/${encodeURIComponent(userId)}/profile-view`)
-    .then((res) => (res.ok ? res.json() : null))
+    .then(res => (res.ok ? res.json() : null))
     .catch(() => { profileViewCache.delete(userId); return null; });
-
   profileViewCache.set(userId, promise);
   return promise;
 }
@@ -58,6 +37,27 @@ export async function saveProfileView({ poseIndex, zoomIndex, panX, panY }) {
   return res.json();
 }
 
+export async function clearProfileView() {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/auth/profile-view`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to unlock profile view");
+  return res.json();
+}
+
+export async function updatePresence(status) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/auth/presence`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Failed to update presence");
+  return res.json();
+}
+
 export async function saveTheme(themeName) {
   const token = localStorage.getItem("fv_token");
   const res = await fetch(`${API}/api/auth/theme`, {
@@ -69,12 +69,3 @@ export async function saveTheme(themeName) {
   return res.json();
 }
 
-export async function clearProfileView() {
-  const token = localStorage.getItem("fv_token");
-  const res = await fetch(`${API}/api/auth/profile-view`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("Failed to unlock profile view");
-  return res.json();
-}

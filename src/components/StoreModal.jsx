@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import AvatarCanvas from "./Avatar/AvatarCanvas";
 import styled, { css, keyframes } from "styled-components";
-import AvatarCanvas from "./AvatarCanvas";
-import { POSE_COUNT } from "../constants/poses";
 import { fetchStoreItems, purchaseItems, fetchWishlist, addToWishlist, removeFromWishlist } from "../api/store";
 
 const CATEGORY_LABELS = {
@@ -84,17 +83,31 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const [hasMore, setHasMore] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [selectedVariants, setSelectedVariants] = useState({});
-  const [previewOutfit, setPreviewOutfit] = useState(currentOutfit || {});
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
-  const [pose, setPose] = useState(0);
   const [wishlistedIds, setWishlistedIds] = useState(new Set());
+  const [previewOutfit, setPreviewOutfit] = useState(currentOutfit || {});
+  const [pose, setPose] = useState(0);
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
-  const maxPose = (POSE_COUNT[gender] ?? 5) - 1;
+  const previewTimerRef = useRef(null);
+  const POSE_COUNT = 6;
+
+  // Debounced: rapid mousing over items only composites when the user pauses.
+  // The compositor caches by outfit hash, so re-visiting a seen outfit is instant.
+  const previewItem = useCallback((item) => {
+    clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => {
+      const slotKey = item.category === "appearance" ? item.subcategory : item.category;
+      setPreviewOutfit(prev => ({
+        ...prev,
+        [slotKey]: { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl },
+      }));
+    }, 60);
+  }, []);
 
   const loadItems = useCallback(async (cat, sub, pg, reset, sort) => {
     if (loadingRef.current) return;
@@ -140,10 +153,6 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
   const toggleGroup = key => setExpandedGroup(prev => prev === key ? null : key);
 
-  const previewItem = item => {
-    setPreviewOutfit(prev => ({ ...prev, [item.category]: { imageUrl: item.imageUrl } }));
-  };
-
   useEffect(() => {
     fetchWishlist()
       .then(({ items }) => setWishlistedIds(new Set(items.map(i => i.itemId))))
@@ -168,17 +177,10 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
   const addToCart = item => {
     setCart(prev => [...prev, { ...item, cartId: crypto.randomUUID() }]);
     setPurchaseError(null); setPurchaseSuccess(false);
-    previewItem(item);
   };
 
   const removeFromCart = item => {
     setCart(prev => { const i = prev.findIndex(c => c.cartId === item.cartId); return i === -1 ? prev : [...prev.slice(0, i), ...prev.slice(i + 1)]; });
-    setPreviewOutfit(prev => {
-      const next = { ...prev };
-      if (currentOutfit?.[item.category]) next[item.category] = currentOutfit[item.category];
-      else delete next[item.category];
-      return next;
-    });
   };
 
   const handlePurchase = async () => {
@@ -458,15 +460,19 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
 
           <AvatarPanel>
             <AvatarArea>
-              <AvatarBg src="/inventory-background.png" alt="" />
-              <AvatarCanvas gender={gender} outfit={previewOutfit} width={320} height={722} pose={pose} />
+              <AvatarCanvas
+                gender={gender || "female"}
+                outfit={previewOutfit}
+                poseIndex={pose}
+                scale={320 / 390}
+              />
             </AvatarArea>
             <PoseBar>
-              <PoseArrow onClick={() => setPose(p => p === maxPose ? 0 : p + 1)}>‹</PoseArrow>
-              {Array.from({ length: maxPose + 1 }).map((_, i) => (
+              <PoseArrow onClick={() => setPose(p => (p === 0 ? POSE_COUNT - 1 : p + 1))}>‹</PoseArrow>
+              {Array.from({ length: POSE_COUNT }).map((_, i) => (
                 <PoseDot key={i} $active={i === pose} onClick={() => setPose(i)} />
               ))}
-              <PoseArrow onClick={() => setPose(p => p === 0 ? maxPose : p - 1)}>›</PoseArrow>
+              <PoseArrow onClick={() => setPose(p => (p === POSE_COUNT - 1 ? 0 : p - 1))}>›</PoseArrow>
             </PoseBar>
             <AvatarBottom>
               <Balance>

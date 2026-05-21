@@ -260,308 +260,6 @@ export const SidebarNotifDot = styled.span`
   line-height: 1;
 `;
 
-/* ── Avatar Stage ── */
-
-export const AvatarStageCol = styled.section`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 14px;
-  width: 350px;
-  flex-shrink: 0;
-  background: var(--pp-gradPanel);
-  border-right: 1px solid ${"var(--pp-border)"};
-  gap: 10px;
-  overflow: hidden;
-  position: relative;
-`;
-
-export const OutfitLabel = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: ${"var(--pp-accent)"};
-  letter-spacing: 0.6px;
-  background: rgba(var(--pp-accent-rgb),0.08);
-  border: 1px solid ${"var(--pp-border2)"};
-  padding: 5px 13px;
-  border-radius: 20px;
-  flex-shrink: 0;
-`;
-
-export const OutfitGem = styled.span`
-  font-size: 7px;
-  opacity: 0.65;
-`;
-
-export const StageContainer = styled.div`
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  background: radial-gradient(ellipse 80% 45% at 50% 38%, rgba(var(--pp-accent-rgb),0.07) 0%, transparent 68%);
-`;
-
-export const StageHalo = styled.div`
-  position: absolute;
-  width: 190px; height: 190px;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--pp-accent-rgb),0.22) 0%, transparent 68%);
-  animation: haloPulse 3.2s ease-in-out infinite;
-  pointer-events: none;
-  @keyframes haloPulse {
-    0%,100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
-    50%      { opacity: 1;    transform: translateX(-50%) scale(1.09); }
-  }
-`;
-
-export const StageHaloOuter = styled.div`
-  position: absolute;
-  width: 280px; height: 280px;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 60%);
-  animation: haloPulse 3.2s ease-in-out infinite;
-  animation-delay: -1.6s;
-  pointer-events: none;
-`;
-
-export const AvatarViewport = styled.div`
-  flex: 1;
-  min-height: 0;
-  aspect-ratio: ${FRAME_W} / ${FRAME_H};
-  overflow: hidden;
-  border-radius: 14px;
-  box-shadow: 0 0 22px rgba(var(--pp-accent-rgb),0.1), inset 0 0 18px rgba(var(--pp-accent-rgb),0.04);
-  /* background: radial-gradient(ellipse at 50% 95%, rgba(var(--pp-accent-rgb),0.07) 0%, transparent 55%); */
-  position: relative;
-  z-index: 2;
-`;
-
-export const AvatarCanvas = styled.canvas`
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-`;
-
-export const AvatarPlatform = styled.div`
-  width: 64%;
-  height: 10px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(var(--pp-accent-rgb),0.95) 0%, rgba(59,130,246,0.55) 38%, transparent 72%);
-  filter: blur(6px);
-  margin-top: 2px;
-  flex-shrink: 0;
-  opacity: 0.75;
-  animation: platformPulse 2.8s ease-in-out infinite alternate;
-  @keyframes platformPulse {
-    from { opacity: 0.55; transform: scaleX(0.94); }
-    to   { opacity: 0.9;  transform: scaleX(1.06); }
-  }
-`;
-
-export const StatusCard = styled.div`
-  width: calc(100% + 28px);
-  margin: 0 -14px;
-  height: 58px;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  background: rgba(var(--pp-accent-rgb),0.04);
-  border-left: none;
-  border-right: none;
-  border-top: 1px solid ${"var(--pp-border)"};
-  border-bottom: 1px solid ${"var(--pp-border)"};
-  border-radius: 0;
-  padding: 9px 27px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  overflow: hidden;
-`;
-
-export const StatusCardTop = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-`;
-
-export const OnlineDot = styled.span`
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 7px #22c55e;
-  flex-shrink: 0;
-  animation: pipBlink 2.4s ease-in-out infinite;
-`;
-
-export const OnlineLabel = styled.span`
-  font-size: 9.5px;
-  font-weight: 700;
-  color: #16a34a;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-`;
-
-export const StatusSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
-
-export const StatusLoc = styled.span`
-  font-size: 9.5px;
-  color: ${"var(--pp-txt3)"};
-  font-weight: 500;
-`;
-
-export const StatusText = styled.div`
-  font-size: 11px;
-  color: ${"var(--pp-txt2)"};
-  font-style: italic;
-  line-height: 1.4;
-`;
-
-const PRESENCE_DOT_COLORS = {
-  online:    { bg: "#22c55e", shadow: "#22c55e" },
-  away:      { bg: "#f59e0b", shadow: "#f59e0b" },
-  offline:   { bg: "#6b7280", shadow: "transparent" },
-  invisible: { bg: "#6b7280", shadow: "transparent" },
-};
-
-export const PresenceDot = styled.span`
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
-  box-shadow: 0 0 7px ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).shadow};
-  animation: ${({ $status }) => ($status === "offline" || $status === "invisible") ? "none" : "pipBlink 2.4s ease-in-out infinite"};
-`;
-
-const PRESENCE_LABEL_COLORS = { online: "#16a34a", away: "#d97706", offline: "#9ca3af", invisible: "#9ca3af" };
-
-export const PresenceLabel = styled.span`
-  font-size: 9.5px;
-  font-weight: 700;
-  color: ${({ $status }) => PRESENCE_LABEL_COLORS[$status] || PRESENCE_LABEL_COLORS.offline};
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-`;
-
-export const StatusPickerWrap = styled.div`
-  position: relative;
-`;
-
-export const StatusClickTarget = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  border-radius: 5px;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  transition: background 0.15s;
-  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
-`;
-
-export const StatusDropdown = styled.div`
-  background: ${"var(--pp-surface)"};
-  border: 1px solid ${"var(--pp-border2)"};
-  border-radius: 8px;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  z-index: 9999;
-  min-width: 120px;
-  box-shadow: 0 -4px 16px rgba(80,40,160,0.14);
-`;
-
-export const StatusOption = styled.button`
-  background: ${({ $active }) => $active ? "rgba(var(--pp-accent-rgb),0.10)" : "none"};
-  border: none;
-  border-radius: 6px;
-  color: ${"var(--pp-txt)"};
-  font-size: 11px;
-  font-family: inherit;
-  font-weight: ${({ $active }) => $active ? "700" : "500"};
-  cursor: pointer;
-  padding: 6px 8px;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
-`;
-
-export const OptionDot = styled.span`
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
-`;
-
-export const Controls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  padding: 12px 0;
-`;
-
-export const ArrowBtn = styled.button`
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  border: 1px solid ${"var(--pp-border)"};
-  background: rgba(var(--pp-accent-rgb),0.06);
-  color: ${"var(--pp-txt2)"};
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.18s;
-  font-family: inherit;
-  &::before {
-    content: '';
-    position: absolute;
-    top: -20%; left: -60%;
-    width: 32%; height: 140%;
-    background: linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent);
-    transform: skewX(-18deg) translateX(-100%);
-    pointer-events: none;
-  }
-  &:hover:not(:disabled) {
-    background: rgba(var(--pp-accent-rgb),0.14);
-    border-color: ${"var(--pp-border2)"};
-    color: ${"var(--pp-txt)"};
-    box-shadow: 0 2px 8px rgba(var(--pp-accent-rgb),0.12);
-  }
-  &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
-  &:active:not(:disabled) { transform: scale(0.9); }
-  &:disabled { opacity: 0.25; cursor: not-allowed; }
-`;
-
-export const PoseLabel = styled.span`
-  font-size: 8.5px;
-  font-weight: 700;
-  color: ${"var(--pp-txt3)"};
-  min-width: 48px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
 /* ── Profile Content ── */
 
 export const ProfileContent = styled.main`
@@ -3120,14 +2818,20 @@ export const LookPickerEmpty = styled.div`
 /* ── Inventory action bar ── */
 
 export const InvActionBar = styled.div`
-  width: 100%;
+  width: calc(100% + 28px);
+  margin: 0 -14px;
   height: 58px;
   box-sizing: border-box;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 13px;
+  padding: 9px 27px;
+  background: rgba(var(--pp-accent-rgb),0.04);
+  border-left: none;
+  border-right: none;
+  border-top: 1px solid ${"var(--pp-border)"};
+  border-bottom: 1px solid ${"var(--pp-border)"};
   overflow: hidden;
 `;
 
@@ -3589,4 +3293,206 @@ export const ThemeSwatchBar = styled.div`
   background: ${p => p.$accent};
   width: ${p => p.$w || "60%"};
   opacity: 0.7;
+`;
+
+/* ── Avatar Stage Column ── */
+
+export const AvatarStageCol = styled.section`
+  width: 350px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 14px;
+  background: var(--pp-gradPanel);
+  border-right: 1px solid ${"var(--pp-border)"};
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+`;
+
+export const StageContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  background: radial-gradient(ellipse 80% 45% at 50% 38%, rgba(var(--pp-accent-rgb),0.07) 0%, transparent 68%);
+`;
+
+export const AvatarViewport = styled.div`
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 510 / 900;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 0 22px rgba(var(--pp-accent-rgb),0.1), inset 0 0 18px rgba(var(--pp-accent-rgb),0.04);
+  position: relative;
+  z-index: 2;
+`;
+
+export const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 4px 0;
+`;
+
+export const ArrowBtn = styled.button`
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid ${"var(--pp-border)"};
+  background: rgba(var(--pp-accent-rgb),0.06);
+  color: ${"var(--pp-txt2)"};
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s;
+  font-family: inherit;
+  &::before {
+    content: '';
+    position: absolute;
+    top: -20%; left: -60%;
+    width: 32%; height: 140%;
+    background: linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent);
+    transform: skewX(-18deg) translateX(-100%);
+    pointer-events: none;
+  }
+  &:hover:not(:disabled) {
+    background: rgba(var(--pp-accent-rgb),0.14);
+    border-color: ${"var(--pp-border2)"};
+    color: ${"var(--pp-txt)"};
+    box-shadow: 0 2px 8px rgba(var(--pp-accent-rgb),0.12);
+  }
+  &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
+  &:active:not(:disabled) { transform: scale(0.9); }
+  &:disabled { opacity: 0.25; cursor: not-allowed; }
+`;
+
+export const StatusCard = styled.div`
+  width: calc(100% + 28px);
+  margin: 0 -14px;
+  height: 58px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  background: rgba(var(--pp-accent-rgb),0.04);
+  border-left: none;
+  border-right: none;
+  border-top: 1px solid ${"var(--pp-border)"};
+  border-bottom: 1px solid ${"var(--pp-border)"};
+  border-radius: 0;
+  padding: 9px 27px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+`;
+
+export const StatusCardTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+export const StatusSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
+
+export const StatusLoc = styled.span`
+  font-size: 9.5px;
+  color: ${"var(--pp-txt3)"};
+  font-weight: 500;
+`;
+
+export const StatusText = styled.div`
+  font-size: 11px;
+  color: ${"var(--pp-txt2)"};
+  font-style: italic;
+  line-height: 1.4;
+`;
+
+const PRESENCE_DOT_COLORS = {
+  online:    { bg: "#22c55e", shadow: "#22c55e" },
+  away:      { bg: "#f59e0b", shadow: "#f59e0b" },
+  offline:   { bg: "#6b7280", shadow: "transparent" },
+  invisible: { bg: "#6b7280", shadow: "transparent" },
+};
+
+export const PresenceDot = styled.span`
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
+  box-shadow: 0 0 7px ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).shadow};
+  animation: ${({ $status }) => ($status === "offline" || $status === "invisible") ? "none" : "pipBlink 2.4s ease-in-out infinite"};
+`;
+
+const PRESENCE_LABEL_COLORS = { online: "#16a34a", away: "#d97706", offline: "#9ca3af", invisible: "#9ca3af" };
+
+export const PresenceLabel = styled.span`
+  font-size: 9.5px;
+  font-weight: 700;
+  color: ${({ $status }) => PRESENCE_LABEL_COLORS[$status] || PRESENCE_LABEL_COLORS.offline};
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+`;
+
+export const StatusPickerWrap = styled.div`
+  position: relative;
+`;
+
+export const StatusClickTarget = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.15s;
+  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
+`;
+
+export const StatusDropdown = styled.div`
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border2)"};
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 9999;
+  min-width: 120px;
+  box-shadow: 0 -4px 16px rgba(80,40,160,0.14);
+`;
+
+export const StatusOption = styled.button`
+  background: ${({ $active }) => $active ? "rgba(var(--pp-accent-rgb),0.10)" : "none"};
+  border: none;
+  border-radius: 6px;
+  color: ${"var(--pp-txt)"};
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: ${({ $active }) => $active ? "700" : "500"};
+  cursor: pointer;
+  padding: 6px 8px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  &:hover { background: rgba(var(--pp-accent-rgb),0.08); }
+`;
+
+export const OptionDot = styled.span`
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: ${({ $status }) => (PRESENCE_DOT_COLORS[$status] || PRESENCE_DOT_COLORS.offline).bg};
 `;

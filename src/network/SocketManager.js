@@ -1,65 +1,12 @@
 import { io } from "socket.io-client";
 
-// Match the server broadcast tick (50ms). Sending faster than the server
-// broadcasts is wasted CPU + network; 60Hz emits can also queue WebSocket
-// frames and cause perceptible main-thread stalls during movement.
-const UPDATE_INTERVAL_MS = 50;
-
 export default class SocketManager {
   constructor(url = `${import.meta.env.VITE_API_URL}`) {
     this.socket = io(url);
-    this.lastSentX = 0;
-    this.lastSentY = 0;
-    this.lastSentFrame = 0;
-    this.lastSentAnim = null;
-    this.lastSentTime = 0;
   }
 
-  join(name, x, y, map, userId, gender) {
-    this.socket.emit("player:join", { name, x, y, map, userId, gender });
-  }
-
-  teleport(x, y, map) {
-    this.socket.emit("player:teleport", { x, y, map });
-  }
-
-  onPlayerTeleported(callback) {
-    this.socket.on("player:teleported", callback);
-  }
-
-  sendUpdate(x, y, frame, anim) {
-    const px = Math.round(x);
-    const py = Math.round(y);
-    const normAnim = anim || null;
-    const posChanged = px !== this.lastSentX || py !== this.lastSentY;
-    const frameChanged = frame !== this.lastSentFrame;
-    const animChanged = normAnim !== this.lastSentAnim;
-
-    if (!posChanged && !frameChanged && !animChanged) return;
-
-    // Send state transitions immediately (start/stop walking, direction flip).
-    // Throttle pure position updates to the server tick rate.
-    const now = performance.now();
-    const stateTransition = animChanged || frameChanged;
-    if (!stateTransition && now - this.lastSentTime < UPDATE_INTERVAL_MS) return;
-
-    // Volatile: if the socket is mid-flush or backed up, drop stale position
-    // packets rather than queueing them — the next tick's packet supersedes.
-    // `t` is a client-clock timestamp. The server is free to overwrite it with
-    // its own authoritative clock before rebroadcast; the receiver treats it
-    // as "when this sample was generated" for interpolation purposes.
-    this.socket.volatile.emit("player:update", {
-      x: px,
-      y: py,
-      frame,
-      anim: normAnim,
-      t: Date.now(),
-    });
-    this.lastSentX = px;
-    this.lastSentY = py;
-    this.lastSentFrame = frame;
-    this.lastSentAnim = normAnim;
-    this.lastSentTime = now;
+  join(name, userId, gender) {
+    this.socket.emit("player:join", { name, userId, gender });
   }
 
   onGameState(callback) {
@@ -68,10 +15,6 @@ export default class SocketManager {
 
   onPlayerJoined(callback) {
     this.socket.on("player:joined", callback);
-  }
-
-  onPlayersUpdated(callback) {
-    this.socket.on("players:updated", callback);
   }
 
   onPlayerLeft(callback) {
@@ -106,6 +49,14 @@ export default class SocketManager {
     this.socket.on("chat:history", callback);
   }
 
+  sendMove(data) {
+    this.socket.emit("player:move", data);
+  }
+
+  onPlayerMove(callback) {
+    this.socket.on("player:move", callback);
+  }
+
   sendOutfitChange(outfit) {
     this.socket.emit("player:outfit", { outfit });
   }
@@ -138,12 +89,10 @@ export default class SocketManager {
     this.socket.on("friends:refresh", callback);
   }
 
-  // { userId, status } — a friend's effective status changed (online/away/offline)
   onFriendStatus(callback) {
     this.socket.on("friend:status", callback);
   }
 
-  // { status, manualStatus } — this user's own status changed (e.g. from another tab)
   onUserStatus(callback) {
     this.socket.on("user:status", callback);
   }
