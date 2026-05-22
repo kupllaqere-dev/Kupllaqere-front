@@ -13,6 +13,7 @@ export const FRAME = {
 
 const MOVE_LERP_RATE  = 25;
 const SCALE_LERP_RATE = 18;
+const MAX_SPEED       = 450; // px/s — clamp extrapolated velocity to prevent teleports
 
 export default class PlayerManager {
   constructor() {
@@ -70,6 +71,7 @@ export default class PlayerManager {
       vx:           0,
       vy:           0,
       lastSnapshotMs: performance.now(),
+      lastSenderT:  null,
       lastAnim:     null,
       lastFrame:    FRAME.FRONT,
     });
@@ -108,18 +110,27 @@ export default class PlayerManager {
     const other = this.otherPlayers.get(data.id);
     if (!other) return;
 
-    const now     = performance.now();
-    const elapsed = now - (other.lastSnapshotMs ?? now);
+    const now = performance.now();
 
     if (!data.anim) {
-      // Player stopped — kill velocity so extrapolation doesn't drift
       other.vx = 0;
       other.vy = 0;
-    } else if (elapsed > 0 && elapsed < 250) {
-      other.vx = (data.x - other.targetX) / (elapsed / 1000);
-      other.vy = (data.y - other.targetY) / (elapsed / 1000);
+    } else {
+      // Use sender's clock for elapsed time — immune to network jitter
+      const senderElapsed = (typeof data.t === "number" && typeof other.lastSenderT === "number")
+        ? data.t - other.lastSenderT
+        : null;
+
+      if (senderElapsed !== null && senderElapsed > 0 && senderElapsed < 250) {
+        const rawVx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, (data.x - other.targetX) / (senderElapsed / 1000)));
+        const rawVy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, (data.y - other.targetY) / (senderElapsed / 1000)));
+        // EMA smoothing so a single jittery interval can't spike velocity
+        other.vx = other.vx * 0.5 + rawVx * 0.5;
+        other.vy = other.vy * 0.5 + rawVy * 0.5;
+      }
     }
 
+    if (typeof data.t === "number") other.lastSenderT = data.t;
     other.targetX        = data.x;
     other.targetY        = data.y;
     other.lastSnapshotMs = now;
@@ -147,7 +158,7 @@ export default class PlayerManager {
 
     for (const [, other] of this.otherPlayers) {
       // Extrapolate target forward by velocity, capped at 100 ms to avoid drift on stop
-      const sinceSnapshot = Math.min((performance.now() - (other.lastSnapshotMs ?? 0)) / 1000, 0.1);
+      const sinceSnapshot = Math.min((performance.now() - (other.lastSnapshotMs ?? 0)) / 1000, 0.05);
       const predictedX = other.targetX + (other.vx ?? 0) * sinceSnapshot;
       const predictedY = other.targetY + (other.vy ?? 0) * sinceSnapshot;
 

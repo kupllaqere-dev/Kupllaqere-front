@@ -174,6 +174,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
               y:     ly,
               anim:  anim,
               frame: Number(localP.sprite.frame.name),
+              t:     performance.now(),
             });
             lastSentX    = lx;
             lastSentY    = ly;
