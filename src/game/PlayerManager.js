@@ -67,6 +67,9 @@ export default class PlayerManager {
       selectedBadge: data.selectedBadge || null,
       targetX:      data.x,
       targetY:      data.y,
+      vx:           0,
+      vy:           0,
+      lastSnapshotMs: performance.now(),
       lastAnim:     null,
       lastFrame:    FRAME.FRONT,
     });
@@ -105,8 +108,21 @@ export default class PlayerManager {
     const other = this.otherPlayers.get(data.id);
     if (!other) return;
 
-    other.targetX = data.x;
-    other.targetY = data.y;
+    const now     = performance.now();
+    const elapsed = now - (other.lastSnapshotMs ?? now);
+
+    if (!data.anim) {
+      // Player stopped — kill velocity so extrapolation doesn't drift
+      other.vx = 0;
+      other.vy = 0;
+    } else if (elapsed > 0 && elapsed < 250) {
+      other.vx = (data.x - other.targetX) / (elapsed / 1000);
+      other.vy = (data.y - other.targetY) / (elapsed / 1000);
+    }
+
+    other.targetX        = data.x;
+    other.targetY        = data.y;
+    other.lastSnapshotMs = now;
 
     if (data.anim) {
       const animKey = other.sprite._animKey?.(data.anim) ?? null;
@@ -130,8 +146,13 @@ export default class PlayerManager {
     const scaleAlpha = 1 - Math.exp(-SCALE_LERP_RATE * (renderDeltaMs / 1000));
 
     for (const [, other] of this.otherPlayers) {
-      const x = other.sprite.x + (other.targetX - other.sprite.x) * moveAlpha;
-      const y = other.sprite.y + (other.targetY - other.sprite.y) * moveAlpha;
+      // Extrapolate target forward by velocity, capped at 100 ms to avoid drift on stop
+      const sinceSnapshot = Math.min((performance.now() - (other.lastSnapshotMs ?? 0)) / 1000, 0.1);
+      const predictedX = other.targetX + (other.vx ?? 0) * sinceSnapshot;
+      const predictedY = other.targetY + (other.vy ?? 0) * sinceSnapshot;
+
+      const x = other.sprite.x + (predictedX - other.sprite.x) * moveAlpha;
+      const y = other.sprite.y + (predictedY - other.sprite.y) * moveAlpha;
 
       const targetScale = perspectiveScale(y) * genderScale(other.sprite.gender);
       const curScale    = other.sprite.currentScale ?? targetScale;
