@@ -40,8 +40,6 @@ export default class MovementManager {
       player._logicalX = player.x;
       player._logicalY = player.y;
     }
-    player._prevLogicalX = player._logicalX;
-    player._prevLogicalY = player._logicalY;
 
     const left  = cursors.left.isDown;
     const right = cursors.right.isDown;

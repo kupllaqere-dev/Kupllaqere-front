@@ -11,7 +11,6 @@ import PlayerProfile from "./PlayerProfile";
 import WorldAvatarSystem from "../game/avatar/WorldAvatarSystem";
 import PlayerManager from "../game/PlayerManager";
 import MovementManager from "../game/MovementManager";
-import GameLoop from "../game/GameLoop";
 import {
   preloadLocalPlayer,
   createLocalPlayer,
@@ -128,7 +127,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         const avatarSys  = new WorldAvatarSystem(this);
         const playerMgr  = new PlayerManager();
         const movement   = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
-        const gameLoop   = new GameLoop();
         const cursors    = this.input.keyboard.createCursorKeys();
 
         worldAvatarSystemRef.current = avatarSys;
@@ -146,7 +144,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
 
         // Camera follows local player.
         this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
-        this.cameras.main.startFollow(localP.sprite, true, 0.1, 0.1);
+        this.cameras.main.startFollow(localP.sprite, false, 1, 1);
 
         // Click-to-move.
         this.input.on("pointerdown", pointer => {
@@ -157,29 +155,31 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         mp.join(user?.name || "Player", user?.id, gender);
         mp.wire();
 
-        let lastSentX = SPAWN_X;
-        let lastSentY = SPAWN_Y;
+        let lastSentX    = SPAWN_X;
+        let lastSentY    = SPAWN_Y;
+        let lastSentAnim = null;
 
         this.events.on("update", (_, delta) => {
-          const alpha = gameLoop.run(delta, dt => {
-            movement.step(localP.sprite, cursors, walkableZones, dt);
+          movement.step(localP.sprite, cursors, walkableZones, delta / 1000);
 
-            // Send position update on change.
-            const lx = localP.sprite._logicalX;
-            const ly = localP.sprite._logicalY;
-            if (lx !== lastSentX || ly !== lastSentY || movement.currentAnimName !== null) {
-              mp.sendMove({
-                x:    lx,
-                y:    ly,
-                anim: movement.currentAnimName,
-                frame: Number(localP.sprite.frame.name),
-              });
-              lastSentX = lx;
-              lastSentY = ly;
-            }
-          });
+          const lx   = localP.sprite._logicalX;
+          const ly   = localP.sprite._logicalY;
+          const anim = movement.currentAnimName;
 
-          movement.applyRender(localP.sprite, alpha);
+          localP.sprite.setPosition(lx, ly);
+
+          if (lx !== lastSentX || ly !== lastSentY || anim !== lastSentAnim) {
+            mp.sendMove({
+              x:     lx,
+              y:     ly,
+              anim:  anim,
+              frame: Number(localP.sprite.frame.name),
+            });
+            lastSentX    = lx;
+            lastSentY    = ly;
+            lastSentAnim = anim;
+          }
+
           updateLocalPlayer(localP, delta);
           playerMgr.interpolate(delta);
         });
