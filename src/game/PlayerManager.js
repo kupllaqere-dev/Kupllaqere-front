@@ -11,18 +11,12 @@ export const FRAME = {
   RIGHT:       5,
 };
 
-// Snapshot interpolation render delay (ms). 100 ms keeps us behind by one
-// network tick so we always have two bracketing snapshots to interpolate.
-const RENDER_DELAY_MS  = 100;
-const MAX_BUFFER_AGE_MS = 1000;
-const SCALE_LERP_RATE  = 18;
-
-export { RENDER_DELAY_MS };
+const MOVE_LERP_RATE  = 25;
+const SCALE_LERP_RATE = 18;
 
 export default class PlayerManager {
   constructor() {
     this.otherPlayers = new Map();
-    // Set by Game.jsx after create() — used to build avatar textures on spawn.
     this.worldAvatarSystem = null;
   }
 
@@ -63,7 +57,6 @@ export default class PlayerManager {
       .setOrigin(0.5, 0)
       .setDepth(data.y + 1);
 
-    const seedTime = performance.now() - RENDER_DELAY_MS;
     this.otherPlayers.set(data.id, {
       sprite,
       shadowImg,
@@ -72,28 +65,24 @@ export default class PlayerManager {
       userId:       data.userId       || null,
       bio:          data.bio          || "",
       selectedBadge: data.selectedBadge || null,
-      buffer:       [{ t: seedTime, x: data.x, y: data.y }],
+      targetX:      data.x,
+      targetY:      data.y,
       lastAnim:     null,
       lastFrame:    FRAME.FRONT,
-      lastRenderX:  data.x,
-      lastRenderY:  data.y,
     });
 
     if (data.selectedBadge) this.updateBadge(scene, data.id, data.selectedBadge);
 
-    // Build composited avatar texture asynchronously. Until ready the sprite
-    // shows the base character, then swaps seamlessly.
     const avatarSys = this.worldAvatarSystem;
     if (avatarSys) {
       avatarSys.rebuild(data.id, data.gender, data.outfit || {}).then(key => {
-        if (!sprite.scene) return; // player left before texture was ready
+        if (!sprite.scene) return;
         sprite.setTexture(key);
         sprite._animKey = (name) => avatarSys.animKey(data.id, name);
       }).catch(() => {});
     }
   }
 
-  // Re-composites the avatar for a player when their outfit changes.
   applyOutfit(id, gender, outfit) {
     const other    = this.otherPlayers.get(id);
     const avatarSys = this.worldAvatarSystem;
@@ -112,26 +101,14 @@ export default class PlayerManager {
     other.badgeIcon = setNameBadge(scene, other.badgeIcon, other.nameText, badge);
   }
 
-  // Record an authoritative server snapshot for a remote player.
-  // `data.anim` should be a normalized animation name ("walkLeft", etc.), not
-  // a full Phaser key — the receiving sprite translates via sprite._animKey.
-  pushSnapshot(data, receiveTimeMs) {
+  pushSnapshot(data) {
     const other = this.otherPlayers.get(data.id);
     if (!other) return;
 
-    const t    = receiveTimeMs ?? performance.now();
-    const last = other.buffer[other.buffer.length - 1];
-    if (last && t <= last.t) return;
-    if (typeof data.t === "number" && other.lastSenderT !== undefined && data.t < other.lastSenderT) return;
-    if (typeof data.t === "number") other.lastSenderT = data.t;
-
-    other.buffer.push({ t, x: data.x, y: data.y });
-
-    const cutoff = performance.now() - MAX_BUFFER_AGE_MS;
-    while (other.buffer.length > 2 && other.buffer[0].t < cutoff) other.buffer.shift();
+    other.targetX = data.x;
+    other.targetY = data.y;
 
     if (data.anim) {
-      // Translate normalized name → full Phaser anim key for this sprite.
       const animKey = other.sprite._animKey?.(data.anim) ?? null;
       if (animKey && (other.sprite.anims.currentAnim?.key !== animKey || !other.sprite.anims.isPlaying)) {
         other.sprite.play(animKey);
@@ -149,29 +126,12 @@ export default class PlayerManager {
   }
 
   interpolate(renderDeltaMs) {
-    const now        = performance.now();
-    const renderTime = now - RENDER_DELAY_MS;
+    const moveAlpha  = 1 - Math.exp(-MOVE_LERP_RATE  * (renderDeltaMs / 1000));
     const scaleAlpha = 1 - Math.exp(-SCALE_LERP_RATE * (renderDeltaMs / 1000));
 
     for (const [, other] of this.otherPlayers) {
-      const buf = other.buffer;
-      if (buf.length === 0) continue;
-
-      let x, y;
-      if (buf.length === 1 || renderTime <= buf[0].t) {
-        x = buf[0].x; y = buf[0].y;
-      } else if (renderTime >= buf[buf.length - 1].t) {
-        x = buf[buf.length - 1].x; y = buf[buf.length - 1].y;
-      } else {
-        let a = buf[0], b = buf[1];
-        for (let i = 1; i < buf.length; i++) {
-          if (buf[i].t >= renderTime) { a = buf[i - 1]; b = buf[i]; break; }
-        }
-        const span  = b.t - a.t;
-        const alpha = span > 0 ? (renderTime - a.t) / span : 0;
-        x = a.x + (b.x - a.x) * alpha;
-        y = a.y + (b.y - a.y) * alpha;
-      }
+      const x = other.sprite.x + (other.targetX - other.sprite.x) * moveAlpha;
+      const y = other.sprite.y + (other.targetY - other.sprite.y) * moveAlpha;
 
       const targetScale = perspectiveScale(y) * genderScale(other.sprite.gender);
       const curScale    = other.sprite.currentScale ?? targetScale;

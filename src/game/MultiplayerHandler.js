@@ -88,7 +88,7 @@ export default class MultiplayerHandler {
     });
 
     socket.onPlayerMove?.((data) => {
-      this.playerManager?.pushSnapshot(data, performance.now());
+      this.playerManager?.pushSnapshot(data);
     });
 
     socket.onPlayerOutfit((data) => {
