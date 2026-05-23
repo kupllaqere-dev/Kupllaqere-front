@@ -146,7 +146,7 @@ const Overlay = styled.div`
 
 const Box = styled.div`
   position: relative;
-  width: min(560px, 92vw);
+  width: min(560px, 92%);
   background: #49494d;
   border-radius: 14px;
   padding: 28px;

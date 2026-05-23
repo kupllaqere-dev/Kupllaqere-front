@@ -5,8 +5,31 @@ import Login from "./components/Login";
 import CharacterSetup from "./components/CharacterSetup";
 import { updateBio, updateBadge, getMe } from "./api/auth";
 import supabase from "./lib/supabase";
+import { useScaling } from "./hooks/useScaling";
+
+const viewportStyle = {
+  position: "fixed",
+  inset: 0,
+  background: "#000",
+  overflow: "hidden",
+};
+
+function gameRootStyle(scale) {
+  return {
+    width: 1920,
+    height: 1080,
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: `translate(-50%, -50%) scale(${scale})`,
+    transformOrigin: "center center",
+    overflow: "hidden",
+    willChange: "transform",
+  };
+}
 
 function App() {
+  const scale = useScaling();
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("fv_user");
     const token = localStorage.getItem("fv_token");
@@ -127,37 +150,39 @@ function App() {
   }
 
   return (
-    <>
-      <HUD
-        onLogout={handleLogout}
-        equipped={equipped}
-        onEquip={handleEquip}
-        onUnequip={handleUnequip}
-        onApplyLookBatch={handleApplyLookBatch}
-        playerName={user?.name}
-        gender={user?.gender}
-        outfit={outfit}
-        bio={user?.bio || ""}
-        onSaveBio={handleSaveBio}
-        selectedBadge={user?.selectedBadge || null}
-        onSaveBadge={handleSaveBadge}
-        currentUserId={user?.id || null}
-        socket={gameSocket}
-        coins={user?.coins ?? 0}
-        gems={user?.gems ?? 0}
-        level={user?.level ?? 1}
-        onPurchaseComplete={handlePurchaseComplete}
-      />
-      <Game
-        user={user}
-        onEquippedChange={setEquipped}
-        onOutfitChange={setOutfit}
-        equipRef={equipRef}
-        unequipRef={unequipRef}
-        applyLookBatchRef={applyLookBatchRef}
-        onSocketReady={setGameSocket}
-      />
-    </>
+    <div style={viewportStyle}>
+      <div style={gameRootStyle(scale)}>
+        <Game
+          user={user}
+          onEquippedChange={setEquipped}
+          onOutfitChange={setOutfit}
+          equipRef={equipRef}
+          unequipRef={unequipRef}
+          applyLookBatchRef={applyLookBatchRef}
+          onSocketReady={setGameSocket}
+        />
+        <HUD
+          onLogout={handleLogout}
+          equipped={equipped}
+          onEquip={handleEquip}
+          onUnequip={handleUnequip}
+          onApplyLookBatch={handleApplyLookBatch}
+          playerName={user?.name}
+          gender={user?.gender}
+          outfit={outfit}
+          bio={user?.bio || ""}
+          onSaveBio={handleSaveBio}
+          selectedBadge={user?.selectedBadge || null}
+          onSaveBadge={handleSaveBadge}
+          currentUserId={user?.id || null}
+          socket={gameSocket}
+          coins={user?.coins ?? 0}
+          gems={user?.gems ?? 0}
+          level={user?.level ?? 1}
+          onPurchaseComplete={handlePurchaseComplete}
+        />
+      </div>
+    </div>
   );
 }
 

@@ -3,9 +3,13 @@ import Phaser from "phaser";
 export function createPhaserGame(parent, sceneFunctions) {
   return new Phaser.Game({
     type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: 1920,
+    height: 1080,
     parent,
+    scale: {
+      mode: Phaser.Scale.NONE,
+      autoCenter: Phaser.Scale.NO_CENTER,
+    },
     // roundPixels:true was the primary source of the perspective-scale jitter
     // when moving vertically — with origin (0.5, 1.0), a 0.002/frame scale
     // delta shifts the sprite's rounded top edge by ±1px. It also caused

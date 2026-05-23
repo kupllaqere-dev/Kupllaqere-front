@@ -591,10 +591,10 @@ const Container = styled.div`
   background:${C.surface};
   border:1px solid ${C.border};
   border-radius:22px;
-  width:min(96vw,1400px);
-  max-width:98vw;
-  max-height:92vh;
-  height:92vh;
+  width:min(96%,1400px);
+  max-width:98%;
+  max-height:92%;
+  height:92%;
   display:flex;flex-direction:column;
   box-shadow:0 32px 80px rgba(80,40,10,0.18),0 4px 16px rgba(80,40,10,0.1),inset 0 1px 0 rgba(255,255,255,0.9);
   overflow:hidden;

@@ -1,16 +1,14 @@
 import styled from "styled-components";
 
 export const Container = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  width: 1920px;
+  height: 1080px;
+  position: relative;
 `;
 
 export const GameWrapper = styled.div`
-  width: 100vw;
-  height: 100vh;
+  width: 1920px;
+  height: 1080px;
   overflow: hidden;
 `;
 

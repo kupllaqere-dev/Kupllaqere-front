@@ -207,7 +207,7 @@ const Modal = styled.div`
   border: 1px solid #ffffff22;
   border-radius: 14px;
   padding: 28px 28px 24px;
-  width: 480px; max-width: 95vw; max-height: 90vh;
+  width: 480px; max-width: 95%; max-height: 90%;
   overflow-y: auto;
   box-shadow: 0 8px 40px rgba(0,0,0,0.6);
   color: #fff;

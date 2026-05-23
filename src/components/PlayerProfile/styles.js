@@ -80,10 +80,8 @@ export const ProfileWrapper = styled.div`
   --pp-gradCard:    linear-gradient(to top, #ddd0f8, #f8f3ff);
   --pp-gradInner:   linear-gradient(to top, #ede5ff, #ffffff);
   position: relative;
-  width: min(96vw, 1400px);
-  max-width: 98vw;
-  height: 92vh;
-  max-height: 92vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: row;
   overflow: hidden;
@@ -1834,6 +1832,11 @@ export const ClubViewBtn = styled.button`
 
 export const ProfileOuter = styled.div`
   position: relative;
+  width: min(96%, 1400px);
+  max-width: 98%;
+  height: 92%;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const GlobalCloseBtn = styled.button`

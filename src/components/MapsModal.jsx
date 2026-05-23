@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import styled, { keyframes, css } from "styled-components";
 
 const fadeIn = keyframes`
@@ -20,10 +19,10 @@ const Overlay = styled.div`
 
 const Modal = styled.div`
   position: relative;
-  width: min(96vw, 1400px);
-  max-width: 98vw;
-  height: 92vh;
-  max-height: 92vh;
+  width: min(96%, 1400px);
+  max-width: 98%;
+  height: 92%;
+  max-height: 92%;
   border-radius: 22px;
   overflow: hidden;
   animation: ${fadeIn} 0.22s ease;
@@ -140,7 +139,7 @@ export default function MapsModal({ onClose }) {
     setActiveSide(e.clientX - rect.left < rect.width / 2 ? "day" : "night");
   };
 
-  return createPortal(
+  return (
     <Overlay onClick={onClose}>
       <Modal
         $side={activeSide}
@@ -182,7 +181,6 @@ export default function MapsModal({ onClose }) {
 
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </Modal>
-    </Overlay>,
-    document.body
+    </Overlay>
   );
 }

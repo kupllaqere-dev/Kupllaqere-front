@@ -102,8 +102,8 @@ const Container = styled.div`
   background:${C.surface};
   border:1px solid ${C.border};
   border-radius:18px;
-  width:min(92vw,480px);
-  max-height:80vh;
+  width:min(92%,480px);
+  max-height:80%;
   display:flex;flex-direction:column;
   box-shadow:0 24px 64px rgba(80,30,180,0.18),inset 0 1px 0 rgba(255,255,255,0.9);
   overflow:hidden;

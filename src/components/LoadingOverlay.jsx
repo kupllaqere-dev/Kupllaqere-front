@@ -62,7 +62,7 @@ const Title = styled.div`
 `;
 
 const BarTrack = styled.div`
-  width: min(420px, 70vw);
+  width: min(420px, 70%);
   height: 14px;
   background: #ffffff18;
   border: 1px solid #ffffff33;
