@@ -13,6 +13,21 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [showMaps, setShowMaps] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [viewingProfile, setViewingProfile] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
 
   const refreshUnread = useCallback(() => {
     fetchUnreadCount()
@@ -127,6 +142,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
 
           <S.Bubble onClick={() => setShowMaps(true)} title="Maps" style={{ fontSize: "26px" }}>
             🗺
+          </S.Bubble>
+
+          <S.Bubble onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} style={{ fontSize: "18px" }}>
+            {isFullscreen ? "⤡" : "⤢"}
           </S.Bubble>
 
           <S.ProfileWrapper>
