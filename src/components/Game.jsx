@@ -152,6 +152,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         });
 
         mp.setGameObjects(this, avatarSys, playerMgr);
+        mp.localSprite = localP.sprite;
         mp.join(user?.name || "Player", user?.id, gender);
         mp.wire();
 
@@ -182,6 +183,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           }
 
           updateLocalPlayer(localP, delta);
+          mp.localChatBubble.updatePosition(localP.sprite);
           playerMgr.interpolate(delta);
         });
 

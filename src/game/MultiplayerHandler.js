@@ -1,3 +1,5 @@
+import ChatBubbleManager from "./ChatBubbleManager.js";
+
 export default class MultiplayerHandler {
   constructor(socketManager, callbacks) {
     this.socket  = socketManager;
@@ -10,6 +12,8 @@ export default class MultiplayerHandler {
     this.scene             = null;
     this.worldAvatarSystem = null;
     this.playerManager     = null;
+    this.localSprite       = null;
+    this.localChatBubble   = new ChatBubbleManager();
   }
 
   // Called from Phaser create() once the scene is ready.
@@ -110,8 +114,12 @@ export default class MultiplayerHandler {
 
     socket.onChatMessage((msg) => {
       cb.setChatMessages(prev => [...prev.slice(-29), msg]);
-      if (msg.id && this.scene && this.playerManager) {
-        this.playerManager.showChatBubble(this.scene, msg.id, msg.text);
+      if (!this.scene || !msg.text) return;
+      const senderId = msg.from?.id;
+      if (senderId === socket.id) {
+        if (this.localSprite) this.localChatBubble.show(this.scene, this.localSprite, msg.text);
+      } else {
+        this.playerManager?.showChatBubble(this.scene, senderId, msg.text);
       }
     });
 

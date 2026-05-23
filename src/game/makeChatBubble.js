@@ -41,5 +41,5 @@ export default function makeChatBubble(scene, x, y, text) {
 
   txt.setPosition(-txt.width / 2, -bh + PAD_Y);
 
-  return scene.add.container(x, y, [gfx, txt]).setDepth(100);
+  return scene.add.container(x, y, [gfx, txt]).setDepth(2000);
 }

@@ -10,7 +10,7 @@ import { useScaling } from "./hooks/useScaling";
 const viewportStyle = {
   position: "fixed",
   inset: 0,
-  background: "#000",
+  background: "url('/assets/menus/bg.png') center / cover no-repeat #000",
   overflow: "hidden",
 };
 
