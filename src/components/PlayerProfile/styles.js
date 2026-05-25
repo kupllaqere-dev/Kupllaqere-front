@@ -3358,7 +3358,7 @@ export const ArrowBtn = styled.button`
   justify-content: center;
   position: relative;
   overflow: hidden;
-  transition: all 0.18s;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s;
   font-family: inherit;
   &::before {
     content: '';
@@ -3376,7 +3376,7 @@ export const ArrowBtn = styled.button`
     box-shadow: 0 2px 8px rgba(var(--pp-accent-rgb),0.12);
   }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
-  &:active:not(:disabled) { transform: scale(0.9); }
+  &:active:not(:disabled) { background: rgba(var(--pp-accent-rgb),0.22); box-shadow: none; }
   &:disabled { opacity: 0.25; cursor: not-allowed; }
 `;
 

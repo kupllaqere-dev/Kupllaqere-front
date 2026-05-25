@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
 import MapsModal from "./MapsModal";
+import AngelModal from "./AngelModal";
 import PlayerThumbnail from "./PlayerThumbnail";
 import { fetchUnreadCount } from "../api/mail";
 import { lookupUser } from "../api/auth";
@@ -12,6 +13,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
+  const [showAngel, setShowAngel] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [viewingProfile, setViewingProfile] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -108,6 +110,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         />
       )}
       {showMaps && <MapsModal onClose={() => setShowMaps(false)} />}
+      {showAngel && <AngelModal onClose={() => setShowAngel(false)} />}
       {showStore && (
         <StoreModal
           onClose={() => setShowStore(false)}
@@ -128,7 +131,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <S.NavGroup>
           <S.NavBubbleWrapper>
             <S.NavButton onClick={() => setShowProfile(true)}>
-              <img src="/icons/profile.png" />
+              <img src="/assets/menus/about.png" />
               <span>Profile</span>
             </S.NavButton>
             {unreadCount > 0 && (
@@ -145,34 +148,42 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
             <span className="nav-emoji">🗺</span>
             <span>Maps</span>
           </S.NavButton>
+
+          <S.NavButton onClick={() => {}}>
+            <span className="nav-emoji">📜</span>
+            <span>Quests</span>
+          </S.NavButton>
         </S.NavGroup>
 
-        <S.PlayerBox>
-          <S.PlayerBoxTop>
-            <S.AvatarFrame>
-              <PlayerThumbnail playerName={playerName} gender={gender} outfit={outfit} size={52} />
-            </S.AvatarFrame>
-            <S.PlayerInfo>
-              <S.PlayerName>{playerName || "Player"}</S.PlayerName>
-              <S.LevelSection>
-                <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
-                <S.LevelTrack>
-                  <S.LevelFill style={{ width: "35%" }} />
-                </S.LevelTrack>
-              </S.LevelSection>
-            </S.PlayerInfo>
-          </S.PlayerBoxTop>
-          <S.CurrencyRow>
-            <S.Currency>
-              <img src="/icons/Nectar.png" alt="coins" />
-              <span>{(coins ?? 0).toLocaleString()}</span>
-            </S.Currency>
-            <S.Currency>
-              <img src="/icons/Lis.png" alt="gems" />
-              <span>{(gems ?? 0).toLocaleString()}</span>
-            </S.Currency>
-          </S.CurrencyRow>
-        </S.PlayerBox>
+        <S.PlayerBoxWrapper>
+          <S.PlayerBox>
+            <S.PlayerBoxTop>
+              <S.AvatarFrame>
+                <PlayerThumbnail playerName={playerName} gender={gender} outfit={outfit} size={52} />
+              </S.AvatarFrame>
+              <S.PlayerInfo>
+                <S.PlayerName>{playerName || "Player"}</S.PlayerName>
+                <S.LevelSection>
+                  <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
+                  <S.LevelTrack>
+                    <S.LevelFill style={{ width: "35%" }} />
+                  </S.LevelTrack>
+                </S.LevelSection>
+              </S.PlayerInfo>
+            </S.PlayerBoxTop>
+            <S.CurrencyRow>
+              <S.Currency>
+                <img src="/icons/Nectar.png" alt="coins" />
+                <span>{(coins ?? 0).toLocaleString()}</span>
+              </S.Currency>
+              <S.Currency>
+                <img src="/icons/Lis.png" alt="gems" />
+                <span>{(gems ?? 0).toLocaleString()}</span>
+              </S.Currency>
+            </S.CurrencyRow>
+          </S.PlayerBox>
+          <S.AngelStrip type="button" onClick={() => setShowAngel(true)}>✦ Become an Angel</S.AngelStrip>
+        </S.PlayerBoxWrapper>
 
         <S.SettingsWrapper>
           {settingsOpen && (
@@ -182,7 +193,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           )}
           <S.BottomButtons>
             <S.SettingsBtn onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
-              <span style={{ fontSize: "20px", color: "#ccc" }}>{isFullscreen ? "⤡" : "⤢"}</span>
+              <span style={{ fontSize: "20px", color: "#fff" }}>{isFullscreen ? "⤡" : "⤢"}</span>
             </S.SettingsBtn>
             <S.SettingsBtn onClick={() => setSettingsOpen((prev) => !prev)}>
               <img src="/icons/settings.png" />

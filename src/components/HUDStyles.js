@@ -1,4 +1,9 @@
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
+
+const goldPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 200, 40, 0.5), 0 0 20px rgba(255, 180, 0, 0.25); opacity: 0.88; text-shadow: 0 0 4px rgba(255,255,255,0.3); }
+  50%       { box-shadow: 0 0 18px rgba(255, 210, 60, 0.95), 0 0 40px rgba(255, 180, 0, 0.6), 0 0 60px rgba(255, 160, 0, 0.3); opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.85); }
+`;
 
 export const Container = styled.div`
   position: absolute;
@@ -24,11 +29,13 @@ export const LogoWrapper = styled.div`
 
 export const NavGroup = styled.div`
   position: absolute;
-  top: 100px;
-  left: 12px;
+  top: 12px;
+  left: 100px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  height: 80px;
   pointer-events: all;
 `;
 
@@ -40,61 +47,107 @@ export const NavBubbleWrapper = styled.div`
 export const NavButton = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 14px;
-  min-width: 130px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, rgba(28, 28, 28, 0.88), rgba(18, 18, 18, 0.88));
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(90, 40, 180, 0.38), rgba(50, 15, 120, 0.45));
+  backdrop-filter: blur(16px);
+  border: 1px solid #fff;
+  box-shadow:
+    0 4px 20px rgba(70, 20, 180, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   cursor: pointer;
-  transition: all 0.18s ease;
-  color: #e8e8e8;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
+  transition: all 0.2s ease;
+  color: #fff;
+
+  span {
+    display: none;
+  }
 
   img {
-    width: 22px;
-    height: 22px;
-    filter: brightness(1.8);
-    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    filter: brightness(0) invert(1);
   }
 
   .nav-emoji {
-    font-size: 18px;
+    display: flex;
+    font-size: 22px;
     line-height: 1;
-    flex-shrink: 0;
   }
 
   &:hover {
-    background: linear-gradient(145deg, rgba(42, 42, 42, 0.92), rgba(28, 28, 28, 0.92));
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
-    transform: translateX(4px);
-    color: #fff;
+    background: linear-gradient(145deg, rgba(110, 55, 210, 0.5), rgba(70, 25, 160, 0.55));
+    border-color: #fff;
+    box-shadow:
+      0 6px 28px rgba(90, 30, 220, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+    transform: scale(1.06);
   }
 
   &:active {
-    transform: translateX(2px) scale(0.97);
+    transform: scale(0.94);
   }
 `;
 
-export const PlayerBox = styled.div`
+export const PlayerBoxWrapper = styled.div`
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(160deg, rgba(22, 22, 22, 0.9), rgba(14, 14, 14, 0.9));
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 250px;
+  pointer-events: all;
+  border-radius: 18px;
+`;
+
+export const PlayerBox = styled.div`
+  background: linear-gradient(160deg, rgba(80, 35, 170, 0.42), rgba(45, 12, 120, 0.5));
+  backdrop-filter: blur(18px);
+  border: 1px solid #fff;
+  border-radius: 18px;
   padding: 12px 14px;
-  min-width: 210px;
   display: flex;
   flex-direction: column;
   gap: 0;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
-  pointer-events: all;
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    0 6px 30px rgba(70, 20, 180, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+`;
+
+export const AngelStrip = styled.button`
+  background: rgba(190, 138, 12, 0.92);
+  border: 1px solid rgba(255, 210, 80, 0.65);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin: 0 10px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  animation: ${goldPulse} 2s ease-in-out infinite;
+
+  &:hover {
+    animation: none;
+    background: rgba(215, 158, 18, 0.96);
+    box-shadow: 0 0 14px rgba(255, 210, 60, 0.6);
+    opacity: 1;
+  }
+
+  &:active {
+    background: linear-gradient(90deg, rgba(220, 160, 40, 0.85), rgba(255, 195, 50, 0.9));
+  }
 `;
 
 export const PlayerBoxTop = styled.div`
@@ -107,10 +160,10 @@ export const AvatarFrame = styled.div`
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(180, 120, 255, 0.4);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 14px rgba(123, 47, 247, 0.25);
+    0 0 0 1px rgba(180, 120, 255, 0.12),
+    0 0 16px rgba(123, 47, 247, 0.4);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -127,7 +180,7 @@ export const PlayerInfo = styled.div`
 `;
 
 export const PlayerName = styled.div`
-  color: #fff;
+  color: rgba(240, 225, 255, 0.97);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
@@ -164,20 +217,28 @@ export const LevelFill = styled.div`
 `;
 
 export const CurrencyRow = styled.div`
+  position: relative;
   display: flex;
   gap: 10px;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
   width: 100%;
   justify-content: center;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 2%; right: 2%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45) 30%, rgba(255, 255, 255, 0.45) 70%, transparent);
+  }
 `;
 
 export const Currency = styled.div`
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #e8e8e8;
+  color: rgba(225, 205, 255, 0.9);
   font-size: 12px;
   font-weight: 600;
 
@@ -208,26 +269,33 @@ export const SettingsBtn = styled.div`
   width: 50px;
   height: 50px;
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(28, 28, 28, 0.9), rgba(18, 18, 18, 0.9));
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(145deg, rgba(90, 40, 180, 0.38), rgba(50, 15, 120, 0.45));
+  backdrop-filter: blur(16px);
+  border: 1px solid #fff;
+  box-shadow:
+    0 4px 20px rgba(70, 20, 180, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.2s ease;
 
   img {
     width: 26px;
     height: 26px;
-    filter: brightness(1.8);
+    filter: brightness(0) invert(1);
   }
 
   &:hover {
-    background: linear-gradient(145deg, rgba(42, 42, 42, 0.95), rgba(28, 28, 28, 0.95));
+    background: linear-gradient(145deg, rgba(110, 55, 210, 0.5), rgba(70, 25, 160, 0.55));
+    border-color: #fff;
+    box-shadow:
+      0 6px 28px rgba(90, 30, 220, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
     transform: scale(1.06);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
   }
 
   &:active {

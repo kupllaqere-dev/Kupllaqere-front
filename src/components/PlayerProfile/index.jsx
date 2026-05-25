@@ -134,6 +134,9 @@ export default function PlayerProfile({
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const panAtDrag = useRef({ x: 0, y: 0 });
+  const panCurrentRef = useRef({ x: 0, y: 0 });
+  const dragLayerRef = useRef(null);
+  const zoomIndexRef = useRef(zoomIndex);
   const POSE_COUNT = POSE_ORDER.length;
 
   const [lookSelectedEntries, setLookSelectedEntries] = useState({});
@@ -260,13 +263,30 @@ export default function PlayerProfile({
     }).catch(() => { setViewLoaded(true); });
   }, [targetUserId]);
 
+  useEffect(() => { zoomIndexRef.current = zoomIndex; }, [zoomIndex]);
+
   useEffect(() => {
     const onMove = (e) => {
       if (!isDragging.current) return;
-      setPanX(panAtDrag.current.x + (e.clientX - dragStart.current.x));
-      setPanY(panAtDrag.current.y + (e.clientY - dragStart.current.y));
+      const rawX = panAtDrag.current.x + (e.clientX - dragStart.current.x);
+      const rawY = panAtDrag.current.y + (e.clientY - dragStart.current.y);
+      const viewport = dragLayerRef.current?.parentElement;
+      const limitX = viewport ? viewport.clientWidth * 0.5 : Infinity;
+      const limitY = viewport ? viewport.clientHeight * 0.5 : Infinity;
+      const x = Math.max(-limitX, Math.min(limitX, rawX));
+      const y = Math.max(-limitY, Math.min(limitY, rawY));
+      panCurrentRef.current = { x, y };
+      if (dragLayerRef.current) {
+        dragLayerRef.current.style.transform =
+          `translate(${x}px, ${y}px) scale(${ZOOM_LEVELS[zoomIndexRef.current]})`;
+      }
     };
-    const onUp = () => { isDragging.current = false; };
+    const onUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      setPanX(panCurrentRef.current.x);
+      setPanY(panCurrentRef.current.y);
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
@@ -298,6 +318,7 @@ export default function PlayerProfile({
     isDragging.current = true;
     dragStart.current = { x: e.clientX, y: e.clientY };
     panAtDrag.current = { x: panX, y: panY };
+    panCurrentRef.current = { x: panX, y: panY };
     e.preventDefault();
   }, [panX, panY]);
 
@@ -969,10 +990,8 @@ export default function PlayerProfile({
                 onMouseDown={onViewportMouseDown}
                 style={{ cursor: "grab" }}
               >
-                <AvatarCanvas
-                  gender={gender || "female"}
-                  outfit={displayOutfit}
-                  poseIndex={poseIndex}
+                <div
+                  ref={dragLayerRef}
                   style={{
                     width: "100%",
                     height: "100%",
@@ -980,7 +999,14 @@ export default function PlayerProfile({
                     transformOrigin: "top center",
                     visibility: viewLoaded ? "visible" : "hidden",
                   }}
-                />
+                >
+                  <AvatarCanvas
+                    gender={gender || "female"}
+                    outfit={displayOutfit}
+                    poseIndex={poseIndex}
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                </div>
               </AvatarViewport>
             </StageContainer>
 

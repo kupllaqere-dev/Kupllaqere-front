@@ -330,6 +330,7 @@ const MsgContent = styled.div`
 `;
 
 const MsgSender = styled.span`
+  display: block;
   font-size: 12.5px;
   font-weight: 700;
   color: ${p => {
@@ -344,7 +345,7 @@ const MsgSender = styled.span`
     if (p.$mode === "clan")    return CBLUE_SHADOW;
     return p.$self ? "0 0 10px rgba(74,222,128,0.35)" : "0 0 10px rgba(147,197,253,0.35)";
   }};
-  margin-right: 5px;
+  margin-bottom: 0;
 `;
 
 const MsgText = styled.span`
@@ -1262,7 +1263,7 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
                               {msg.from?.name || "???"}
                             </MsgSender>
                             {msg.text?.startsWith("https://static.klipy.com")
-                              ? <img src={msg.text} alt="GIF" style={{ maxWidth: 200, maxHeight: 160, borderRadius: 8, display: "block", marginTop: 3 }} />
+                              ? <img src={msg.text} alt="GIF" style={{ maxWidth: 200, maxHeight: 160, borderRadius: 8, display: "block", marginTop: 3 }} onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })} />
                               : <MsgText $mode={msgMode}>{msg.text}</MsgText>
                             }
                           </MsgContent>
