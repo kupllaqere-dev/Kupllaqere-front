@@ -128,50 +128,46 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           <img src="/Logo.png" className="logo-img" />
         </S.LogoWrapper>
 
-        <S.NavGroup>
-          <S.NavBubbleWrapper>
-            <S.NavButton onClick={() => setShowProfile(true)}>
-              <img src="/assets/menus/about.png" />
-              <span>Profile</span>
+        <S.TopBar>
+          <S.SidePanel>
+            <S.NavBubbleWrapper>
+              <S.NavButton onClick={() => setShowProfile(true)}>
+                <img src="/assets/menus/about.png" />
+                <span>Profile</span>
+              </S.NavButton>
+              {unreadCount > 0 && (
+                <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
+              )}
+            </S.NavBubbleWrapper>
+            <S.NavButton onClick={() => setShowStore(true)}>
+              <img src="/icons/shop.png" />
+              <span>Store</span>
             </S.NavButton>
-            {unreadCount > 0 && (
-              <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
-            )}
-          </S.NavBubbleWrapper>
+            <S.NavButton onClick={() => setShowMaps(true)}>
+              <span className="nav-emoji">🗺</span>
+              <span>Maps</span>
+            </S.NavButton>
+            <S.NavButton onClick={() => {}}>
+              <span className="nav-emoji">📜</span>
+              <span>Quests</span>
+            </S.NavButton>
+          </S.SidePanel>
 
-          <S.NavButton onClick={() => setShowStore(true)}>
-            <img src="/icons/shop.png" />
-            <span>Store</span>
-          </S.NavButton>
+          <S.PlayerCenter>
+            <S.AvatarFrame>
+              <PlayerThumbnail playerName={playerName} gender={gender} outfit={outfit} size={70} />
+            </S.AvatarFrame>
+            <S.PlayerName>{playerName || "Player"}</S.PlayerName>
+            <S.LevelSection>
+              <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
+              <S.LevelTrack>
+                <S.LevelFill style={{ width: "35%" }} />
+              </S.LevelTrack>
+            </S.LevelSection>
+          </S.PlayerCenter>
 
-          <S.NavButton onClick={() => setShowMaps(true)}>
-            <span className="nav-emoji">🗺</span>
-            <span>Maps</span>
-          </S.NavButton>
-
-          <S.NavButton onClick={() => {}}>
-            <span className="nav-emoji">📜</span>
-            <span>Quests</span>
-          </S.NavButton>
-        </S.NavGroup>
-
-        <S.PlayerBoxWrapper>
-          <S.PlayerBox>
-            <S.PlayerBoxTop>
-              <S.AvatarFrame>
-                <PlayerThumbnail playerName={playerName} gender={gender} outfit={outfit} size={52} />
-              </S.AvatarFrame>
-              <S.PlayerInfo>
-                <S.PlayerName>{playerName || "Player"}</S.PlayerName>
-                <S.LevelSection>
-                  <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
-                  <S.LevelTrack>
-                    <S.LevelFill style={{ width: "35%" }} />
-                  </S.LevelTrack>
-                </S.LevelSection>
-              </S.PlayerInfo>
-            </S.PlayerBoxTop>
-            <S.CurrencyRow>
+          <S.SidePanel>
+            <S.CurrencyCol>
               <S.Currency>
                 <img src="/icons/Nectar.png" alt="coins" />
                 <span>{(coins ?? 0).toLocaleString()}</span>
@@ -180,10 +176,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                 <img src="/icons/Lis.png" alt="gems" />
                 <span>{(gems ?? 0).toLocaleString()}</span>
               </S.Currency>
-            </S.CurrencyRow>
-          </S.PlayerBox>
-          <S.AngelStrip type="button" onClick={() => setShowAngel(true)}>✦ Become an Angel</S.AngelStrip>
-        </S.PlayerBoxWrapper>
+            </S.CurrencyCol>
+          </S.SidePanel>
+        </S.TopBar>
 
         <S.SettingsWrapper>
           {settingsOpen && (

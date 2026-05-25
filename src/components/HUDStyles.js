@@ -27,29 +27,132 @@ export const LogoWrapper = styled.div`
   }
 `;
 
-export const NavGroup = styled.div`
+export const TopBar = styled.div`
   position: absolute;
-  top: 12px;
-  left: 100px;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  flex-direction: row;
+  align-items: flex-start;
+  pointer-events: none;
+`;
+
+export const SidePanel = styled.div`
+  background: linear-gradient(160deg, rgba(80, 35, 170, 0.42), rgba(45, 12, 120, 0.5));
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 16px;
+  width: 240px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: all;
+  gap: 6px;
+  box-shadow:
+    0 6px 30px rgba(70, 20, 180, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+`;
+
+export const PlayerCenter = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 10px;
+  pointer-events: none;
+`;
+
+export const AvatarFrame = styled.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid rgba(180, 120, 255, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(180, 120, 255, 0.15),
+    0 0 20px rgba(123, 47, 247, 0.5);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+`;
+
+export const PlayerName = styled.div`
+  color: rgba(240, 225, 255, 0.97);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  margin-bottom: 2px;
+`;
+
+export const LevelSection = styled.div`
+  display: flex;
   align-items: center;
   gap: 6px;
-  height: 80px;
-  pointer-events: all;
+`;
+
+export const PlayerLevel = styled.div`
+  color: #f0c040;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+`;
+
+export const LevelTrack = styled.div`
+  width: 80px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+`;
+
+export const LevelFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #f0c040, #f5a623);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+`;
+
+export const CurrencyCol = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+`;
+
+export const Currency = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(225, 205, 255, 0.9);
+  font-size: 13px;
+  font-weight: 600;
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
 `;
 
 export const NavBubbleWrapper = styled.div`
   position: relative;
   display: inline-flex;
+  flex-shrink: 0;
 `;
 
 export const NavButton = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
   background: linear-gradient(145deg, rgba(90, 40, 180, 0.38), rgba(50, 15, 120, 0.45));
   backdrop-filter: blur(16px);
@@ -61,20 +164,21 @@ export const NavButton = styled.div`
   cursor: pointer;
   transition: all 0.2s ease;
   color: #fff;
+  flex-shrink: 0;
 
   span {
     display: none;
   }
 
   img {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     filter: brightness(0) invert(1);
   }
 
   .nav-emoji {
     display: flex;
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
   }
 
@@ -90,161 +194,6 @@ export const NavButton = styled.div`
 
   &:active {
     transform: scale(0.94);
-  }
-`;
-
-export const PlayerBoxWrapper = styled.div`
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  flex-direction: column;
-  min-width: 250px;
-  pointer-events: all;
-  border-radius: 18px;
-`;
-
-export const PlayerBox = styled.div`
-  background: linear-gradient(160deg, rgba(80, 35, 170, 0.42), rgba(45, 12, 120, 0.5));
-  backdrop-filter: blur(18px);
-  border: 1px solid #fff;
-  border-radius: 18px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  position: relative;
-  z-index: 1;
-  box-shadow:
-    0 6px 30px rgba(70, 20, 180, 0.35),
-    0 8px 16px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
-`;
-
-export const AngelStrip = styled.button`
-  background: rgba(190, 138, 12, 0.92);
-  border: 1px solid rgba(255, 210, 80, 0.65);
-  border-top: none;
-  border-radius: 0 0 12px 12px;
-  margin: 0 10px;
-  padding: 6px 14px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  cursor: pointer;
-  text-align: center;
-  font-family: inherit;
-  animation: ${goldPulse} 2s ease-in-out infinite;
-
-  &:hover {
-    animation: none;
-    background: rgba(215, 158, 18, 0.96);
-    box-shadow: 0 0 14px rgba(255, 210, 60, 0.6);
-    opacity: 1;
-  }
-
-  &:active {
-    background: linear-gradient(90deg, rgba(220, 160, 40, 0.85), rgba(255, 195, 50, 0.9));
-  }
-`;
-
-export const PlayerBoxTop = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
-
-export const AvatarFrame = styled.div`
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid rgba(180, 120, 255, 0.4);
-  box-shadow:
-    0 0 0 1px rgba(180, 120, 255, 0.12),
-    0 0 16px rgba(123, 47, 247, 0.4);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-`;
-
-export const PlayerInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-`;
-
-export const PlayerName = styled.div`
-  color: rgba(240, 225, 255, 0.97);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-export const LevelSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-`;
-
-export const PlayerLevel = styled.div`
-  color: #f0c040;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-`;
-
-export const LevelTrack = styled.div`
-  width: 100%;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  overflow: hidden;
-`;
-
-export const LevelFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #f0c040, #f5a623);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-`;
-
-export const CurrencyRow = styled.div`
-  position: relative;
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 8px;
-  width: 100%;
-  justify-content: center;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 2%; right: 2%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45) 30%, rgba(255, 255, 255, 0.45) 70%, transparent);
-  }
-`;
-
-export const Currency = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: rgba(225, 205, 255, 0.9);
-  font-size: 12px;
-  font-weight: 600;
-
-  img {
-    width: 16px;
-    height: 16px;
   }
 `;
 
@@ -337,29 +286,6 @@ export const LogoutButton = styled.button`
   }
 `;
 
-export const FullscreenButton = styled.button`
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #aaa;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 7px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.18s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #ccc;
-    transform: scale(1.04);
-  }
-
-  &:active {
-    transform: scale(0.96);
-  }
-`;
-
 export const NotifBadge = styled.div`
   position: absolute;
   top: -3px;
@@ -412,4 +338,32 @@ export const SearchHint = styled.div`
   font-size: 11px;
   color: ${({ $error }) => ($error ? "#ff7777" : "#888")};
   min-height: 14px;
+`;
+
+export const AngelStrip = styled.button`
+  background: rgba(190, 138, 12, 0.92);
+  border: 1px solid rgba(255, 210, 80, 0.65);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin: 0 10px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  animation: ${goldPulse} 2s ease-in-out infinite;
+
+  &:hover {
+    animation: none;
+    background: rgba(215, 158, 18, 0.96);
+    box-shadow: 0 0 14px rgba(255, 210, 60, 0.6);
+    opacity: 1;
+  }
+
+  &:active {
+    background: linear-gradient(90deg, rgba(220, 160, 40, 0.85), rgba(255, 195, 50, 0.9));
+  }
 `;
