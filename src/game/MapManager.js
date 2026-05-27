@@ -1,6 +1,6 @@
 import { setPerspectiveFromColliders } from "./perspective";
 
-export const MAP_WIDTH = 3000;
+export const MAP_WIDTH = 6272;
 export const MAP_HEIGHT = 1080;
 
 const LAYER_W = 1578;
@@ -17,7 +17,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "mainmap-bg",
-      path: "/assets/maps/mainmap/heaven.png",
+      path: "/assets/maps/ruins/Garden.png",
     },
     colliders: "/assets/maps/mainmap/colliders.json",
   },
@@ -30,7 +30,7 @@ const MAP_CONFIGS = {
     type: "single",
     background: {
       key: "mainmap-bg",
-      path: "/assets/maps/mainmap/heaven.png",
+      path: "/assets/maps/ruins/Garden.png",
     },
     colliders: "/assets/maps/mainmap/colliders.json",
   },
@@ -42,7 +42,7 @@ export function preloadMap(scene) {
   scene.load.image("parallax1", "/assets/maps/parallax/layer1.webp");
   scene.load.image("parallax2", "/assets/maps/parallax/layer2.webp");
   scene.load.image("parallax3", "/assets/maps/parallax/layer3.webp");
-  scene.load.image("mainmap-bg", "/assets/maps/mainmap/heaven.png");
+  scene.load.image("mainmap-bg", "/assets/maps/ruins/Garden.png");
   scene.load.json("colliders", "/assets/maps/mainmap/colliders.json");
 }
 

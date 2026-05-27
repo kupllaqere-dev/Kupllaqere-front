@@ -105,6 +105,47 @@ export default class SocketManager {
     this.socket.on("mail:new", callback);
   }
 
+  // ── Chess ──────────────────────────────────────────
+  sendChessInvite(targetSocketId) {
+    this.socket.emit("chess:invite", { targetSocketId });
+  }
+
+  sendChessDecline(inviterSocketId) {
+    this.socket.emit("chess:decline", { inviterSocketId });
+  }
+
+  sendChessAccept(inviterSocketId) {
+    this.socket.emit("chess:accept", { inviterSocketId });
+  }
+
+  sendChessMove(opponentSocketId, from, to, promotion) {
+    this.socket.emit("chess:move", { opponentSocketId, from, to, promotion });
+  }
+
+  sendChessResign(opponentSocketId) {
+    this.socket.emit("chess:resign", { opponentSocketId });
+  }
+
+  onChessInviteReceived(callback) {
+    this.socket.on("chess:invite:received", callback);
+  }
+
+  onChessDeclineReceived(callback) {
+    this.socket.on("chess:decline:received", callback);
+  }
+
+  onChessAcceptReceived(callback) {
+    this.socket.on("chess:accept:received", callback);
+  }
+
+  onChessMoveReceived(callback) {
+    this.socket.on("chess:move:received", callback);
+  }
+
+  onChessResignReceived(callback) {
+    this.socket.on("chess:resign:received", callback);
+  }
+
   off(event, callback) {
     this.socket.off(event, callback);
   }

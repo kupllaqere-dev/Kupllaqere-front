@@ -21,7 +21,7 @@ const APPEARANCE_SUBS = ["eyes", "eyebrows", "nose", "mouth", "beard"];
 const SPAWN_X = MAP_WIDTH / 2;
 const SPAWN_Y = MAP_HEIGHT * 0.65;
 
-export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady }) {
+export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady, onOnlinePlayersChange }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const mpRef = useRef(null);
@@ -296,6 +296,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   equipRef.current = handleEquip;
   unequipRef.current = handleUnequip;
   if (applyLookBatchRef) applyLookBatchRef.current = handleApplyLookBatch;
+
+  // Propagate onlinePlayers up so App can pass them to HUD for chess invites
+  useEffect(() => {
+    onOnlinePlayersChange?.(onlinePlayers);
+  }, [onlinePlayers, onOnlinePlayersChange]);
 
   const handleSend = useCallback((text) => {
     socketRef.current?.sendChatMessage(text);

@@ -46,6 +46,7 @@ function App() {
   const [equipped, setEquipped] = useState({});
   const [outfit, setOutfit] = useState({});
   const [gameSocket, setGameSocket] = useState(null);
+  const [onlinePlayers, setOnlinePlayers] = useState([]);
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
   const applyLookBatchRef = useRef(null);
@@ -160,6 +161,7 @@ function App() {
           unequipRef={unequipRef}
           applyLookBatchRef={applyLookBatchRef}
           onSocketReady={setGameSocket}
+          onOnlinePlayersChange={setOnlinePlayers}
         />
         <HUD
           onLogout={handleLogout}
@@ -180,6 +182,7 @@ function App() {
           gems={user?.gems ?? 0}
           level={user?.level ?? 1}
           onPurchaseComplete={handlePurchaseComplete}
+          onlinePlayers={onlinePlayers}
         />
       </div>
     </div>

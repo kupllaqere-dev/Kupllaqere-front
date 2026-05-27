@@ -12,7 +12,7 @@ const NAME_BADGE_GAP = 4;
 
 export function badgeTextureKey(name) { return `badge-${name}`; }
 export function baseTextureKey(gender) { return gender === "male" ? "player-male" : "player-female"; }
-export function genderScale(gender) { return gender === "male" ? 1.05 : 0.65; }
+export function genderScale(gender) { return gender === "male" ? 1.2 : 1; }
 
 export function preloadLocalPlayer(scene) {
   scene.load.spritesheet("player-female", BASE_SPRITE_URLS.female, { frameWidth: 510, frameHeight: 900 });
