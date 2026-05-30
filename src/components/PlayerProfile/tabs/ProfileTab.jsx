@@ -1,11 +1,38 @@
-import { useState } from "react";
-import { BIO_MAX, COMMENT_MAX, BADGES, BADGE_RARITY } from "../constants";
+import { useState, useRef } from "react";
+import { BIO_MAX, BADGES, BADGE_RARITY } from "../constants";
 import { formatRelativeTime } from "../utils";
 import { bbcodeToHtml } from "../bbcode";
 import BBCodeEditor from "../BBCodeEditor";
 import PlayerThumbnail from "../../PlayerThumbnail";
+import GuestbookCanvas from "../../Guestbook/GuestbookCanvas";
+import { STICKER_ASSETS } from "../../Guestbook/StickerAssets";
+import {
+  // Layout
+  GBModalHeader, GBBannerTitle, GBCloseBtn,
+  GBTwoCol,
+  GBLeftWrap,
+  GBRightWrap,
+  GBStickerCount,
+  GBCanvasBody,
+  GBTray, GBTrayLabelSection, GBTrayPickerSection, GBTrayLabel, GBCarouselBtn, PickerBtn,
+  // Delete
+  DeletePopover, DeletePopoverText, DeletePopoverName,
+  DeletePopoverActions, DeleteConfirmBtn, DeleteCancelBtn,
+  // Right panel
+  GBRight,
+  GBComposeSectionHeader, GBSectionTitle, GBHelpBtn,
+  GBComposeWrap, GBComposeTextWrap, GBComposeInput,
+  GBComposeBottom, GBCharCounter, GBPostBtn,
+  GBMsgDivider, GBMsgLabel, GBMsgList,
+  GBMsgCard, GBMsgAvatarWrap, GBMsgBody, GBMsgMeta,
+  GBMsgName, GBMsgTime, GBMsgText, GBMsgActions,
+  GBMsgHeart, GBMsgDeleteBtn, GBMsgActionBanner, GBMsgRemoveBtn, GBMsgEmpty,
+  GBRightFooter, GBFooterNote,
+} from "../../Guestbook/styles";
 import {
   ProfileContent, ProfileHeader, HeaderLeft,
+  HeaderThumbnailWrap, HeaderRight, HeaderNameRow, HeaderMemberSince,
+  HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatLabel,
   PlayerName, PlayerNameMark, LevelBadge,
   SectionBlock, SectionHeaderRow, SectionTitle,
   SoulmateEmptyBox, SmEmpty, SoulmateCard, SoulmateHeartBg, SoulmateAvatarWrap,
@@ -21,15 +48,7 @@ import {
   CompanionLevelText, CompanionXPWrap, XPBarOuter, XPBarFill, XPLabelsRow,
   RightPanel, SectionEditBtn,
   BioFooter, BioCounter, BioActions, SecondaryBtn, PrimaryBtn, EmptyText,
-  GBInput, GBEmpty,
-  GBCounter, GuestBookOverlay, GBOverlayClose, GBHeader, GBTitle,
-  GBSubtitle, GBHeaderControls, GBSortBtn, GBPinnedBtn, GBComposeArea, GBComposeRow,
-  GBAvatarPlaceholder, GBComposeInputWrap, GBEmojiBtn, GBPostBtn, GBComposeTools,
-  GBToolBtn, GBOrnamentDivider, GBDividerLine, GBDividerGem, GBOverlayScroll,
-  GBCommentCard, GBCommentInner, GBCommentAvatarCol, GBCommentBody, GBCommentMeta,
-  GBCommentName, GBCommentTime, GBCommentText, GBReactions, GBReactionBtn,
-  GBCommentActions, CommentDeleteBtn, GBMenuDot, GBStatsFooter, GBStat, GBStatLabel,
-  GBStatValue, GBStatDivider, GBLeaveGiftBtn, BioErrorMsg,
+  GuestBookOverlay, GBOverlayClose, GBHeader, GBTitle, BioErrorMsg,
   AboutOverlay, AboutOverlayScroll,
   SidePanelNav, SidePanelBtn, SidePanelBtnIcon, SidePanelBtnImg, SidePanelBtnLabel, SidePanelBtnArrow,
   SidePanelDivider, ClubSection, ClubSectionTitle, ClubCard, ClubAvatar, ClubInfo,
@@ -155,18 +174,37 @@ export default function ProfileTab({
   isSelfView,
   smState, smBusy, smError,
   smSendRequest, smAccept, smDecline, smCancel, smRemove,
-  targetUserId, currentUserId,
+  targetUserId, currentUserId, currentUserName,
   selectedBadge, handleBadgeClick, badgesExpanded, setBadgesExpanded, badgeSaving,
   showcaseItems,
+  // ── Sticker guestbook ──────────────────────────────────────────
   gbOpen, setGbOpen,
+  gbStickers,
+  gbStickersLoading,
+  gbPlacingAssetId, setGbPlacingAssetId,
+  gbDeleteTarget, setGbDeleteTarget,
+  canvasRef,
+  onGbStickerSelect,
+  onGbConfirm,
+  onGbCancel,
+  onGbDeleteConfirm,
+  // ── Messages ───────────────────────────────────────────────────
   gbComments, gbLoading,
   gbInput, setGbInput,
   gbSubmitting,
   handleSubmitComment,
   handleDeleteComment,
-  canComment,
 }) {
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [stickerPage, setStickerPage] = useState(0);
+  const [selectedMsgId, setSelectedMsgId] = useState(null);
+
+  const MSG_MAX = 200;
+  const PER_PAGE = 5;
+  const totalPages = Math.ceil(STICKER_ASSETS.length / PER_PAGE);
+  const pageStickers = STICKER_ASSETS.slice(stickerPage * PER_PAGE, (stickerPage + 1) * PER_PAGE);
+  const stickersFull = (gbStickers?.length ?? 0) >= 100;
+  const canPlace = !!currentUserId && !isSelfView && !stickersFull;
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
@@ -184,13 +222,33 @@ export default function ProfileTab({
 
         {/* Header */}
         <ProfileHeader>
-          <HeaderLeft>
-            <PlayerName>
-              {playerName || "Player"}
-              <PlayerNameMark> ✦</PlayerNameMark>
-            </PlayerName>
-            <LevelBadge>Lv. 78</LevelBadge>
-          </HeaderLeft>
+          <HeaderThumbnailWrap>
+            <PlayerThumbnail playerName={playerName} size={130} />
+          </HeaderThumbnailWrap>
+          <HeaderRight>
+            <HeaderNameRow>
+              <PlayerName>
+                {playerName || "Player"}
+                <PlayerNameMark> ✦</PlayerNameMark>
+              </PlayerName>
+              <LevelBadge>Lv. 78</LevelBadge>
+            </HeaderNameRow>
+            <HeaderMemberSince>Member since May 2024</HeaderMemberSince>
+            <HeaderStatsRow>
+              <HeaderStatBox>
+                <HeaderStatTop>⭐ 1,204</HeaderStatTop>
+                <HeaderStatLabel>Popularity</HeaderStatLabel>
+              </HeaderStatBox>
+              <HeaderStatBox>
+                <HeaderStatTop>👥 48</HeaderStatTop>
+                <HeaderStatLabel>Friends</HeaderStatLabel>
+              </HeaderStatBox>
+              <HeaderStatBox>
+                <HeaderStatTop>♥ 320</HeaderStatTop>
+                <HeaderStatLabel>Likes</HeaderStatLabel>
+              </HeaderStatBox>
+            </HeaderStatsRow>
+          </HeaderRight>
         </ProfileHeader>
 
         {/* Badges */}
@@ -405,114 +463,214 @@ export default function ProfileTab({
         </AboutOverlayScroll>
       </AboutOverlay>
 
-      {/* ── Guest Book Expanded Overlay ── */}
+      {/* ── Sticker + Message Guestbook ── */}
       <GuestBookOverlay $open={gbOpen} onClick={(e) => e.stopPropagation()}>
-        <GBOverlayClose onClick={() => setGbOpen(false)}>&times;</GBOverlayClose>
 
-        <GBHeader>
-          <GBTitle>✦ GUEST BOOK ✦</GBTitle>
-          <GBSubtitle>Leave a message for the owner. Be kind, be iconic.</GBSubtitle>
-          <GBHeaderControls>
-            <GBSortBtn>Recent <span style={{ fontSize: 10 }}>▾</span></GBSortBtn>
-            <GBPinnedBtn>📌 Pinned (0)</GBPinnedBtn>
-          </GBHeaderControls>
-        </GBHeader>
+        {/* ── Top header bar ── */}
+        <GBModalHeader>
+          <GBCloseBtn
+            onClick={() => { onGbCancel?.(); setGbOpen(false); }}
+            aria-label="Close guestbook"
+          >
+            ✕
+          </GBCloseBtn>
+          <GBBannerTitle>Guestbook</GBBannerTitle>
+        </GBModalHeader>
 
-        {canComment && (
-          <GBComposeArea>
-            <GBComposeRow>
-              <GBAvatarPlaceholder />
-              <GBComposeInputWrap>
-                <GBInput
-                  value={gbInput}
-                  maxLength={COMMENT_MAX}
-                  onChange={(e) => setGbInput(e.target.value)}
-                  placeholder="Write a message..."
-                  disabled={gbSubmitting}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
-                />
-                <GBEmojiBtn title="Emoji">☺</GBEmojiBtn>
-              </GBComposeInputWrap>
-              <GBPostBtn onClick={handleSubmitComment} disabled={gbSubmitting || !gbInput.trim()}>
-                {gbSubmitting ? "…" : "Post"}
-              </GBPostBtn>
-            </GBComposeRow>
-            <GBComposeTools>
-              <GBToolBtn>Āa Style</GBToolBtn>
-              <GBToolBtn>☺ Sticker</GBToolBtn>
-              <GBToolBtn>🌙 Mood</GBToolBtn>
-              <GBCounter $warn={gbInput.length > 90} style={{ marginLeft: "auto" }}>
-                {gbInput.length}/{COMMENT_MAX}
-              </GBCounter>
-            </GBComposeTools>
-          </GBComposeArea>
-        )}
+        {/* ── Two-column body ── */}
+        <GBTwoCol>
 
-        <GBOrnamentDivider>
-          <GBDividerLine /><GBDividerGem>✦</GBDividerGem><GBDividerLine />
-        </GBOrnamentDivider>
+          {/* ── LEFT — Sticker Canvas ── */}
+          <GBLeftWrap>
+              {/* Phaser canvas */}
+              <GBCanvasBody>
+                {gbStickersLoading ? (
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#b09070", fontSize: 12 }}>
+                    Loading canvas…
+                  </div>
+                ) : (
+                  <GuestbookCanvas
+                    ref={canvasRef}
+                    stickers={gbStickers}
+                    currentUserId={currentUserId}
+                    profileOwnerId={targetUserId}
+                    onStickerClick={(stickerId, placedByUserId) =>
+                      setGbDeleteTarget({ stickerId, placedByUserId })
+                    }
+                    onPlacementDone={() => setGbPlacingAssetId(null)}
+                    onConfirmPlacement={onGbConfirm}
+                  />
+                )}
 
-        <GBOverlayScroll>
-          {gbLoading ? (
-            <GBEmpty $large>Loading…</GBEmpty>
-          ) : gbComments.length === 0 ? (
-            <GBEmpty $large>No comments yet. Be the first!</GBEmpty>
-          ) : (
-            gbComments.map((c) => (
-              <GBCommentCard key={c._id}>
-                <GBCommentInner>
-                  <GBCommentAvatarCol>
-                    <PlayerThumbnail playerName={c.authorName} size={44} />
-                  </GBCommentAvatarCol>
-                  <GBCommentBody>
-                    <GBCommentMeta>
-                      <GBCommentName>{c.authorName}</GBCommentName>
-                      {c.createdAt && (
-                        <GBCommentTime>• {formatRelativeTime(c.createdAt)}</GBCommentTime>
-                      )}
-                    </GBCommentMeta>
-                    <GBCommentText>{c.message}</GBCommentText>
-                    <GBReactions>
-                      <GBReactionBtn>♥ 0</GBReactionBtn>
-                      <GBReactionBtn>🔥 0</GBReactionBtn>
-                      <GBReactionBtn>✨ 0</GBReactionBtn>
-                      <GBReactionBtn>💬 0</GBReactionBtn>
-                    </GBReactions>
-                  </GBCommentBody>
-                  <GBCommentActions>
-                    {isSelfView && (
-                      <CommentDeleteBtn
-                        onClick={() => handleDeleteComment(c._id)}
-                        title="Delete comment"
+                {/* Sticker count badge — top-right corner of canvas */}
+                <GBStickerCount>
+                  ♥ {gbStickers?.length ?? 0} / 100
+                </GBStickerCount>
+
+                {/* Delete confirmation */}
+                {gbDeleteTarget && (
+                  <DeletePopover>
+                    <DeletePopoverText>
+                      Remove sticker by{" "}
+                      <DeletePopoverName>
+                        {gbStickers?.find(s => s.id === gbDeleteTarget.stickerId)?.placed_by_name || "a player"}
+                      </DeletePopoverName>
+                      ?
+                    </DeletePopoverText>
+                    <DeletePopoverActions>
+                      <DeleteCancelBtn onClick={() => setGbDeleteTarget(null)}>Keep</DeleteCancelBtn>
+                      <DeleteConfirmBtn onClick={() => onGbDeleteConfirm(gbDeleteTarget.stickerId)}>
+                        Remove
+                      </DeleteConfirmBtn>
+                    </DeletePopoverActions>
+                  </DeletePopover>
+                )}
+              </GBCanvasBody>
+
+              {/* Sticker tray — always visible */}
+              <GBTray>
+                <GBTrayLabelSection>
+                  <GBTrayLabel>
+                    {canPlace ? "Add a Sticker" : stickersFull ? "Canvas full" : "View only"}
+                  </GBTrayLabel>
+                </GBTrayLabelSection>
+                {canPlace && (
+                  <GBTrayPickerSection>
+                    <GBCarouselBtn
+                      onClick={() => setStickerPage(p => Math.max(0, p - 1))}
+                      disabled={stickerPage === 0}
+                      aria-label="Previous stickers"
+                    >
+                      ‹
+                    </GBCarouselBtn>
+                    {pageStickers.map(({ id, emoji, label }) => (
+                      <PickerBtn
+                        key={id}
+                        $active={gbPlacingAssetId === id}
+                        title={label}
+                        onClick={() => onGbStickerSelect(id)}
+                        aria-label={label}
                       >
-                        &times;
-                      </CommentDeleteBtn>
-                    )}
-                    <GBMenuDot>⋮</GBMenuDot>
-                  </GBCommentActions>
-                </GBCommentInner>
-              </GBCommentCard>
-            ))
-          )}
-        </GBOverlayScroll>
+                        {emoji}
+                      </PickerBtn>
+                    ))}
+                    <GBCarouselBtn
+                      onClick={() => setStickerPage(p => Math.min(totalPages - 1, p + 1))}
+                      disabled={stickerPage >= totalPages - 1}
+                      aria-label="Next stickers"
+                    >
+                      ›
+                    </GBCarouselBtn>
+                  </GBTrayPickerSection>
+                )}
+              </GBTray>
+          </GBLeftWrap>
 
-        <GBStatsFooter>
-          <GBStat>
-            <GBStatLabel>Total Messages</GBStatLabel>
-            <GBStatValue>{gbComments.length}</GBStatValue>
-          </GBStat>
-          <GBStatDivider />
-          <GBStat>
-            <GBStatLabel>Visitors</GBStatLabel>
-            <GBStatValue>—</GBStatValue>
-          </GBStat>
-          <GBStatDivider />
-          <GBStat>
-            <GBStatLabel>Most Active</GBStatLabel>
-            <GBStatValue>—</GBStatValue>
-          </GBStat>
-          <GBLeaveGiftBtn>🎁 Leave a Gift</GBLeaveGiftBtn>
-        </GBStatsFooter>
+          {/* ── RIGHT — Messages ── */}
+          <GBRightWrap>
+          <GBRight>
+
+            {/* Compose */}
+            <GBComposeSectionHeader>
+              <GBSectionTitle>{isSelfView ? "Messages from visitors" : "Leave a Message"}</GBSectionTitle>
+              <GBHelpBtn title="Messages are public and permanent">?</GBHelpBtn>
+            </GBComposeSectionHeader>
+
+            {currentUserId && !isSelfView ? (
+              <GBComposeWrap>
+                <GBMsgAvatarWrap>
+                  <PlayerThumbnail playerName={currentUserName} size={48} />
+                </GBMsgAvatarWrap>
+                <GBComposeTextWrap>
+                  <GBComposeInput
+                    value={gbInput}
+                    maxLength={MSG_MAX}
+                    onChange={(e) => setGbInput(e.target.value)}
+                    placeholder="Write something sweet…"
+                    disabled={gbSubmitting}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitComment();
+                      }
+                    }}
+                    rows={2}
+                  />
+                  <GBComposeBottom>
+                    <GBCharCounter $warn={(gbInput?.length ?? 0) > MSG_MAX * 0.9}>
+                      {gbInput?.length ?? 0} / {MSG_MAX}
+                    </GBCharCounter>
+                    <GBPostBtn
+                      onClick={handleSubmitComment}
+                      disabled={gbSubmitting || !gbInput?.trim()}
+                    >
+                      {gbSubmitting ? "…" : "Post"}
+                    </GBPostBtn>
+                  </GBComposeBottom>
+                </GBComposeTextWrap>
+              </GBComposeWrap>
+            ) : (
+              <div style={{ padding: "8px 18px 4px", fontSize: 11.5, color: "#b09070", fontStyle: "italic" }}>
+                {isSelfView ? "View messages left for you below." : "Sign in to leave a message."}
+              </div>
+            )}
+
+            {/* Messages list */}
+            <GBMsgDivider>
+              <GBMsgLabel>Messages</GBMsgLabel>
+            </GBMsgDivider>
+
+            <GBMsgList>
+              {gbLoading ? (
+                <GBMsgEmpty>Loading…</GBMsgEmpty>
+              ) : !gbComments?.length ? (
+                <GBMsgEmpty>No messages yet — be the first! 🌸</GBMsgEmpty>
+              ) : (
+                gbComments.map((c) => {
+                  const msgId = c._id ?? c.id;
+                  const isSelected = selectedMsgId === msgId;
+                  return (
+                    <div key={msgId}>
+                      <GBMsgCard
+                        $clickable={isSelfView}
+                        $selected={isSelected}
+                        onClick={() => isSelfView && setSelectedMsgId(isSelected ? null : msgId)}
+                      >
+                        <GBMsgAvatarWrap>
+                          <PlayerThumbnail playerName={c.authorName ?? c.author_name} size={48} />
+                        </GBMsgAvatarWrap>
+                        <GBMsgBody>
+                          <GBMsgMeta>
+                            <GBMsgName>{c.authorName ?? c.author_name}</GBMsgName>
+                            {(c.createdAt ?? c.created_at) && (
+                              <GBMsgTime>{formatRelativeTime(c.createdAt ?? c.created_at)}</GBMsgTime>
+                            )}
+                          </GBMsgMeta>
+                          <GBMsgText>{c.message}</GBMsgText>
+                        </GBMsgBody>
+                      </GBMsgCard>
+                      {isSelfView && (
+                        <GBMsgActionBanner $open={isSelected}>
+                          <GBMsgRemoveBtn onClick={() => { handleDeleteComment(msgId); setSelectedMsgId(null); }}>
+                            Remove
+                          </GBMsgRemoveBtn>
+                        </GBMsgActionBanner>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </GBMsgList>
+
+            <GBRightFooter>
+              <GBFooterNote>Keep messages kind and friendly!</GBFooterNote>
+              <GBFooterNote>{MSG_MAX} characters max</GBFooterNote>
+            </GBRightFooter>
+          </GBRight>
+          </GBRightWrap>
+
+        </GBTwoCol>
       </GuestBookOverlay>
     </>
   );

@@ -20,7 +20,7 @@ export const ROWS = {
 // Phaser frame indices for a 3060×4500 spritesheet with frameWidth=510, frameHeight=900
 // (6 cols × 5 rows = 30 frames, indexed left-to-right, top-to-bottom)
 export const ANIM_DEFS = {
-  idle:      { frames: [0, 1, 2, 3, 4, 5],         frameRate: 0,  repeat: -1 },
+  idle:      { frames: [0, 1, 2, 3, 4, 5],         frameRate: 1,  repeat: -1 },
   walkLeft:  { frames: [6, 7, 8, 9, 10, 11],        frameRate: 4, repeat: -1 },
   walkRight: { frames: [12, 13, 14, 15, 16, 17],    frameRate: 4, repeat: -1 },
   walkDown:    { frames: [18, 19, 20, 21],             frameRate: 4, repeat: -1 },

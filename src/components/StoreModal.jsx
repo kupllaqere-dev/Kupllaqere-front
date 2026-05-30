@@ -476,11 +476,11 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
               />
             </AvatarArea>
             <PoseBar>
-              <PoseArrow onClick={() => setPose(p => (p === 0 ? POSE_COUNT - 1 : p + 1))}>‹</PoseArrow>
+              <PoseArrow onClick={() => setPose(p => (p === 0 ? POSE_COUNT - 1 : p - 1))}>‹</PoseArrow>
               {Array.from({ length: POSE_COUNT }).map((_, i) => (
                 <PoseDot key={i} $active={i === pose} onClick={() => setPose(i)} />
               ))}
-              <PoseArrow onClick={() => setPose(p => (p === POSE_COUNT - 1 ? 0 : p - 1))}>›</PoseArrow>
+              <PoseArrow onClick={() => setPose(p => (p === POSE_COUNT - 1 ? 0 : p + 1))}>›</PoseArrow>
             </PoseBar>
             <AvatarBottom>
               <Balance>

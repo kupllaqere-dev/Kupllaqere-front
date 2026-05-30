@@ -17,6 +17,8 @@ import {
   removeFriend,
 } from "../../api/friends";
 import {
+  fetchGuestbookStickers,
+  deleteGuestbookSticker,
   fetchGuestBookComments,
   postGuestBookComment,
   deleteGuestBookComment,
@@ -76,6 +78,7 @@ export default function PlayerProfile({
   selectedBadge = null,
   onSaveBadge,
   currentUserId = null,
+  currentUserName = "",
   targetUserId = null,
   socket = null,
   unreadMailCount = 0,
@@ -117,6 +120,13 @@ export default function PlayerProfile({
   const [showcaseItems] = useState(Array(SHOWCASE_SLOTS).fill(null));
 
   const [gbOpen, setGbOpen] = useState(false);
+  // stickers
+  const [gbStickers, setGbStickers] = useState([]);
+  const [gbStickersLoading, setGbStickersLoading] = useState(false);
+  const [gbPlacingAssetId, setGbPlacingAssetId] = useState(null);
+  const [gbDeleteTarget, setGbDeleteTarget] = useState(null);
+  const canvasRef = useRef(null);
+  // messages
   const [gbComments, setGbComments] = useState([]);
   const [gbLoading, setGbLoading] = useState(false);
   const [gbInput, setGbInput] = useState("");
@@ -473,6 +483,23 @@ export default function PlayerProfile({
     saveTheme(name).catch(() => {});
   }, [targetUserId]);
 
+  // ── Sticker guestbook: initial load ────────────────────────────────────
+  const loadGbStickers = useCallback(async () => {
+    if (!targetUserId) return;
+    setGbStickersLoading(true);
+    try {
+      const data = await fetchGuestbookStickers(targetUserId);
+      setGbStickers(data.stickers || []);
+    } catch {
+      setGbStickers([]);
+    } finally {
+      setGbStickersLoading(false);
+    }
+  }, [targetUserId]);
+
+  useEffect(() => { loadGbStickers(); }, [loadGbStickers]);
+
+  // ── Guestbook messages ───────────────────────────────────────────────────
   const loadGbComments = useCallback(async () => {
     if (!targetUserId) return;
     setGbLoading(true);
@@ -487,6 +514,35 @@ export default function PlayerProfile({
   }, [targetUserId]);
 
   useEffect(() => { loadGbComments(); }, [loadGbComments]);
+
+  // ── Sticker guestbook: realtime socket room ─────────────────────────────
+  useEffect(() => {
+    if (!socket || !gbOpen || !targetUserId) return;
+
+    socket.joinGuestbook(targetUserId);
+
+    const handleStickerAdded = (sticker) => {
+      setGbStickers(prev => {
+        if (prev.some(s => s.id === sticker.id)) return prev;
+        return [...prev, sticker];
+      });
+      canvasRef.current?.addStickerExternal(sticker);
+    };
+
+    const handleStickerDeleted = ({ stickerId }) => {
+      setGbStickers(prev => prev.filter(s => s.id !== stickerId));
+      canvasRef.current?.removeStickerExternal(stickerId);
+    };
+
+    socket.onGuestbookStickerAdded(handleStickerAdded);
+    socket.onGuestbookStickerDeleted(handleStickerDeleted);
+
+    return () => {
+      socket.leaveGuestbook(targetUserId);
+      socket.off("guestbook:stickerAdded", handleStickerAdded);
+      socket.off("guestbook:stickerDeleted", handleStickerDeleted);
+    };
+  }, [gbOpen, targetUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMailLists = useCallback(async () => {
     if (!isSelfView) return;
@@ -649,6 +705,30 @@ export default function PlayerProfile({
     });
   };
 
+  // ── Sticker placement ───────────────────────────────────────────────────
+  const handleGbStickerSelect = (assetId) => {
+    setGbPlacingAssetId(assetId);
+    canvasRef.current?.startPlacement(assetId);
+  };
+
+  const handleGbConfirm = (payload) => {
+    if (!payload || !targetUserId || !socket) return;
+    socket.sendGuestbookSticker({ profileUserId: targetUserId, ...payload });
+    setGbPlacingAssetId(null);
+  };
+
+  const handleGbCancel = () => {
+    canvasRef.current?.cancelPlacement();
+    setGbPlacingAssetId(null);
+  };
+
+  const handleGbDeleteConfirm = (stickerId) => {
+    if (!socket) return;
+    socket.deleteGuestbookSticker(stickerId);
+    setGbDeleteTarget(null);
+  };
+
+  // ── Message handlers ────────────────────────────────────────────────────
   const handleSubmitComment = async () => {
     if (!gbInput.trim() || gbSubmitting) return;
     setGbSubmitting(true);
@@ -666,7 +746,7 @@ export default function PlayerProfile({
   const handleDeleteComment = async (commentId) => {
     try {
       await deleteGuestBookComment(commentId);
-      setGbComments((prev) => prev.filter((c) => c._id !== commentId));
+      setGbComments(prev => prev.filter(c => (c._id ?? c.id) !== commentId));
     } catch (err) {
       console.error(err);
     }
@@ -858,7 +938,6 @@ export default function PlayerProfile({
   if (invView === "recentlyAdded") invCrumbs.push({ label: "Recently Added", onClick: null });
   if (invView === "equipped") invCrumbs.push({ label: "Equipped", onClick: null });
 
-  const canComment = !isSelfView && !!currentUserId;
 
   return (
     <>
@@ -1012,8 +1091,8 @@ export default function PlayerProfile({
 
             <Controls>
               <ArrowBtn onClick={zoomOut} disabled={zoomIndex === 0}>−</ArrowBtn>
-              <ArrowBtn onClick={turnLeft}>&larr;</ArrowBtn>
-              <ArrowBtn onClick={turnRight}>&rarr;</ArrowBtn>
+              <ArrowBtn onClick={turnRight}>&larr;</ArrowBtn>
+              <ArrowBtn onClick={turnLeft}>&rarr;</ArrowBtn>
               <ArrowBtn onClick={zoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>+</ArrowBtn>
               {isSelfView && (hasLockedView ? (
                 <ArrowBtn onClick={handleUnlockView} disabled={unlocking} title="Unlock view">🔓</ArrowBtn>
@@ -1107,6 +1186,7 @@ export default function PlayerProfile({
               smRemove={smRemove}
               targetUserId={targetUserId}
               currentUserId={currentUserId}
+              currentUserName={currentUserName}
               selectedBadge={selectedBadge}
               handleBadgeClick={handleBadgeClick}
               badgesExpanded={badgesExpanded}
@@ -1115,6 +1195,17 @@ export default function PlayerProfile({
               showcaseItems={showcaseItems}
               gbOpen={gbOpen}
               setGbOpen={setGbOpen}
+              gbStickers={gbStickers}
+              gbStickersLoading={gbStickersLoading}
+              gbPlacingAssetId={gbPlacingAssetId}
+              setGbPlacingAssetId={setGbPlacingAssetId}
+              gbDeleteTarget={gbDeleteTarget}
+              setGbDeleteTarget={setGbDeleteTarget}
+              canvasRef={canvasRef}
+              onGbStickerSelect={handleGbStickerSelect}
+              onGbConfirm={handleGbConfirm}
+              onGbCancel={handleGbCancel}
+              onGbDeleteConfirm={handleGbDeleteConfirm}
               gbComments={gbComments}
               gbLoading={gbLoading}
               gbInput={gbInput}
@@ -1122,7 +1213,6 @@ export default function PlayerProfile({
               gbSubmitting={gbSubmitting}
               handleSubmitComment={handleSubmitComment}
               handleDeleteComment={handleDeleteComment}
-              canComment={canComment}
             />
           </div>
 

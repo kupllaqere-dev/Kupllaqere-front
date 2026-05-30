@@ -224,6 +224,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           selectedBadge={selectedBadge}
           onSaveBadge={onSaveBadge}
           currentUserId={currentUserId}
+          currentUserName={playerName}
           targetUserId={currentUserId}
           unreadMailCount={unreadCount}
           onUnreadChange={refreshUnread}
@@ -247,6 +248,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           bio={viewingProfile.bio}
           selectedBadge={viewingProfile.selectedBadge}
           currentUserId={currentUserId}
+          currentUserName={playerName}
           targetUserId={viewingProfile.userId}
           socket={socket}
           level={viewingProfile.level}

@@ -146,6 +146,48 @@ export default class SocketManager {
     this.socket.on("chess:resign:received", callback);
   }
 
+  // ── Guestbook stickers ─────────────────────────────────────────
+  /**
+   * Join the realtime room for a profile's guestbook.
+   * Must be called when the guestbook overlay opens.
+   */
+  joinGuestbook(profileUserId) {
+    this.socket.emit("guestbook:join", { profileUserId });
+  }
+
+  /** Leave the guestbook room (call on overlay close / unmount). */
+  leaveGuestbook(profileUserId) {
+    this.socket.emit("guestbook:leave", { profileUserId });
+  }
+
+  /**
+   * Broadcast a confirmed sticker placement to all viewers.
+   * payload: { profileUserId, sticker_asset_id, x, y, rotation, scale, z_index }
+   */
+  sendGuestbookSticker(payload) {
+    this.socket.emit("guestbook:addSticker", payload);
+  }
+
+  /** Request deletion of a sticker. Server validates ownership. */
+  deleteGuestbookSticker(stickerId) {
+    this.socket.emit("guestbook:deleteSticker", { stickerId });
+  }
+
+  /** Fired when any client adds a sticker to the guestbook. */
+  onGuestbookStickerAdded(callback) {
+    this.socket.on("guestbook:stickerAdded", callback);
+  }
+
+  /** Fired when a sticker is deleted from the guestbook. */
+  onGuestbookStickerDeleted(callback) {
+    this.socket.on("guestbook:stickerDeleted", callback);
+  }
+
+  /** Server validation / capacity errors for guestbook actions. */
+  onGuestbookError(callback) {
+    this.socket.on("guestbook:error", callback);
+  }
+
   off(event, callback) {
     this.socket.off(event, callback);
   }

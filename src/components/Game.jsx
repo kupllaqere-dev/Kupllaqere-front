@@ -333,6 +333,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           bio={viewedProfile.bio}
           selectedBadge={viewedProfile.selectedBadge}
           currentUserId={user?.id || null}
+          currentUserName={user?.name || ""}
           targetUserId={viewedProfile.userId || null}
           socket={socketRef.current}
         />

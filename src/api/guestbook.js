@@ -16,6 +16,8 @@ async function handle(res) {
   return res.json();
 }
 
+// ── Text comments (legacy, kept for compatibility) ────────────────────────
+
 export async function fetchGuestBookComments(userId) {
   const res = await fetch(`${API}/api/guestbook/${encodeURIComponent(userId)}`, {
     headers: authHeaders(),
@@ -37,5 +39,31 @@ export async function deleteGuestBookComment(commentId) {
     method: "DELETE",
     headers: authHeaders(),
   });
+  return handle(res);
+}
+
+// ── Sticker guestbook ─────────────────────────────────────────────────────
+
+/**
+ * Fetch all finalized stickers for a profile's guestbook.
+ * Returns { stickers: StickerRow[] }
+ */
+export async function fetchGuestbookStickers(profileUserId) {
+  const res = await fetch(
+    `${API}/api/guestbook-stickers/${encodeURIComponent(profileUserId)}`,
+    { headers: authHeaders() }
+  );
+  return handle(res);
+}
+
+/**
+ * Delete a sticker by ID.
+ * Allowed if the caller is the sticker's placer OR the profile owner.
+ */
+export async function deleteGuestbookSticker(stickerId) {
+  const res = await fetch(
+    `${API}/api/guestbook-stickers/sticker/${encodeURIComponent(stickerId)}`,
+    { method: "DELETE", headers: authHeaders() }
+  );
   return handle(res);
 }

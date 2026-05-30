@@ -298,16 +298,75 @@ export const CloseBtn = styled.button`
 
 export const ProfileHeader = styled.header`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   padding-bottom: 16px;
-  border-bottom: 1px solid ${"var(--pp-border)"};
 `;
 
 export const HeaderLeft = styled.div`
   display: flex;
   align-items: baseline;
   gap: 10px;
+`;
+
+export const HeaderThumbnailWrap = styled.div`
+  flex-shrink: 0;
+  width: 130px;
+  height: 130px;
+`;
+
+export const HeaderRight = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+`;
+
+export const HeaderNameRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
+export const HeaderMemberSince = styled.div`
+  font-size: 10.5px;
+  font-weight: 600;
+  color: ${"var(--pp-txt3)"};
+  letter-spacing: 0.2px;
+`;
+
+export const HeaderStatsRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+export const HeaderStatBox = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  background: ${"var(--pp-card)"};
+  border: 1px solid ${"var(--pp-border)"};
+  border-radius: 10px;
+`;
+
+export const HeaderStatTop = styled.div`
+  font-size: 13px;
+  font-weight: 800;
+  color: ${"var(--pp-txt)"};
+  line-height: 1;
+`;
+
+export const HeaderStatLabel = styled.div`
+  font-size: 8.5px;
+  font-weight: 600;
+  color: ${"var(--pp-txt3)"};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 export const ProfileEmblem = styled.div`
@@ -472,9 +531,8 @@ export const BadgeCard = styled.div`
   overflow: hidden;
   opacity: ${p => p.$saving ? 0.6 : 1};
   box-shadow: ${p => p.$selected ? "0 4px 14px rgba(var(--pp-accent-rgb),0.18)" : "0 1px 4px rgba(100,50,200,0.06)"};
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s;
   &:hover {
-    transform: ${p => p.$clickable && !p.$saving ? "translateY(-3px) scale(1.04)" : "none"};
     box-shadow: ${p => {
       if (!p.$clickable || p.$saving) return "none";
       return "0 6px 20px rgba(var(--pp-accent-rgb),0.18)";
@@ -487,6 +545,10 @@ export const BadgeCardIconWrap = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s;
+  ${BadgeCard}:hover & {
+    transform: scale(1.22);
+  }
 `;
 
 export const BadgeImg = styled.img`
@@ -1272,9 +1334,8 @@ export const GuestBookOverlay = styled.div`
   top: 0; bottom: 0;
   left: 470px; right: 0;
   z-index: 20;
-  background: var(--pp-gradPanel);
+  background: var(--pp-bg);
   border-radius: 0 22px 22px 0;
-  border: 1px solid ${"var(--pp-border)"};
   box-shadow: -4px 0 24px rgba(100,50,200,0.08);
   display: flex;
   flex-direction: column;
@@ -1287,7 +1348,7 @@ export const GuestBookOverlay = styled.div`
 export const GBOverlayClose = styled.button`
   all: unset;
   position: absolute;
-  top: 12px; right: 14px;
+  top: 12px; left: 14px;
   width: 28px; height: 28px;
   display: flex;
   align-items: center;
