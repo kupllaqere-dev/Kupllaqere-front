@@ -5,8 +5,8 @@ export default class SocketManager {
     this.socket = io(url);
   }
 
-  join(name, userId, gender) {
-    this.socket.emit("player:join", { name, userId, gender });
+  join(name, userId, gender, x, y) {
+    this.socket.emit("player:join", { name, userId, gender, x, y });
   }
 
   onGameState(callback) {

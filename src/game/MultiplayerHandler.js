@@ -29,8 +29,8 @@ export default class MultiplayerHandler {
     };
   }
 
-  join(name, userId, gender) {
-    this.socket.join(name, userId, gender);
+  join(name, userId, gender, x, y) {
+    this.socket.join(name, userId, gender, x, y);
   }
 
   wire() {

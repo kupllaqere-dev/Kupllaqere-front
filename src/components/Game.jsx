@@ -153,7 +153,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
 
         mp.setGameObjects(this, avatarSys, playerMgr);
         mp.localSprite = localP.sprite;
-        mp.join(user?.name || "Player", user?.id, gender);
+        mp.join(user?.name || "Player", user?.id, gender, SPAWN_X, SPAWN_Y);
         mp.wire();
 
         let lastSentX    = SPAWN_X;
