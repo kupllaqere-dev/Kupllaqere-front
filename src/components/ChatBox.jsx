@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
+import { createPortal } from "react-dom";
 import styled, { keyframes, css } from "styled-components";
 import EmojiPicker from "emoji-picker-react";
 import PlayerThumbnail from "./PlayerThumbnail";
+import PlayerContextMenu from "./PlayerContextMenu";
 
 const KLIPY_KEY = "REEXWlCMkIFXqQdJQBzTBCsS8QNdShFb7dUCYfZSPknZA2vSlDJlJ8CpwswaPKry";
 
@@ -323,6 +325,13 @@ const PlayerFrame = styled.div`
   box-shadow: 0 0 7px ${p => p.$c}55;
 `;
 
+const ClickableAvatar = styled.div`
+  border-radius: 50%;
+  cursor: ${p => p.$active ? "pointer" : "default"};
+  transition: filter 0.15s;
+  &:hover { filter: ${p => p.$active ? "drop-shadow(0 0 6px rgba(255,255,255,0.45))" : "none"}; }
+`;
+
 const MsgContent = styled.div`
   flex: 1;
   min-width: 0;
@@ -346,6 +355,11 @@ const MsgSender = styled.span`
     return p.$self ? "0 0 10px rgba(74,222,128,0.35)" : "0 0 10px rgba(147,197,253,0.35)";
   }};
   margin-bottom: 0;
+`;
+
+const MsgSenderInner = styled.span`
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
 `;
 
 const MsgText = styled.span`
@@ -666,6 +680,8 @@ const MemberName = styled.span`
   flex: 1;
   min-width: 0;
   font-family: ${FONT};
+  cursor: pointer;
+  &:hover { text-decoration: underline; text-decoration-color: currentColor; }
 `;
 
 /* ─── Whisper Convo Panel ───────────────────────────────────── */
@@ -865,7 +881,7 @@ function GifPicker({ onSelect }) {
 
 /* ─── Component ─────────────────────────────────────────────── */
 
-const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId, myName, onSend, onWhisper }, ref) {
+const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId, myName, onSend, onWhisper, onViewProfile }, ref) {
   const [tab, setTab] = useState("general");
   const [text, setText] = useState("");
   const [whisperPartner, setWhisperPartner] = useState(null);
@@ -877,6 +893,8 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
   const [localErrors, setLocalErrors] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [playerMenu, setPlayerMenu] = useState(null);
+  const playerMenuRef = useRef(null);
   const inputRef = useRef(null);
   const nameInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -887,6 +905,21 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
   const gifPickerRef = useRef(null);
 
   useEffect(() => { sizeRef.current = size; }, [size]);
+
+  useEffect(() => {
+    if (!playerMenu) return;
+    function onDown(e) {
+      if (!playerMenuRef.current?.contains(e.target)) setPlayerMenu(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [playerMenu]);
+
+  function openPlayerMenu(player, e) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPlayerMenu({ ...player, x: rect.right, y: rect.top });
+  }
 
   useImperativeHandle(ref, () => ({
     openWhisper({ id, name }) {
@@ -1253,14 +1286,23 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
                           : msgMode === "clan"
                             ? "rgba(96,165,250,0.5)"
                             : isSelf ? "rgba(74,222,128,0.55)" : "rgba(147,197,253,0.45)";
+                      const msgPlayer = msg.from ? {
+                        id: msg.from.id,
+                        userId: players.find(p => p.id === msg.from.id)?.userId ?? null,
+                        name: msg.from.name,
+                      } : null;
                       return (
                         <MsgRow key={msg.id || i}>
                           <PlayerFrame $s={38} $c={fc}>
-                            <PlayerThumbnail playerName={msg.from?.name} size={38} />
+                            <ClickableAvatar $active onClick={(e) => openPlayerMenu(msgPlayer, e)}>
+                              <PlayerThumbnail playerName={msg.from?.name} size={38} />
+                            </ClickableAvatar>
                           </PlayerFrame>
                           <MsgContent>
                             <MsgSender $self={isSelf} $mode={msgMode}>
-                              {msg.from?.name || "???"}
+                              <MsgSenderInner onClick={(e) => openPlayerMenu(msgPlayer, e)}>
+                                {msg.from?.name || "???"}
+                              </MsgSenderInner>
                             </MsgSender>
                             {msg.text?.startsWith("https://static.klipy.com")
                               ? <img src={msg.text} alt="GIF" style={{ maxWidth: 200, maxHeight: 160, borderRadius: 8, display: "block", marginTop: 3 }} onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })} />
@@ -1452,6 +1494,7 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
                     )}
                     {membersForTab.map(p => {
                       const isActive = tab === "whisper" && whisperPartner?.id === p.id;
+                      const memberPlayer = { id: p.id, userId: p.userId ?? null, name: p.name };
                       return (
                         <MemberCard
                           key={p.id ?? p.name}
@@ -1464,9 +1507,13 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
                           }}
                         >
                           <PlayerFrame $s={34} $c={avatarColor(p.name) + "88"}>
-                            <PlayerThumbnail playerName={p.name} size={34} />
+                            <ClickableAvatar $active onClick={(e) => openPlayerMenu(memberPlayer, e)}>
+                              <PlayerThumbnail playerName={p.name} size={34} />
+                            </ClickableAvatar>
                           </PlayerFrame>
-                          <MemberName>{p.name}</MemberName>
+                          <MemberName $clickable onClick={(e) => openPlayerMenu(memberPlayer, e)}>
+                            {p.name}
+                          </MemberName>
                         </MemberCard>
                       );
                     })}
@@ -1483,6 +1530,20 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
           <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
         </svg>
       </BottomToggleBtn>
+      {playerMenu && createPortal(
+        <PlayerContextMenu
+          ref={playerMenuRef}
+          playerMenu={playerMenu}
+          onClose={() => setPlayerMenu(null)}
+          onViewProfile={(data) => { onViewProfile?.(data); setPlayerMenu(null); }}
+          onOpenWhisper={(p) => {
+            setPlayerMenu(null);
+            setTab("whisper");
+            setWhisperPartner({ id: p.id, name: p.name });
+          }}
+        />,
+        document.body
+      )}
     </Wrapper>
   );
 });

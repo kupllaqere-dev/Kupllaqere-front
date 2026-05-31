@@ -20,7 +20,7 @@ const Menu = styled.div`
   border-radius: 12px;
   padding: 12px 10px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
-  transform: translate(14px, -50%);
+  transform: ${p => p.$flipLeft ? 'translate(calc(-100% - 8px), 0)' : 'translate(8px, 0)'};
 `;
 
 const Header = styled.div`
@@ -195,6 +195,8 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
   onOpenWhisper,
   playerManagerRef,
   layerManagerRef,
+  flipLeft,
+  trackPosition,
 }, ref) {
   const [friendStatus, setFriendStatus] = useState("loading");
   const [actionPending, setActionPending] = useState(false);
@@ -216,18 +218,21 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
   }, [playerMenu?.userId]);
 
   function handleViewProfile() {
-    const pm = playerManagerRef.current;
-    const lm = layerManagerRef.current;
-    const other = pm?.otherPlayers.get(playerMenu.id);
-    if (!other) return;
-    onViewProfile({
-      userId: other.userId,
-      name: playerMenu.name,
-      gender: other.sprite.gender,
-      outfit: lm.getFullOutfit(playerMenu.id),
-      bio: other.bio || "",
-      selectedBadge: other.selectedBadge || null,
-    });
+    const pm = playerManagerRef?.current;
+    const lm = layerManagerRef?.current;
+    const other = pm?.otherPlayers?.get(playerMenu.id);
+    if (other) {
+      onViewProfile({
+        userId: other.userId,
+        name: playerMenu.name,
+        gender: other.sprite.gender,
+        outfit: lm?.getFullOutfit(playerMenu.id) ?? {},
+        bio: other.bio || "",
+        selectedBadge: other.selectedBadge || null,
+      });
+    } else {
+      onViewProfile({ userId: playerMenu.userId, name: playerMenu.name });
+    }
     onClose();
   }
 
@@ -279,8 +284,9 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
   return (
     <Menu
       ref={ref}
+      $flipLeft={flipLeft}
       data-player-menu
-      style={{ left: playerMenu.x, top: playerMenu.y }}
+      style={trackPosition ? { left: -9999, top: -9999 } : { left: playerMenu.x, top: playerMenu.y }}
     >
       <Header>
         <AvatarCircle>
@@ -308,7 +314,7 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
         {friendBtnLabel()}
       </Btn>
       <ItemDivider />
-      <Btn onClick={handleWhisper} disabled={!playerMenu.userId}>
+      <Btn onClick={handleWhisper} disabled={!playerMenu.userId || !onOpenWhisper}>
         <IconWhisper />
         Whisper
       </Btn>

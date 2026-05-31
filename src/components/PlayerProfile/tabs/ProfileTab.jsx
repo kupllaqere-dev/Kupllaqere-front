@@ -1,9 +1,23 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import styled from "styled-components";
 import { BIO_MAX, BADGES, BADGE_RARITY } from "../constants";
 import { formatRelativeTime } from "../utils";
 import { bbcodeToHtml } from "../bbcode";
 import BBCodeEditor from "../BBCodeEditor";
 import PlayerThumbnail from "../../PlayerThumbnail";
+import PlayerContextMenu from "../../PlayerContextMenu";
+
+const SmThumbHover = styled.div`
+  border-radius: 50%;
+  cursor: pointer;
+  transition: filter 0.15s;
+  &:hover { filter: drop-shadow(0 0 6px rgba(255,255,255,0.4)); }
+`;
+const SmNameHover = styled.span`
+  cursor: pointer;
+  &:hover { text-decoration: underline; text-decoration-color: currentColor; }
+`;
 import GuestbookCanvas from "../../Guestbook/GuestbookCanvas";
 import { STICKER_ASSETS } from "../../Guestbook/StickerAssets";
 import {
@@ -57,15 +71,20 @@ import {
   SkeletonLine, SkeletonCircle,
 } from "../styles";
 
-function SoulmateFullCard({ name, sub, onBreakUp, smBusy, smError }) {
+function SoulmateFullCard({ name, userId, sub, onBreakUp, smBusy, smError, onOpenMenu }) {
   return (
     <SoulmateCard>
       <SoulmateHeartBg>♥</SoulmateHeartBg>
       <SoulmateAvatarWrap>
-        <PlayerThumbnail playerName={name} size={44} />
+        <SmThumbHover onClick={(e) => onOpenMenu?.({ id: userId, userId, name }, e)}>
+          <PlayerThumbnail playerName={name} size={44} />
+        </SmThumbHover>
       </SoulmateAvatarWrap>
       <SoulmateInfoBlock>
-        <SoulmateName>{name} <SoulmateMark>♥</SoulmateMark></SoulmateName>
+        <SoulmateName>
+          <SmNameHover onClick={(e) => onOpenMenu?.({ id: userId, userId, name }, e)}>{name}</SmNameHover>
+          {" "}<SoulmateMark>♥</SoulmateMark>
+        </SoulmateName>
         <SoulmateDuration>{sub}</SoulmateDuration>
       </SoulmateInfoBlock>
       <SoulmateCardActions>
@@ -77,7 +96,7 @@ function SoulmateFullCard({ name, sub, onBreakUp, smBusy, smError }) {
 }
 
 function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, smError,
-  smSendRequest, smAccept, smDecline, smCancel, smRemove, playerName }) {
+  smSendRequest, smAccept, smDecline, smCancel, smRemove, playerName, onOpenMenu }) {
 
   if (!currentUserId) return <SoulmateEmptyBox><SmEmpty>Sign in to use soul mates.</SmEmpty></SoulmateEmptyBox>;
   if (!smState) return (
@@ -93,7 +112,7 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
   const { mine, sent, received = [], target, relationship } = smState;
 
   if (isSelfView || !targetUserId) {
-    if (mine) return <SoulmateFullCard name={mine.name} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} />;
+    if (mine) return <SoulmateFullCard name={mine.name} userId={mine.id} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} onOpenMenu={onOpenMenu} />;
     if (received.length > 0) return (
       <SoulmateEmptyBox>
         <SmSub>Incoming requests</SmSub>
@@ -121,7 +140,7 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
     return <SoulmateEmptyBox><SmEmpty>No soul mate yet.</SmEmpty></SoulmateEmptyBox>;
   }
 
-  if (relationship === "soulmate") return <SoulmateFullCard name={playerName || "Player"} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} />;
+  if (relationship === "soulmate") return <SoulmateFullCard name={playerName || "Player"} userId={targetUserId} sub="Your Soul Mate" onBreakUp={smRemove} smBusy={smBusy} smError={smError} onOpenMenu={onOpenMenu} />;
   if (relationship === "i_sent") return (
     <SoulmateEmptyBox>
       <SmContent>
@@ -164,6 +183,7 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
 }
 
 export default function ProfileTab({
+  onOpenProfile,
   playerName,
   bio, onSaveBio,
   editingBio, setEditingBio,
@@ -198,6 +218,23 @@ export default function ProfileTab({
   const [aboutOpen, setAboutOpen] = useState(false);
   const [stickerPage, setStickerPage] = useState(0);
   const [selectedMsgId, setSelectedMsgId] = useState(null);
+  const [playerMenu, setPlayerMenu] = useState(null);
+  const playerMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!playerMenu) return;
+    function onDown(e) {
+      if (!playerMenuRef.current?.contains(e.target)) setPlayerMenu(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [playerMenu]);
+
+  function openPlayerMenu(player, e) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPlayerMenu({ ...player, x: rect.right, y: rect.top });
+  }
 
   const MSG_MAX = 200;
   const PER_PAGE = 5;
@@ -305,6 +342,7 @@ export default function ProfileTab({
             smCancel={smCancel}
             smRemove={smRemove}
             playerName={playerName}
+            onOpenMenu={openPlayerMenu}
           />
         </SectionBlock>
 
@@ -672,6 +710,15 @@ export default function ProfileTab({
 
         </GBTwoCol>
       </GuestBookOverlay>
+      {playerMenu && createPortal(
+        <PlayerContextMenu
+          ref={playerMenuRef}
+          playerMenu={playerMenu}
+          onClose={() => setPlayerMenu(null)}
+          onViewProfile={(data) => { onOpenProfile?.(data); setPlayerMenu(null); }}
+        />,
+        document.body
+      )}
     </>
   );
 }

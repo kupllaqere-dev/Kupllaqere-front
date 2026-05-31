@@ -1,7 +1,22 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import styled from "styled-components";
 import { fetchUserStatus } from "../../../api/users";
 import { lookupUser } from "../../../api/auth";
 import PlayerThumbnail from "../../PlayerThumbnail";
+import PlayerContextMenu from "../../PlayerContextMenu";
+
+const ConvoThumbHover = styled.div`
+  border-radius: 50%;
+  cursor: pointer;
+  transition: filter 0.15s;
+  &:hover { filter: drop-shadow(0 0 6px rgba(255,255,255,0.4)); }
+`;
+
+const ConvoNameHover = styled.span`
+  cursor: pointer;
+  &:hover { text-decoration: underline; text-decoration-color: currentColor; }
+`;
 import { formatRelativeTime } from "../utils";
 import {
   HubPanelContainer, MailListCol, PanelHeaderRow, PanelTitle, TabUnreadBadge,
@@ -21,13 +36,30 @@ export default function MailTab({
   mailConversations, mailLoading,
   mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
   mailReplySending, mailReplyError, openMailThread, handleMailReply,
-  onNewSend, onClearThread, onLoadMore, socket,
+  onNewSend, onClearThread, onLoadMore, socket, onOpenProfile,
 }) {
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
   const [isNew, setIsNew] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [onlineMap, setOnlineMap] = useState(() => new Map());
+  const [playerMenu, setPlayerMenu] = useState(null);
+  const playerMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!playerMenu) return;
+    function onDown(e) {
+      if (!playerMenuRef.current?.contains(e.target)) setPlayerMenu(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [playerMenu]);
+
+  function openPlayerMenu(player, e) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPlayerMenu({ ...player, x: rect.right, y: rect.top });
+  }
 
   useEffect(() => {
     if (!mailConversations.length) return;
@@ -259,8 +291,14 @@ export default function MailTab({
         ) : (
           <>
             <MailDetailHeader>
-              <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={28} />
-              <MailDetailWith>{mailThread.otherParticipant.name}</MailDetailWith>
+              <ConvoThumbHover onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
+                <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={28} />
+              </ConvoThumbHover>
+              <MailDetailWith>
+                <ConvoNameHover onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
+                  {mailThread.otherParticipant.name}
+                </ConvoNameHover>
+              </MailDetailWith>
             </MailDetailHeader>
             <MailMessageList ref={messageListRef}>
               {loadingMore && <MailLoadingMore>Loading…</MailLoadingMore>}
@@ -272,6 +310,9 @@ export default function MailTab({
                 const hoverTime = msg.createdAt
                   ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                   : "";
+                const msgPlayer = !msg.isFromMe
+                  ? { id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: msg.fromName }
+                  : { id: null, userId: null, name: msg.fromName };
                 return isFollowUp ? (
                   <MailMessageCompact key={msg.id}>
                     <MailCompactTime>{hoverTime}</MailCompactTime>
@@ -279,10 +320,16 @@ export default function MailTab({
                   </MailMessageCompact>
                 ) : (
                   <MailMessageRow key={msg.id}>
-                    <MailMsgThumb><PlayerThumbnail playerName={msg.fromName} size={42} /></MailMsgThumb>
+                    <MailMsgThumb>
+                      <ConvoThumbHover onClick={(e) => openPlayerMenu(msgPlayer, e)}>
+                        <PlayerThumbnail playerName={msg.fromName} size={42} />
+                      </ConvoThumbHover>
+                    </MailMsgThumb>
                     <MailMsgContent>
                       <MailMsgHeader>
-                        <MailMsgName $mine={msg.isFromMe}>{msg.fromName}</MailMsgName>
+                        <MailMsgName $mine={msg.isFromMe}>
+                          <ConvoNameHover onClick={(e) => openPlayerMenu(msgPlayer, e)}>{msg.fromName}</ConvoNameHover>
+                        </MailMsgName>
                         <MailBubbleTime>{formatRelativeTime(msg.createdAt)}{hoverTime && ` · ${hoverTime}`}</MailBubbleTime>
                       </MailMsgHeader>
                       <MailBubbleBody>{msg.body}</MailBubbleBody>
@@ -313,6 +360,15 @@ export default function MailTab({
           </>
         )}
       </MailDetailCol>
+      {playerMenu && createPortal(
+        <PlayerContextMenu
+          ref={playerMenuRef}
+          playerMenu={playerMenu}
+          onClose={() => setPlayerMenu(null)}
+          onViewProfile={(data) => { onOpenProfile?.(data); setPlayerMenu(null); }}
+        />,
+        document.body
+      )}
     </HubPanelContainer>
   );
 }

@@ -39,7 +39,7 @@ export default class MultiplayerHandler {
     socket.onGameState((data) => {
       const others = (data.players || [])
         .filter(p => p.id !== socket.id)
-        .map(p => ({ id: p.id, name: p.name }));
+        .map(p => ({ id: p.id, name: p.name, userId: p.userId || null }));
       this.onlinePlayersRef = others;
       cb.setOnlinePlayers(others);
 
@@ -63,7 +63,7 @@ export default class MultiplayerHandler {
 
     socket.onPlayerJoined((data) => {
       cb.setOnlinePlayers(prev => {
-        const next = [...prev, { id: data.id, name: data.name }];
+        const next = [...prev, { id: data.id, name: data.name, userId: data.userId || null }];
         this.onlinePlayersRef = next;
         return next;
       });

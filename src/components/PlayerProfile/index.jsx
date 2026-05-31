@@ -1163,6 +1163,7 @@ export default function PlayerProfile({
 
           <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
             <ProfileTab
+              onOpenProfile={onOpenProfile}
               playerName={playerName}
               bio={bio}
               onSaveBio={onSaveBio}
@@ -1233,6 +1234,7 @@ export default function PlayerProfile({
                 onClearThread={() => setMailThread(null)}
                 onLoadMore={handleLoadMoreMessages}
                 socket={socket}
+                onOpenProfile={onOpenProfile}
               />
             </div>
           )}

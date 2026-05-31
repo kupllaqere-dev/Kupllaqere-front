@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import * as S from "./GameStyles";
 import { preloadMap, createMap, MAP_WIDTH, MAP_HEIGHT } from "../game/MapManager";
 import SocketManager from "../network/SocketManager";
@@ -8,6 +9,7 @@ import { fetchOutfit, updateOutfit } from "../api/items";
 import ChatBox from "./ChatBox";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
+import PlayerContextMenu from "./PlayerContextMenu";
 import WorldAvatarSystem from "../game/avatar/WorldAvatarSystem";
 import PlayerManager from "../game/PlayerManager";
 import MovementManager from "../game/MovementManager";
@@ -29,6 +31,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const [whisperMessages, setWhisperMessages] = useState([]);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [viewedProfile, setViewedProfile] = useState(null);
+  const [worldPlayerMenu, setWorldPlayerMenu] = useState(null);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadingReady, setLoadingReady] = useState(false);
   const equippedRef = useRef({});
@@ -36,6 +39,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const outfitSaveTimerRef = useRef(null);
   const pendingOutfitPayloadRef = useRef(null);
   const chatBoxRef = useRef(null);
+  const worldMenuRef = useRef(null);
 
   // Phaser-side refs — written in create(), read in React callbacks.
   const worldAvatarSystemRef = useRef(null);
@@ -85,14 +89,10 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         );
       };
       mp.onPlayerClick = (id, name, clientX, clientY, userId) => {
-        const other = mp.playerManager?.otherPlayers.get(id);
-        setViewedProfile({
-          name,
-          userId,
-          gender:        other?.sprite?.gender || "female",
-          outfit:        other ? {} : {},
-          bio:           other?.bio || "",
-          selectedBadge: other?.selectedBadge || null,
+        setWorldPlayerMenu(prev => {
+          if (prev?.id === id) return prev;
+          const flipLeft = clientX + 208 > window.innerWidth;
+          return { id, name, userId, flipLeft };
         });
       };
       mpRef.current = mp;
@@ -310,6 +310,87 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     socketRef.current?.sendWhisper(toId, text);
   }, []);
 
+  useEffect(() => {
+    if (!worldPlayerMenu) return;
+    let handler;
+    const id = setTimeout(() => {
+      handler = (e) => {
+        if (!worldMenuRef.current?.contains(e.target)) setWorldPlayerMenu(null);
+      };
+      document.addEventListener("mousedown", handler);
+    }, 0);
+    return () => {
+      clearTimeout(id);
+      if (handler) document.removeEventListener("mousedown", handler);
+    };
+  }, [worldPlayerMenu]);
+
+  useEffect(() => {
+    if (!worldPlayerMenu) return;
+    const { id } = worldPlayerMenu;
+    let flipLeft = worldPlayerMenu.flipLeft;
+    let frameId;
+    const MENU_W = 228; // 200px content + 10px left pad + 10px right pad + 8px translate
+
+    function toVP(wx, wy, cam, appScale, cx, cy) {
+      return {
+        x: (wx - cam.scrollX) * cam.zoom * appScale + cx - 960 * appScale,
+        y: (wy - cam.scrollY) * cam.zoom * appScale + cy - 540 * appScale,
+      };
+    }
+
+    function tick() {
+      const el = worldMenuRef.current;
+      const other = mpRef.current?.playerManager?.otherPlayers.get(id);
+
+      if (!el || !other?.sprite?.scene) { frameId = requestAnimationFrame(tick); return; }
+
+      const sprite = other.sprite;
+      const cam    = sprite.scene.cameras.main;
+      const appScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const cx = window.innerWidth  / 2;
+      const cy = window.innerHeight / 2;
+
+      // Visible game area in viewport px (accounts for letterboxing)
+      const gameW      = 1920 * appScale;
+      const gameH      = 1080 * appScale;
+      const gameLeft   = cx - gameW / 2;
+      const gameRight  = cx + gameW / 2;
+      const gameTop    = cy - gameH / 2;
+      const gameBottom = cy + gameH / 2;
+
+      // Close as soon as the sprite's center leaves the camera's visible world area
+      const wv = cam.worldView;
+      if (
+        sprite.x < wv.x || sprite.x > wv.x + wv.width ||
+        sprite.y < wv.y || sprite.y > wv.y + wv.height
+      ) {
+        setWorldPlayerMenu(null);
+        return;
+      }
+
+      // Compute both side anchors (shoulder height)
+      const shoulderY   = sprite.y - sprite.displayHeight * 0.72;
+      const rightAnchor = toVP(sprite.x + sprite.displayWidth * 0.25, shoulderY, cam, appScale, cx, cy);
+      const leftAnchor  = toVP(sprite.x - sprite.displayWidth * 0.25, shoulderY, cam, appScale, cx, cy);
+
+      // Flip before menu edge reaches the game area boundary (guard against fast movement)
+      const FLIP_GUARD = 6;
+      if (!flipLeft && rightAnchor.x + MENU_W > gameRight - FLIP_GUARD) flipLeft = true;
+      else if (flipLeft && leftAnchor.x - MENU_W < gameLeft + FLIP_GUARD) flipLeft = false;
+
+      const anchor = flipLeft ? leftAnchor : rightAnchor;
+      el.style.left      = anchor.x + 'px';
+      el.style.top       = Math.max(gameTop + 4, Math.min(anchor.y, gameBottom - 280)) + 'px';
+      el.style.transform = flipLeft ? 'translate(calc(-100% - 8px), 0)' : 'translate(8px, 0)';
+
+      frameId = requestAnimationFrame(tick);
+    }
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [worldPlayerMenu?.id]);
+
   return (
     <S.Container>
       <S.GameWrapper ref={gameRef} />
@@ -323,6 +404,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         myName={user?.name || "Player"}
         onSend={handleSend}
         onWhisper={handleWhisper}
+        onViewProfile={setViewedProfile}
       />
       {viewedProfile && (
         <PlayerProfile
@@ -337,6 +419,19 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           targetUserId={viewedProfile.userId || null}
           socket={socketRef.current}
         />
+      )}
+      {worldPlayerMenu && createPortal(
+        <PlayerContextMenu
+          ref={worldMenuRef}
+          playerMenu={worldPlayerMenu}
+          onClose={() => setWorldPlayerMenu(null)}
+          onViewProfile={(data) => { setViewedProfile(data); setWorldPlayerMenu(null); }}
+          onOpenWhisper={(p) => { chatBoxRef.current?.openWhisper(p); setWorldPlayerMenu(null); }}
+          playerManagerRef={mpRef.current ? { current: mpRef.current.playerManager } : null}
+          flipLeft={worldPlayerMenu.flipLeft}
+          trackPosition
+        />,
+        document.body
       )}
     </S.Container>
   );

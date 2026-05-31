@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { lookupUser } from "../../../api/auth";
 import PlayerThumbnail from "../../PlayerThumbnail";
+import PlayerContextMenu from "../../PlayerContextMenu";
 import {
   HubPanelContainer, FriendsPanelInner, FriendsSearchRow, FriendsSearchInput,
   FriendsSearchIcon, FriendsSearchHint, PanelTabs, PanelTab, TabCountBadge,
@@ -18,6 +20,23 @@ export default function FriendsTab({
   const [friendBusy, setFriendBusy] = useState(null);
   const [searchStatus, setSearchStatus] = useState(null);
   const [onlineMap, setOnlineMap] = useState(() => new Map());
+  const [playerMenu, setPlayerMenu] = useState(null);
+  const playerMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!playerMenu) return;
+    function onDown(e) {
+      if (!playerMenuRef.current?.contains(e.target)) setPlayerMenu(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [playerMenu]);
+
+  function openPlayerMenu(player, e) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPlayerMenu({ ...player, x: rect.right, y: rect.top });
+  }
 
   const friends = friendsData?.friends || [];
   const received = friendsData?.received || [];
@@ -138,7 +157,7 @@ export default function FriendsTab({
                   <>
                     <FriendsGroupLabel>Online — {onlineFriends.length}</FriendsGroupLabel>
                     {onlineFriends.map((f) => (
-                      <FriendCardTile key={f.id} onClick={() => handleFriendClick(f)}>
+                      <FriendCardTile key={f.id} onClick={(e) => openPlayerMenu({ id: f.id, userId: f.id, name: f.name }, e)}>
                         <MailThumbWrap>
                           <MailThreadThumb>
                             <PlayerThumbnail playerName={f.name} size={38} />
@@ -154,7 +173,7 @@ export default function FriendsTab({
                   <>
                     <FriendsGroupLabel>Offline — {offlineFriends.length}</FriendsGroupLabel>
                     {offlineFriends.map((f) => (
-                      <FriendCardTile key={f.id} onClick={() => handleFriendClick(f)} $offline>
+                      <FriendCardTile key={f.id} $offline onClick={(e) => openPlayerMenu({ id: f.id, userId: f.id, name: f.name }, e)}>
                         <MailThumbWrap>
                           <MailThreadThumb>
                             <PlayerThumbnail playerName={f.name} size={38} />
@@ -191,6 +210,15 @@ export default function FriendsTab({
           )}
         </FriendsListScroll>
       </FriendsPanelInner>
+      {playerMenu && createPortal(
+        <PlayerContextMenu
+          ref={playerMenuRef}
+          playerMenu={playerMenu}
+          onClose={() => setPlayerMenu(null)}
+          onViewProfile={(data) => { onOpenProfile?.(data); setPlayerMenu(null); }}
+        />,
+        document.body
+      )}
     </HubPanelContainer>
   );
 }
