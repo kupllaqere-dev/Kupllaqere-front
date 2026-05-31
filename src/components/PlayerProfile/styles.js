@@ -684,21 +684,17 @@ export const SoulmateEmptyBox = styled.div`
 `;
 
 export const ShowcaseScrollWrap = styled.div`
-  overflow-x: auto;
-  padding-bottom: 5px;
-  &::-webkit-scrollbar { height: 3px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: rgba(var(--pp-accent-rgb),0.28); border-radius: 3px; }
+  overflow: hidden;
 `;
 
 export const ShowcaseRow = styled.div`
   display: flex;
-  gap: 10px;
-  width: max-content;
+  gap: 8px;
+  width: 100%;
 `;
 
 export const ShowcaseCard = styled.div`
-  width: 98px; height: 116px;
+  flex: 1; min-width: 0; height: 110px;
   border-radius: 12px;
   border: 1px dashed ${"var(--pp-border)"};
   background: ${"var(--pp-surface)"};

@@ -8,6 +8,8 @@ import {
   cancelSoulMateRequest,
   removeSoulMate,
 } from "../../api/soulmate";
+
+const smStateCache = new Map();
 import {
   fetchFriends,
   sendFriendRequest,
@@ -108,7 +110,7 @@ export default function PlayerProfile({
   const [badgeSaving, setBadgeSaving] = useState(false);
   const [badgesExpanded, setBadgesExpanded] = useState(false);
 
-  const [smState, setSmState] = useState(null);
+  const [smState, setSmState] = useState(() => smStateCache.get(targetUserId ?? "self") ?? null);
   const [smBusy, setSmBusy] = useState(false);
   const [smError, setSmError] = useState(null);
 
@@ -364,6 +366,7 @@ export default function PlayerProfile({
     if (!currentUserId) { setSmState(null); return; }
     try {
       const data = await fetchSoulMateState(targetUserId || null);
+      smStateCache.set(targetUserId ?? "self", data);
       setSmState(data);
       setSmError(null);
     } catch (err) {

@@ -3,17 +3,22 @@ import { FRAME_W, FRAME_H, ANIM_DEFS } from "./LayerConfig.js";
 
 export default class WorldAvatarSystem {
   #scene;
-  #pending = new Map(); // playerId → Promise<string> (texture key)
+  #pending = new Map(); // playerId → Promise<string>
+  #queued  = new Map(); // playerId → { gender, outfit, resolve, reject }
 
   constructor(scene) {
     this.#scene = scene;
   }
 
   // Builds (or rebuilds) the composited texture for a player.
-  // Returns a Promise that resolves to the Phaser texture key once ready.
-  // Concurrent calls for the same playerId share the same in-flight build.
+  // If a build is already in-flight, the new outfit is queued so the latest
+  // outfit is always applied — rapid equip/unequip sequences won't be dropped.
   async rebuild(playerId, gender, outfit) {
-    if (this.#pending.has(playerId)) return this.#pending.get(playerId);
+    if (this.#pending.has(playerId)) {
+      return new Promise((resolve, reject) => {
+        this.#queued.set(playerId, { gender, outfit, resolve, reject });
+      });
+    }
 
     const p = avatarCompositor
       .composite(gender, outfit)
@@ -28,15 +33,24 @@ export default class WorldAvatarSystem {
         });
         this.#registerAnims(key);
         this.#pending.delete(playerId);
+        this.#flushQueued(playerId);
         return key;
       })
       .catch(err => {
         this.#pending.delete(playerId);
+        this.#flushQueued(playerId);
         throw err;
       });
 
     this.#pending.set(playerId, p);
     return p;
+  }
+
+  #flushQueued(playerId) {
+    const q = this.#queued.get(playerId);
+    if (!q) return;
+    this.#queued.delete(playerId);
+    this.rebuild(playerId, q.gender, q.outfit).then(q.resolve).catch(q.reject);
   }
 
   // Returns the Phaser animation key for a given player + animation name.
@@ -54,6 +68,7 @@ export default class WorldAvatarSystem {
     }
     if (scene.textures.exists(key)) scene.textures.remove(key);
     this.#pending.delete(playerId);
+    this.#queued.delete(playerId);
   }
 
   #registerAnims(textureKey) {
