@@ -40,6 +40,7 @@ import {
 import ComposeMailModal from "../ComposeMailModal";
 import AvatarCanvas from "../Avatar/AvatarCanvas";
 import { avatarCompositor } from "../../game/avatar/AvatarCompositor";
+import { getSlotKey, getConflictSlots } from "../../game/avatar/LayerConfig.js";
 
 import {
   BADGES,
@@ -805,11 +806,8 @@ export default function PlayerProfile({
   const invGoToRecent = () => { setInvView("recentlyAdded"); setInvCategory(null); setInvSubcategory(null); };
   const invGoToEquipped = () => { setInvView("equipped"); setInvCategory(null); setInvSubcategory(null); };
 
-  const invSlotKey = (entry) =>
-    entry.category === "appearance" ? entry.subcategory : entry.category;
-
   const handleInvHover = useCallback((entry) => {
-    const slotKey = invSlotKey(entry);
+    const slotKey = getSlotKey(entry.category, entry.subcategory);
     const previewOutfit = {
       ...(outfit || {}),
       [slotKey]: { itemId: entry.itemId ?? entry._id, imageUrl: entry.imageUrl },
@@ -818,7 +816,7 @@ export default function PlayerProfile({
   }, [outfit, gender]);
 
   const invIsSelected = entry =>
-    invSelectedEntries[invSlotKey(entry)]?._id?.toString() === entry._id?.toString();
+    invSelectedEntries[getSlotKey(entry.category, entry.subcategory)]?._id?.toString() === entry._id?.toString();
 
   const invCanUse = entry => {
     if (entry.currency === "gems") return true;
@@ -827,11 +825,17 @@ export default function PlayerProfile({
   };
 
   const invToggleEntry = entry => {
-    const slotKey = invSlotKey(entry);
+    const slotKey = getSlotKey(entry.category, entry.subcategory);
     if (invIsSelected(entry)) {
       setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
     } else {
-      setInvSelectedEntries(prev => ({ ...prev, [slotKey]: entry }));
+      const conflictSlots = getConflictSlots(entry.category, invSelectedEntries);
+      setInvSelectedEntries(prev => {
+        const n = { ...prev };
+        for (const slot of conflictSlots) delete n[slot];
+        n[slotKey] = entry;
+        return n;
+      });
     }
   };
 
@@ -886,7 +890,7 @@ export default function PlayerProfile({
       await sellItem({ inventoryId: entry._id });
       setInvItems(prev => prev.filter(i => i._id !== entry._id));
       if (invIsSelected(entry)) {
-        const slotKey = invSlotKey(entry);
+        const slotKey = getSlotKey(entry.category, entry.subcategory);
         setInvSelectedEntries(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
       }
     } catch (err) {

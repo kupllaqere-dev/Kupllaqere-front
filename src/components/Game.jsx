@@ -18,8 +18,7 @@ import {
   createLocalPlayer,
   updateLocalPlayer,
 } from "../game/LocalPlayer";
-
-const APPEARANCE_SUBS = ["eyes", "eyebrows", "nose", "mouth", "beard"];
+import { getSlotKey, getConflictSlots } from "../game/avatar/LayerConfig.js";
 const SPAWN_X = MAP_WIDTH / 2;
 const SPAWN_Y = MAP_HEIGHT * 0.65;
 
@@ -206,17 +205,22 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   }, []);
 
   const handleEquip = useCallback((item) => {
-    const mp      = mpRef.current;
-    const slotKey = item.category === "appearance" ? item.subcategory : item.category;
+    const mp          = mpRef.current;
+    const slotKey     = getSlotKey(item.category, item.subcategory);
     const effectiveId = item.itemId ?? item._id;
 
+    // Resolve conflicts (onePiece ↔ tops/bottoms)
+    const conflictSlots = getConflictSlots(item.category, equippedRef.current);
+
     const next = { ...equippedRef.current };
+    for (const slot of conflictSlots) delete next[slot];
     next[slotKey] = item._id ?? effectiveId;
     equippedRef.current = next;
     onEquippedChange(next);
 
     const nextOutfit = { ...outfitRef.current };
-    nextOutfit[slotKey] = { itemId: effectiveId, imageUrl: item.imageUrl };
+    for (const slot of conflictSlots) delete nextOutfit[slot];
+    nextOutfit[slotKey] = { itemId: effectiveId, imageUrl: item.imageUrl, subcategory: item.subcategory };
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
@@ -228,20 +232,16 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
   }, []);
 
-  const handleUnequip = useCallback((categoryOrSlot) => {
+  const handleUnequip = useCallback((slotKey) => {
     const mp = mpRef.current;
 
-    const slotsToRemove = categoryOrSlot === "appearance"
-      ? ["appearance", ...APPEARANCE_SUBS]
-      : [categoryOrSlot];
-
     const next = { ...equippedRef.current };
-    for (const slot of slotsToRemove) delete next[slot];
+    delete next[slotKey];
     equippedRef.current = next;
     onEquippedChange(next);
 
     const nextOutfit = { ...outfitRef.current };
-    for (const slot of slotsToRemove) delete nextOutfit[slot];
+    delete nextOutfit[slotKey];
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
@@ -267,7 +267,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     const nextOutfit = { ...outfitRef.current };
     for (const slotKey of clearSlots) delete nextOutfit[slotKey];
     for (const [slotKey, item] of Object.entries(equippedSlots)) {
-      nextOutfit[slotKey] = { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl };
+      nextOutfit[slotKey] = { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl, subcategory: item.subcategory };
     }
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);

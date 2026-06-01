@@ -1,4 +1,4 @@
-import { LAYER_ORDER, SHEET_W, SHEET_ANIM_H, ROWS, BASE_SPRITES } from "./LayerConfig.js";
+import { buildLayerStack, SHEET_W, SHEET_ANIM_H, ROWS, BASE_SPRITES } from "./LayerConfig.js";
 
 class AvatarCompositor {
   #imgCache  = new Map(); // url → HTMLImageElement  (main-thread, for composite())
@@ -91,7 +91,7 @@ class AvatarCompositor {
   // Main-thread fallback when worker is unavailable.
   async #compositeFallback(gender, outfit, height) {
     const baseUrl   = BASE_SPRITES[gender] ?? BASE_SPRITES.female;
-    const layerUrls = LAYER_ORDER.map(slot => outfit?.[slot]?.imageUrl).filter(Boolean);
+    const layerUrls = buildLayerStack(outfit).map(slot => outfit?.[slot]?.imageUrl).filter(Boolean);
     const images    = await Promise.all([baseUrl, ...layerUrls].map(url => this.#load(url)));
 
     const canvas = document.createElement("canvas");

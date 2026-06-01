@@ -1,4 +1,4 @@
-import { LAYER_ORDER, SHEET_W, SHEET_ANIM_H, ROWS, BASE_SPRITES } from "./LayerConfig.js";
+import { buildLayerStack, SHEET_W, SHEET_ANIM_H, ROWS, BASE_SPRITES } from "./LayerConfig.js";
 
 const imgCache = new Map(); // url → ImageBitmap
 
@@ -15,7 +15,7 @@ async function loadBitmap(url) {
 
 async function bake(gender, outfit, height) {
   const baseUrl   = BASE_SPRITES[gender] ?? BASE_SPRITES.female;
-  const layerUrls = LAYER_ORDER.map(slot => outfit?.[slot]?.imageUrl).filter(Boolean);
+  const layerUrls = buildLayerStack(outfit).map(slot => outfit?.[slot]?.imageUrl).filter(Boolean);
   const bitmaps   = await Promise.all([baseUrl, ...layerUrls].map(loadBitmap));
 
   const canvas = new OffscreenCanvas(SHEET_W, height);

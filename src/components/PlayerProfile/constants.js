@@ -8,7 +8,7 @@ export const BADGES = ["diamond", "flame", "medal", "paint", "verified"];
 export const INV_CATEGORY_LABELS = {
   tops: "Tops", bottoms: "Bottoms", onePiece: "One Piece", coats: "Coats",
   head: "Head", hair: "Hair", accessories: "Accessories", feet: "Feet", hands: "Hands",
-  appearance: "Appearance",
+  appearance: "Appearance", tattoos: "Tattoos",
 };
 export const INV_SUBCATEGORY_LABELS = {
   longSleeve: "Long Sleeve", shortSleeve: "Short Sleeve", sleeveless: "Sleeveless", baggy: "Baggy",
@@ -16,11 +16,12 @@ export const INV_SUBCATEGORY_LABELS = {
   overall: "Overall", dress: "Dress",
   jackets: "Jackets", vests: "Vests", hoodie: "Hoodie",
   hats: "Hats", sunglasses: "Sunglasses", decorations: "Decorations", horns: "Horns", halos: "Halos",
-  short: "Short", medium: "Medium", long: "Long", facial: "Facial",
+  short: "Short", medium: "Medium", long: "Long",
   bracelets: "Bracelets", belts: "Belts", neckwear: "Neckwear", necklace: "Necklace", bags: "Bags", nails: "Nails",
   shoes: "Shoes", boots: "Boots", slipOns: "Slip-Ons", socks: "Socks",
   gloves: "Gloves", handheld: "Handheld",
   eyes: "Eyes", eyebrows: "Eyebrows", nose: "Nose", mouth: "Mouth", beard: "Beard",
+  back: "Back", chest: "Chest", arms: "Arms", legs: "Legs",
 };
 export const INV_CATEGORY_SUBCATEGORIES = {
   tops: ["longSleeve", "shortSleeve", "sleeveless", "baggy"],
@@ -28,11 +29,12 @@ export const INV_CATEGORY_SUBCATEGORIES = {
   onePiece: ["overall", "dress"],
   coats: ["jackets", "vests", "hoodie"],
   head: ["hats", "sunglasses", "decorations", "horns", "halos"],
-  hair: ["short", "medium", "long", "facial"],
+  hair: ["short", "medium", "long"],
   accessories: ["bracelets", "belts", "neckwear", "necklace", "bags", "nails"],
   feet: ["shoes", "boots", "slipOns", "socks"],
   hands: ["gloves", "handheld"],
   appearance: ["eyes", "eyebrows", "nose", "mouth", "beard"],
+  tattoos: ["back", "chest", "arms", "legs"],
 };
 export const INV_CATEGORY_DECO = {
   tops: "/assets/store/tops.png", bottoms: "/assets/store/bottoms.png",
@@ -40,6 +42,7 @@ export const INV_CATEGORY_DECO = {
   head: "/assets/store/head.png", hair: "/assets/store/hair.png",
   accessories: "/assets/store/accessories.png", feet: "/assets/store/feet.png",
   hands: "/assets/store/hands.png", appearance: "/assets/store/head.png",
+  tattoos: "/assets/store/head.png",
 };
 export const INV_CATEGORIES = Object.keys(INV_CATEGORY_LABELS);
 
@@ -69,6 +72,7 @@ export const LOOK_FEATURES = [
   { key: "eyes",      label: "Eyes" },
   { key: "nose",      label: "Nose" },
   { key: "mouth",     label: "Mouth" },
+  { key: "beard",     label: "Beard" },
 ];
 
 export const LOOK_FEATURE_CATEGORY = {
@@ -77,6 +81,7 @@ export const LOOK_FEATURE_CATEGORY = {
   eyes:     "appearance",
   nose:     "appearance",
   mouth:    "appearance",
+  beard:    "appearance",
 };
 
 export const LOOK_FEATURE_SUBCATEGORY = {
@@ -85,4 +90,5 @@ export const LOOK_FEATURE_SUBCATEGORY = {
   eyes:     "eyes",
   nose:     "nose",
   mouth:    "mouth",
+  beard:    "beard",
 };
