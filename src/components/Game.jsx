@@ -18,7 +18,7 @@ import {
   createLocalPlayer,
   updateLocalPlayer,
 } from "../game/LocalPlayer";
-import { getSlotKey, getConflictSlots } from "../game/avatar/LayerConfig.js";
+import { getSlotKey, getConflictSlots, LAYER_ORDER } from "../game/avatar/LayerConfig.js";
 const SPAWN_X = MAP_WIDTH / 2;
 const SPAWN_Y = MAP_HEIGHT * 0.65;
 
@@ -100,9 +100,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         const outfitMap = {};
         const fullOutfit = {};
         for (const [cat, item] of Object.entries(savedOutfit)) {
-          if (item?.itemId) {
+          if (item?.itemId && LAYER_ORDER.includes(cat)) {
             outfitMap[cat] = item.itemId;
-            fullOutfit[cat] = { itemId: item.itemId, imageUrl: item.imageUrl };
+            fullOutfit[cat] = { itemId: item.itemId, imageUrl: item.imageUrl, subcategory: item.subcategory };
           }
         }
         equippedRef.current = outfitMap;
