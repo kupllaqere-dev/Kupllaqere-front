@@ -214,6 +214,36 @@ const SuccessMsg = styled.div`
   text-align: center;
 `;
 
+const KickBanner = styled.div`
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fde68a;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  button {
+    background: none;
+    border: none;
+    color: rgba(253, 230, 138, 0.6);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+
+    &:hover {
+      color: #fde68a;
+    }
+  }
+`;
+
 // ── Register Modal ──
 
 const Overlay = styled.div`
@@ -275,7 +305,7 @@ function GoogleIcon() {
 
 // ── Component ──
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, kickMessage, onKickMessageClear }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
@@ -359,6 +389,13 @@ export default function Login({ onLogin }) {
           <h1>FV Game</h1>
           <p>Enter the world</p>
         </Logo>
+
+        {kickMessage && (
+          <KickBanner>
+            <span>{kickMessage}</span>
+            <button type="button" onClick={onKickMessageClear}>×</button>
+          </KickBanner>
+        )}
 
         {error && <ErrorMsg>{error}</ErrorMsg>}
 

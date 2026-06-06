@@ -105,6 +105,10 @@ export default class SocketManager {
     this.socket.on("mail:new", callback);
   }
 
+  onSessionKicked(callback) {
+    this.socket.on("session:kicked", callback);
+  }
+
   // ── Chess ──────────────────────────────────────────
   sendChessInvite(targetSocketId) {
     this.socket.emit("chess:invite", { targetSocketId });

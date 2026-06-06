@@ -47,6 +47,7 @@ function App() {
   const [outfit, setOutfit] = useState({});
   const [gameSocket, setGameSocket] = useState(null);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
+  const [kickMessage, setKickMessage] = useState(null);
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
   const applyLookBatchRef = useRef(null);
@@ -142,8 +143,21 @@ function App() {
     setUser(null);
   }
 
+  useEffect(() => {
+    if (!gameSocket) return;
+    const handler = () => {
+      localStorage.removeItem("fv_user");
+      localStorage.removeItem("fv_token");
+      supabase.auth.signOut();
+      setKickMessage("Your account was signed in from another device or tab.");
+      setUser(null);
+    };
+    gameSocket.socket.on("session:kicked", handler);
+    return () => gameSocket.socket.off("session:kicked", handler);
+  }, [gameSocket]);
+
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} kickMessage={kickMessage} onKickMessageClear={() => setKickMessage(null)} />;
   }
 
   if (user.needsSetup) {
