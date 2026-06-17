@@ -11,15 +11,22 @@ export default function ChessWindow({
   onChessMove,
   onResign,
   onCloseResult,
+  onGameOver,
   onlinePlayers,
   mySocketId,
   playerName,
   gender,
   outfit,
+  myRating,
 }) {
   const [showPlayerList, setShowPlayerList] = useState(false);
   const [currentTurn, setCurrentTurn] = useState("w");
   const [internalGameOver, setInternalGameOver] = useState(null);
+
+  const handleGameOver = useCallback((result) => {
+    setInternalGameOver(result);
+    onGameOver?.(result);
+  }, [onGameOver]);
 
   const { phase, myColor, opponent, pendingSentTo, opponentMove, externalResult } = chessState;
 
@@ -87,6 +94,7 @@ export default function ChessWindow({
           </S.CardAvatar>
           <S.CardInfo>
             <S.CardName>{playerName || "You"}</S.CardName>
+            {myRating != null && <S.CardRating>{myRating}</S.CardRating>}
           </S.CardInfo>
         </S.PlayerCard>
 
@@ -155,7 +163,7 @@ export default function ChessWindow({
             onMove={onChessMove}
             opponentMove={opponentMove}
             externalResult={externalResult}
-            onGameOver={setInternalGameOver}
+            onGameOver={handleGameOver}
             onTurnChange={setCurrentTurn}
           />
         )}

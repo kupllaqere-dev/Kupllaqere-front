@@ -80,6 +80,18 @@ function App() {
       if (user) {
         // Token may be stale — refresh it from the current Supabase session
         localStorage.setItem("fv_token", session.access_token);
+        // Sync balance from DB in case it changed on the platform (e.g. code redemption)
+        getMe(session.access_token).then(data => {
+          setUser(prev => {
+            const next = {
+              ...prev,
+              coins: data.user.coins ?? prev.coins,
+              gems:  data.user.gems  ?? prev.gems,
+            };
+            localStorage.setItem("fv_user", JSON.stringify(next));
+            return next;
+          });
+        }).catch(() => {});
         return;
       }
       try {
@@ -154,6 +166,24 @@ function App() {
     };
     gameSocket.socket.on("session:kicked", handler);
     return () => gameSocket.socket.off("session:kicked", handler);
+  }, [gameSocket]);
+
+  // Sync balance changes made outside the game (e.g. platform code redemption)
+  useEffect(() => {
+    if (!gameSocket?.socket) return;
+    const handler = ({ gems, coins }) => {
+      setUser((prev) => {
+        const next = {
+          ...prev,
+          ...(gems  !== undefined ? { gems  } : {}),
+          ...(coins !== undefined ? { coins } : {}),
+        };
+        localStorage.setItem("fv_user", JSON.stringify(next));
+        return next;
+      });
+    };
+    gameSocket.socket.on("user:balance_update", handler);
+    return () => gameSocket.socket.off("user:balance_update", handler);
   }, [gameSocket]);
 
   if (!user) {

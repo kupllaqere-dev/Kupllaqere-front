@@ -36,6 +36,7 @@ import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../
 import {
   saveTheme, fetchUserStatus, updatePresence,
   fetchProfileView, saveProfileView, clearProfileView, invalidateProfileViewCache,
+  fetchLikeState, toggleLike,
 } from "../../api/users";
 import ComposeMailModal from "../ComposeMailModal";
 import AvatarCanvas from "../Avatar/AvatarCanvas";
@@ -93,6 +94,7 @@ export default function PlayerProfile({
   onApplyLookBatch = null,
   equipped = null,
   level = 1,
+  popularity = 0,
   onOpenProfile = null,
 }) {
   const textareaRef = useRef(null);
@@ -117,6 +119,9 @@ export default function PlayerProfile({
 
   const [friendStatus, setFriendStatus] = useState(null);
   const [friendBusy, setFriendBusy] = useState(false);
+
+  const [likeState, setLikeState] = useState({ liked: false, popularity });
+  const [likeBusy, setLikeBusy] = useState(false);
 
   const [composing, setComposing] = useState(false);
 
@@ -415,6 +420,13 @@ export default function PlayerProfile({
 
   useEffect(() => { loadFriendStatus(); }, [loadFriendStatus]);
 
+  useEffect(() => {
+    if (!currentUserId || isSelfView || !targetUserId) return;
+    fetchLikeState(targetUserId)
+      .then(setLikeState)
+      .catch(() => {});
+  }, [currentUserId, isSelfView, targetUserId]);
+
   const runFriend = useCallback(async (fn) => {
     if (friendBusy) return;
     setFriendBusy(true);
@@ -437,6 +449,19 @@ export default function PlayerProfile({
     if (friendStatus === "they_sent") return "Accept";
     if (friendStatus === "friends") return "Unfriend";
     return "…";
+  };
+
+  const handleLikeBtn = async () => {
+    if (likeBusy || !currentUserId) return;
+    setLikeBusy(true);
+    try {
+      const result = await toggleLike(targetUserId);
+      setLikeState(result);
+    } catch (err) {
+      console.error("Like toggle failed:", err);
+    } finally {
+      setLikeBusy(false);
+    }
   };
 
   const handleBadgeClick = async (name) => {
@@ -1027,10 +1052,19 @@ export default function PlayerProfile({
                 <>
                   <SidebarItem>
                     <SidebarBtn
+                      onClick={handleLikeBtn}
+                      disabled={likeBusy || !currentUserId}
+                    >
+                      <SidebarIcon>{likeState.liked ? "♥" : "♡"}</SidebarIcon>
+                      <SidebarLabel>{likeState.liked ? "Liked" : "Like"}</SidebarLabel>
+                    </SidebarBtn>
+                  </SidebarItem>
+                  <SidebarItem>
+                    <SidebarBtn
                       onClick={handleFriendBtn}
                       disabled={friendBusy || friendStatus === null}
                     >
-                      <SidebarIcon>♡</SidebarIcon>
+                      <SidebarIcon>⁂</SidebarIcon>
                       <SidebarLabel>{friendBtnLabel()}</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
@@ -1172,6 +1206,7 @@ export default function PlayerProfile({
             <ProfileTab
               onOpenProfile={onOpenProfile}
               playerName={playerName}
+              popularity={likeState.popularity}
               bio={bio}
               onSaveBio={onSaveBio}
               editingBio={editingBio}

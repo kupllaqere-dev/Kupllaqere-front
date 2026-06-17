@@ -69,3 +69,22 @@ export async function saveTheme(themeName) {
   return res.json();
 }
 
+export async function fetchLikeState(targetUserId) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/users/${encodeURIComponent(targetUserId)}/like-state`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return { liked: false, popularity: 0 };
+  return res.json();
+}
+
+export async function toggleLike(targetUserId) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/users/${encodeURIComponent(targetUserId)}/like`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to toggle like");
+  return res.json();
+}
+

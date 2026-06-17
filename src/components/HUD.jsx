@@ -32,6 +32,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
 
   // Chess state
   const [chessState, setChessState] = useState(CHESS_IDLE);
+  const [chessRating, setChessRating] = useState(1000);
   const [pendingInvite, setPendingInvite] = useState(null); // { inviterSocketId, inviter }
   const [declineMsg, setDeclineMsg] = useState(null);
   const declineDismissRef = useRef(null);
@@ -115,11 +116,14 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       );
     };
 
+    const onRating = ({ rating }) => setChessRating(rating);
+
     socket.onChessInviteReceived(onInvite);
     socket.onChessDeclineReceived(onDecline);
     socket.onChessAcceptReceived(onAccept);
     socket.onChessMoveReceived(onMove);
     socket.onChessResignReceived(onResign);
+    socket.onChessRating(onRating);
 
     return () => {
       socket.off("chess:invite:received", onInvite);
@@ -127,6 +131,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       socket.off("chess:accept:received", onAccept);
       socket.off("chess:move:received", onMove);
       socket.off("chess:resign:received", onResign);
+      socket.off("chess:rating", onRating);
     };
   }, [socket]);
 
@@ -190,6 +195,16 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     setChessState((prev) => ({ ...prev, phase: "game_over", externalResult: "resigned" }));
   }, [socket, chessState.opponent]);
 
+  const handleChessGameOver = useCallback((result) => {
+    const opponentSocketId = chessState.opponent?.socketId;
+    if (!opponentSocketId) return;
+    if (result === "win") {
+      socket?.sendChessGameOver(opponentSocketId, "win");
+    } else if (result === "draw" && chessState.myColor === "w") {
+      socket?.sendChessGameOver(opponentSocketId, "draw");
+    }
+  }, [socket, chessState.opponent, chessState.myColor]);
+
   const handleCloseChessResult = useCallback(() => {
     setChessState(CHESS_IDLE);
     setShowChess(false);
@@ -208,6 +223,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       bio: data?.bio ?? "",
       selectedBadge: data?.selectedBadge ?? null,
       level: data?.level ?? 1,
+      popularity: data?.popularity ?? 0,
     });
   }
 
@@ -252,6 +268,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           targetUserId={viewingProfile.userId}
           socket={socket}
           level={viewingProfile.level}
+          popularity={viewingProfile.popularity}
         />
       )}
       {showMaps && <MapsModal onClose={() => setShowMaps(false)} />}
@@ -277,11 +294,13 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           onChessMove={handleChessMove}
           onResign={handleResign}
           onCloseResult={handleCloseChessResult}
+          onGameOver={handleChessGameOver}
           onlinePlayers={onlinePlayers}
           mySocketId={socket?.id}
           playerName={playerName}
           gender={gender}
           outfit={outfit}
+          myRating={chessRating}
         />
       )}
 

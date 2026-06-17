@@ -185,6 +185,7 @@ function SoulMate({ smState, isSelfView, targetUserId, currentUserId, smBusy, sm
 export default function ProfileTab({
   onOpenProfile,
   playerName,
+  popularity = 0,
   bio, onSaveBio,
   editingBio, setEditingBio,
   bioDraft, setBioDraft,
@@ -273,16 +274,8 @@ export default function ProfileTab({
             <HeaderMemberSince>Member since May 2024</HeaderMemberSince>
             <HeaderStatsRow>
               <HeaderStatBox>
-                <HeaderStatTop>⭐ 1,204</HeaderStatTop>
+                <HeaderStatTop>♥ {popularity.toLocaleString()}</HeaderStatTop>
                 <HeaderStatLabel>Popularity</HeaderStatLabel>
-              </HeaderStatBox>
-              <HeaderStatBox>
-                <HeaderStatTop>👥 48</HeaderStatTop>
-                <HeaderStatLabel>Friends</HeaderStatLabel>
-              </HeaderStatBox>
-              <HeaderStatBox>
-                <HeaderStatTop>♥ 320</HeaderStatTop>
-                <HeaderStatLabel>Likes</HeaderStatLabel>
               </HeaderStatBox>
             </HeaderStatsRow>
           </HeaderRight>

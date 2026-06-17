@@ -168,6 +168,14 @@ export const CardName = styled.div`
   letter-spacing: 0.1px;
 `;
 
+export const CardRating = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  color: #7C3AED;
+  margin-top: 1px;
+  letter-spacing: 0.2px;
+`;
+
 export const VsSep = styled.div`
   width: 100%;
   display: flex;

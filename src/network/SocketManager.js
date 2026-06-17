@@ -130,6 +130,14 @@ export default class SocketManager {
     this.socket.emit("chess:resign", { opponentSocketId });
   }
 
+  sendChessGameOver(opponentSocketId, result) {
+    this.socket.emit("chess:game_over", { opponentSocketId, result });
+  }
+
+  onChessRating(callback) {
+    this.socket.on("chess:rating", callback);
+  }
+
   onChessInviteReceived(callback) {
     this.socket.on("chess:invite:received", callback);
   }
