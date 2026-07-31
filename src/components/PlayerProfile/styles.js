@@ -197,6 +197,36 @@ export const SidebarIcon = styled.span`
   ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt)"}; opacity: 0.8; }
 `;
 
+export const SidebarIconImg = styled.span`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  &::before {
+    content: '';
+    display: block;
+    width: 22px;
+    height: 22px;
+    background: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
+    mask-image: url(${p => p.$src});
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: url(${p => p.$src});
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    transition: background 0.2s;
+  }
+  ${SidebarBtn}:hover:not(:disabled) & { opacity: 0.8; }
+  ${SidebarBtn}:hover:not(:disabled) &::before { background: var(--pp-txt); }
+`;
+
 export const SidebarLabel = styled.span`
   font-size: 10px;
   font-weight: 700;

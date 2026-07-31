@@ -63,11 +63,11 @@ import { InvItemsArea, InvBreadcrumbsBar } from "./tabs/InventoryTab";
 import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
   Sidebar, SidebarLogoWrap, SidebarLogoMark, SidebarLogoText,
-  SidebarNav, SidebarItem, SidebarBtn, SidebarIcon, SidebarLabel, SidebarNotifDot,
+  SidebarNav, SidebarItem, SidebarBtn, SidebarIcon, SidebarIconImg, SidebarLabel, SidebarNotifDot,
   InvActionBar, InvNudeBtn, InvResetBtn, InvApplyBtn,
   HubPanelContainer,
   AvatarStageCol, StageContainer, AvatarViewport, Controls, ArrowBtn,
-  StatusCard, StatusCardTop, StatusSep, StatusLoc, StatusText,
+  StatusCard, StatusCardTop, StatusSep, StatusLoc,
   PresenceDot, PresenceLabel,
   StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
 } from "./styles";
@@ -998,13 +998,13 @@ export default function PlayerProfile({
                 <>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-                      <SidebarIcon $active={activeTab === "profile"}>♟</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
                       <SidebarLabel $active={activeTab === "profile"}>Profile</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "mail"} onClick={() => setActiveTab("mail")}>
-                      <SidebarIcon $active={activeTab === "mail"}>✉</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "mail"} $src="/assets/profile-icons/mail.png" />
                       <SidebarLabel $active={activeTab === "mail"}>Mail</SidebarLabel>
                       {(mailListsLoaded
                         ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
@@ -1019,31 +1019,31 @@ export default function PlayerProfile({
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "look"} onClick={() => setActiveTab("look")}>
-                      <SidebarIcon $active={activeTab === "look"}>◎</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "look"} $src="/assets/profile-icons/look.png" />
                       <SidebarLabel $active={activeTab === "look"}>Look</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "friends"} onClick={() => setActiveTab("friends")}>
-                      <SidebarIcon $active={activeTab === "friends"}>⁂</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "friends"} $src="/assets/profile-icons/friends.png" />
                       <SidebarLabel $active={activeTab === "friends"}>Friends</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")}>
-                      <SidebarIcon $active={activeTab === "inventory"}>⌐</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "inventory"} $src="/assets/profile-icons/inventory.png" />
                       <SidebarLabel $active={activeTab === "inventory"}>Inventory</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "wishlist"} onClick={() => setActiveTab("wishlist")}>
-                      <SidebarIcon $active={activeTab === "wishlist"}>☆</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "wishlist"} $src="/assets/profile-icons/wishlist.png" />
                       <SidebarLabel $active={activeTab === "wishlist"}>Wishlist</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn $active={activeTab === "themes"} onClick={() => setActiveTab("themes")}>
-                      <SidebarIcon $active={activeTab === "themes"}>◑</SidebarIcon>
+                      <SidebarIconImg $active={activeTab === "themes"} $src="/assets/profile-icons/themes.png" />
                       <SidebarLabel $active={activeTab === "themes"}>Themes</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
@@ -1064,19 +1064,19 @@ export default function PlayerProfile({
                       onClick={handleFriendBtn}
                       disabled={friendBusy || friendStatus === null}
                     >
-                      <SidebarIcon>⁂</SidebarIcon>
+                      <SidebarIconImg $src="/assets/profile-icons/friends.png" />
                       <SidebarLabel>{friendBtnLabel()}</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn onClick={() => setComposing(true)}>
-                      <SidebarIcon>✉</SidebarIcon>
+                      <SidebarIconImg $src="/assets/profile-icons/mail.png" />
                       <SidebarLabel>Mail</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
                   <SidebarItem>
                     <SidebarBtn>
-                      <SidebarIcon>☆</SidebarIcon>
+                      <SidebarIconImg $src="/assets/profile-icons/wishlist.png" />
                       <SidebarLabel>Wishlist</SidebarLabel>
                     </SidebarBtn>
                   </SidebarItem>
@@ -1197,7 +1197,6 @@ export default function PlayerProfile({
                   <StatusSep>·</StatusSep>
                   <StatusLoc>Neclis Plaza</StatusLoc>
                 </StatusCardTop>
-                <StatusText>"{bio || "No status set"}"</StatusText>
               </StatusCard>
             )}
           </AvatarStageCol>

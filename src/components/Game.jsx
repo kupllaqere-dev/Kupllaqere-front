@@ -127,6 +127,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         const playerMgr  = new PlayerManager();
         const movement   = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
         const cursors    = this.input.keyboard.createCursorKeys();
+        // createCursorKeys() captures Space by default, which calls preventDefault()
+        // on every Space keydown page-wide (even while typing in HTML inputs/textareas
+        // like the profile's About Me or Mail fields). Space isn't used for movement,
+        // so release the capture.
+        this.input.keyboard.removeCapture(32);
 
         worldAvatarSystemRef.current = avatarSys;
 
