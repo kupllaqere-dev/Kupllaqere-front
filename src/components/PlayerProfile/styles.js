@@ -62,23 +62,23 @@ export const Overlay = styled.div`
 `;
 
 export const ProfileWrapper = styled.div`
-  --pp-bg:          #f7f3ff;
-  --pp-surface:     #ffffff;
-  --pp-card:        #f0eaff;
-  --pp-cardHov:     #e8deff;
-  --pp-border:      rgba(130,80,220,0.14);
-  --pp-border2:     rgba(130,80,220,0.26);
-  --pp-accent:      #7c3aed;
-  --pp-accentLt:    #9d6ff5;
-  --pp-accent-rgb:  124,58,237;
-  --pp-txt:         #2e1065;
-  --pp-txt2:        #5b3fa0;
-  --pp-txt3:        #a98fd4;
-  --pp-coin:        #b45309;
+  --pp-bg: #f7f3ff;
+  --pp-surface: #ffffff;
+  --pp-card: #f0eaff;
+  --pp-cardHov: #e8deff;
+  --pp-border: rgba(130, 80, 220, 0.14);
+  --pp-border2: rgba(130, 80, 220, 0.26);
+  --pp-accent: #7c3aed;
+  --pp-accentLt: #9d6ff5;
+  --pp-accent-rgb: 124, 58, 237;
+  --pp-txt: #2e1065;
+  --pp-txt2: #5b3fa0;
+  --pp-txt3: #a98fd4;
+  --pp-coin: #b45309;
   --pp-gradSidebar: linear-gradient(160deg, #ede8ff 0%, #f4eeff 100%);
-  --pp-gradPanel:   var(--pp-gradSidebar);
-  --pp-gradCard:    linear-gradient(to top, #ddd0f8, #f8f3ff);
-  --pp-gradInner:   linear-gradient(to top, #ede5ff, #ffffff);
+  --pp-gradPanel: var(--pp-gradSidebar);
+  --pp-gradCard: linear-gradient(to top, #ddd0f8, #f8f3ff);
+  --pp-gradInner: linear-gradient(to top, #ede5ff, #ffffff);
   position: relative;
   width: 100%;
   height: 100%;
@@ -89,18 +89,11 @@ export const ProfileWrapper = styled.div`
   border-radius: 40px;
   border-style: solid;
   border-width: 16px;
-  border-top-color:    color-mix(in srgb, var(--pp-accent), white 35%);
-  border-left-color:   color-mix(in srgb, var(--pp-accent), white 35%);
-  border-right-color:  color-mix(in srgb, var(--pp-accent), black 35%);
+  border-top-color: color-mix(in srgb, var(--pp-accent), white 35%);
+  border-left-color: color-mix(in srgb, var(--pp-accent), white 35%);
+  border-right-color: color-mix(in srgb, var(--pp-accent), black 35%);
   border-bottom-color: color-mix(in srgb, var(--pp-accent), black 35%);
-  box-shadow:
-    0 0 0 2px #000,
-    0 0 0 6px rgba(255,255,255,1),
-    0 0 0 10px rgba(255,255,255,0.6),
-    0 32px 80px rgba(80,30,180,0.18),
-    0 4px 16px rgba(80,30,180,0.1),
-    inset 0 1px 0 rgba(255,255,255,0.9);
-  animation: ${fadeIn} 0.22s ease;
+  box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.4);
 `;
 
 /* ── Sidebar ── */
@@ -1938,7 +1931,7 @@ export const ProfileOuter = styled.div`
   &::before {
     content: '';
     position: absolute;
-    inset: -10px;
+    inset: -8px;
     background: #fff;
     border-radius: 50px;
     z-index: -1;
