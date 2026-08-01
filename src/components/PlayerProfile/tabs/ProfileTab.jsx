@@ -281,7 +281,7 @@ export default function ProfileTab({
           </HeaderRight>
         </ProfileHeader>
 
-        {/* Badges */}
+        {/* TODO: re-enable badges when ready
         <SectionBlock>
           <SectionHeaderRow>
             <SectionTitle>Badges</SectionTitle>
@@ -316,6 +316,7 @@ export default function ProfileTab({
             </BadgeExpandBtn>
           )}
         </SectionBlock>
+        */}
 
         {/* Soul Mate */}
         <SectionBlock>
@@ -372,22 +373,6 @@ export default function ProfileTab({
             </ShowcaseRow>
           </ShowcaseScrollWrap>
         </SectionBlock>
-
-        {/* Companion */}
-        <div style={{
-          border: "2px solid #000",
-          borderRadius: 10,
-          padding: "22px 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(255,255,255,0.03)",
-          flex: 1,
-        }}>
-          <span style={{ color: "#b09070", fontSize: 12.5, fontStyle: "italic", letterSpacing: "0.03em" }}>
-            🐾 Coming Soon
-          </span>
-        </div>
 
         {/* TODO: re-enable companion when ready
         <SectionBlock>

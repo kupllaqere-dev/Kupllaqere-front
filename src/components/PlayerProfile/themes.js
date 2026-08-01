@@ -283,7 +283,7 @@ export function paletteToVars(p) {
     "--pp-txt2":        p.txt2,
     "--pp-txt3":        p.txt3,
     "--pp-coin":        p.coin,
-    "--pp-gradPanel":   p.gradPanel,
+    "--pp-gradPanel":   p.gradSidebar,
     "--pp-gradSidebar": p.gradSidebar,
     "--pp-gradCard":    p.gradCard,
     "--pp-gradInner":   p.gradInner,

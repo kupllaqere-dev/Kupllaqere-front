@@ -75,18 +75,31 @@ export const ProfileWrapper = styled.div`
   --pp-txt2:        #5b3fa0;
   --pp-txt3:        #a98fd4;
   --pp-coin:        #b45309;
-  --pp-gradPanel:   linear-gradient(160deg, #fdfbff 0%, #f8f3ff 100%);
   --pp-gradSidebar: linear-gradient(160deg, #ede8ff 0%, #f4eeff 100%);
+  --pp-gradPanel:   var(--pp-gradSidebar);
   --pp-gradCard:    linear-gradient(to top, #ddd0f8, #f8f3ff);
   --pp-gradInner:   linear-gradient(to top, #ede5ff, #ffffff);
   position: relative;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   overflow: hidden;
-  border-radius: 22px;
-  box-shadow: 0 32px 80px rgba(80,30,180,0.18), 0 4px 16px rgba(80,30,180,0.1), inset 0 1px 0 rgba(255,255,255,0.9);
+  border-radius: 40px;
+  border-style: solid;
+  border-width: 16px;
+  border-top-color:    color-mix(in srgb, var(--pp-accent), white 35%);
+  border-left-color:   color-mix(in srgb, var(--pp-accent), white 35%);
+  border-right-color:  color-mix(in srgb, var(--pp-accent), black 35%);
+  border-bottom-color: color-mix(in srgb, var(--pp-accent), black 35%);
+  box-shadow:
+    0 0 0 2px #000,
+    0 0 0 6px rgba(255,255,255,1),
+    0 0 0 10px rgba(255,255,255,0.6),
+    0 32px 80px rgba(80,30,180,0.18),
+    0 4px 16px rgba(80,30,180,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.9);
   animation: ${fadeIn} 0.22s ease;
 `;
 
@@ -101,7 +114,6 @@ export const Sidebar = styled.nav`
   flex-shrink: 0;
   background: var(--pp-gradSidebar);
   border-right: 1px solid ${"var(--pp-border)"};
-  border-radius: 22px 0 0 22px;
   z-index: 2;
 `;
 
@@ -891,7 +903,6 @@ export const RightPanel = styled.aside`
   flex-shrink: 0;
   background: var(--pp-gradPanel);
   border-left: 1px solid ${"var(--pp-border)"};
-  border-radius: 0 22px 22px 0;
   overflow: hidden;
 `;
 
@@ -1360,9 +1371,7 @@ export const GuestBookOverlay = styled.div`
   top: 0; bottom: 0;
   left: 470px; right: 0;
   z-index: 20;
-  background: var(--pp-bg);
-  border-radius: 0 22px 22px 0;
-  box-shadow: -4px 0 24px rgba(100,50,200,0.08);
+  background: var(--pp-bg);  box-shadow: -4px 0 24px rgba(100,50,200,0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1725,9 +1734,7 @@ export const AboutOverlay = styled.div`
   top: 0; bottom: 0;
   left: 470px; right: 0;
   z-index: 20;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  border: 1px solid ${"var(--pp-border)"};
+  background: var(--pp-gradPanel);  border: 1px solid ${"var(--pp-border)"};
   box-shadow: -4px 0 24px rgba(100,50,200,0.08);
   display: flex;
   flex-direction: column;
@@ -1924,6 +1931,18 @@ export const ProfileOuter = styled.div`
   height: 92%;
   display: flex;
   flex-direction: column;
+
+  /* Sits exactly behind the outermost box-shadow ring on ProfileWrapper
+     (which extends 10px past this box), so any antialiasing seam between
+     the stacked rings reveals white instead of the modal's dark backdrop. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    background: #fff;
+    border-radius: 50px;
+    z-index: -1;
+  }
 `;
 
 export const GlobalCloseBtn = styled.button`
@@ -1955,9 +1974,7 @@ export const HubPanelContainer = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: row;
-  overflow: hidden;
-  border-radius: 0 22px 22px 0;
-`;
+  overflow: hidden;`;
 
 export const PanelHeaderRow = styled.div`
   display: flex;
@@ -2184,9 +2201,7 @@ export const MailDetailCol = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  overflow: hidden;
+  background: var(--pp-gradPanel);  overflow: hidden;
 `;
 
 export const MailPlaceholder = styled.div`
@@ -2483,9 +2498,7 @@ export const FriendsPanelInner = styled.div`
   flex-direction: column;
   padding: 52px 20px 0;
   gap: 14px;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  overflow: hidden;
+  background: var(--pp-gradPanel);  overflow: hidden;
 `;
 
 export const FriendsSearchRow = styled.div`
@@ -2646,9 +2659,7 @@ export const WishlistPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  overflow: hidden;
+  background: var(--pp-gradPanel);  overflow: hidden;
 `;
 
 export const WishlistScrollArea = styled.div`
@@ -2727,9 +2738,7 @@ export const LookPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  overflow: hidden;
+  background: var(--pp-gradPanel);  overflow: hidden;
 `;
 
 export const LookScrollArea = styled.div`
@@ -3254,9 +3263,7 @@ export const InvBreadcrumbCol = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--pp-gradSidebar);
-  border-radius: 0 22px 22px 0;
-  overflow-y: auto;
+  background: var(--pp-gradSidebar);  overflow-y: auto;
   ${thinScrollbar}
 `;
 
@@ -3311,9 +3318,7 @@ export const ThemePanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);
-  border-radius: 0 22px 22px 0;
-  overflow: hidden;
+  background: var(--pp-gradPanel);  overflow: hidden;
 `;
 
 export const ThemeGrid = styled.div`
