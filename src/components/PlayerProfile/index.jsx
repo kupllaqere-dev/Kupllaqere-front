@@ -1,16 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
-  fetchSoulMateState,
-  sendSoulMateRequest,
-  acceptSoulMateRequest,
-  declineSoulMateRequest,
-  cancelSoulMateRequest,
-  removeSoulMate,
-} from "../../api/soulmate";
-
-const smStateCache = new Map();
-import {
   fetchFriends,
   sendFriendRequest,
   acceptFriendRequest as acceptFriend,
@@ -46,24 +36,28 @@ import { getSlotKey, getConflictSlots } from "../../game/avatar/LayerConfig.js";
 import {
   BADGES,
   INV_CATEGORY_LABELS, INV_SUBCATEGORY_LABELS, INV_CATEGORIES,
-  BADGE_RARITY, SHOWCASE_SLOTS, PRESENCE_LABELS,
+  BADGE_RARITY, PRESENCE_LABELS,
   LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
   ZOOM_LEVELS, POSE_ORDER,
 } from "./constants";
 import { PALETTES, paletteToVars } from "./themes";
 
-import ProfileTab from "./tabs/ProfileTab";
+import AboutMeTab from "./tabs/AboutMeTab";
 import MailTab from "./tabs/MailTab";
 import FriendsTab from "./tabs/FriendsTab";
 import LookTab from "./tabs/LookTab";
 import WishlistTab from "./tabs/WishlistTab";
 import ThemesTab from "./tabs/ThemesTab";
+import GuestbookTab from "./tabs/GuestbookTab";
+import ClubTab from "./tabs/ClubTab";
 import { InvItemsArea, InvBreadcrumbsBar } from "./tabs/InventoryTab";
 
 import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
-  Sidebar, SidebarLogoWrap, SidebarLogoMark, SidebarLogoText,
-  SidebarNav, SidebarItem, SidebarBtn, SidebarIcon, SidebarIconImg, SidebarLabel, SidebarNotifDot,
+  MiddleCol, NameCard, ContentPanel, ContentPanelBody, ContentPanelTitle,
+  BookmarkRail, BookmarkTab, BookmarkIconImg, BookmarkIcon, BookmarkNotifDot,
+  HeaderTitles, HeaderNameRow, PlayerName, PlayerNameMark, LevelBadge, HeaderMemberSince,
+  HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatLabel,
   InvActionBar, InvNudeBtn, InvResetBtn, InvApplyBtn,
   HubPanelContainer,
   AvatarStageCol, StageContainer, AvatarViewport, Controls, ArrowBtn,
@@ -71,6 +65,18 @@ import {
   PresenceDot, PresenceLabel,
   StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
 } from "./styles";
+
+const TAB_TITLES = {
+  profile: "About Me",
+  mail: "Mail",
+  look: "Look",
+  friends: "Friends",
+  inventory: "Inventory",
+  wishlist: "Wishlist",
+  themes: "Themes",
+  guestbook: "Guestbook",
+  club: "Club",
+};
 
 export default function PlayerProfile({
   onClose,
@@ -113,10 +119,6 @@ export default function PlayerProfile({
   const [badgeSaving, setBadgeSaving] = useState(false);
   const [badgesExpanded, setBadgesExpanded] = useState(false);
 
-  const [smState, setSmState] = useState(() => smStateCache.get(targetUserId ?? "self") ?? null);
-  const [smBusy, setSmBusy] = useState(false);
-  const [smError, setSmError] = useState(null);
-
   const [friendStatus, setFriendStatus] = useState(null);
   const [friendBusy, setFriendBusy] = useState(false);
 
@@ -125,9 +127,6 @@ export default function PlayerProfile({
 
   const [composing, setComposing] = useState(false);
 
-  const [showcaseItems] = useState(Array(SHOWCASE_SLOTS).fill(null));
-
-  const [gbOpen, setGbOpen] = useState(false);
   // stickers
   const [gbStickers, setGbStickers] = useState([]);
   const [gbStickersLoading, setGbStickersLoading] = useState(false);
@@ -368,42 +367,6 @@ export default function PlayerProfile({
     }
   }, [unlocking, targetUserId]);
 
-  const loadSm = useCallback(async () => {
-    if (!currentUserId) { setSmState(null); return; }
-    try {
-      const data = await fetchSoulMateState(targetUserId || null);
-      smStateCache.set(targetUserId ?? "self", data);
-      setSmState(data);
-      setSmError(null);
-    } catch (err) {
-      setSmError(err.message || "Failed to load soul mate state");
-    }
-  }, [currentUserId, targetUserId]);
-
-  useEffect(() => { loadSm(); }, [loadSm]);
-
-  useEffect(() => {
-    if (!socket?.socket) return;
-    const handler = () => loadSm();
-    socket.socket.on("soulmate:refresh", handler);
-    return () => socket.socket.off("soulmate:refresh", handler);
-  }, [socket, loadSm]);
-
-  const runSm = useCallback(async (fn) => {
-    if (smBusy) return;
-    setSmBusy(true);
-    setSmError(null);
-    try { await fn(); await loadSm(); }
-    catch (err) { setSmError(err.message || "Action failed"); }
-    finally { setSmBusy(false); }
-  }, [smBusy, loadSm]);
-
-  const smSendRequest = () => runSm(() => sendSoulMateRequest(targetUserId));
-  const smAccept = (id) => runSm(() => acceptSoulMateRequest(id));
-  const smDecline = (id) => runSm(() => declineSoulMateRequest(id));
-  const smCancel = () => runSm(() => cancelSoulMateRequest());
-  const smRemove = () => runSm(() => removeSoulMate());
-
   const loadFriendStatus = useCallback(async () => {
     if (!currentUserId || isSelfView || !targetUserId) return;
     try {
@@ -546,7 +509,7 @@ export default function PlayerProfile({
 
   // ── Sticker guestbook: realtime socket room ─────────────────────────────
   useEffect(() => {
-    if (!socket || !gbOpen || !targetUserId) return;
+    if (!socket || activeTab !== "guestbook" || !targetUserId) return;
 
     socket.joinGuestbook(targetUserId);
 
@@ -571,7 +534,7 @@ export default function PlayerProfile({
       socket.off("guestbook:stickerAdded", handleStickerAdded);
       socket.off("guestbook:stickerDeleted", handleStickerDeleted);
     };
-  }, [gbOpen, targetUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, targetUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMailLists = useCallback(async () => {
     if (!isSelfView) return;
@@ -743,11 +706,6 @@ export default function PlayerProfile({
   const handleGbConfirm = (payload) => {
     if (!payload || !targetUserId || !socket) return;
     socket.sendGuestbookSticker({ profileUserId: targetUserId, ...payload });
-    setGbPlacingAssetId(null);
-  };
-
-  const handleGbCancel = () => {
-    canvasRef.current?.cancelPlacement();
     setGbPlacingAssetId(null);
   };
 
@@ -986,123 +944,6 @@ export default function PlayerProfile({
         <ProfileWrapper onClick={(e) => e.stopPropagation()} style={paletteToVars(PALETTES[themeIdx])}>
           <GlobalCloseBtn onClick={onClose}>&times;</GlobalCloseBtn>
 
-          {/* ── Sidebar ── */}
-          <Sidebar>
-            <SidebarLogoWrap>
-              <SidebarLogoMark>✦</SidebarLogoMark>
-              <SidebarLogoText>NW</SidebarLogoText>
-            </SidebarLogoWrap>
-
-            <SidebarNav>
-              {isSelfView ? (
-                <>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-                      <SidebarIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
-                      <SidebarLabel $active={activeTab === "profile"}>Profile</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "mail"} onClick={() => setActiveTab("mail")}>
-                      <SidebarIconImg $active={activeTab === "mail"} $src="/assets/profile-icons/mail.png" />
-                      <SidebarLabel $active={activeTab === "mail"}>Mail</SidebarLabel>
-                      {(mailListsLoaded
-                        ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
-                        : unreadMailCount) > 0 && (
-                        <SidebarNotifDot>
-                          {mailListsLoaded
-                            ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
-                            : unreadMailCount}
-                        </SidebarNotifDot>
-                      )}
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "look"} onClick={() => setActiveTab("look")}>
-                      <SidebarIconImg $active={activeTab === "look"} $src="/assets/profile-icons/look.png" />
-                      <SidebarLabel $active={activeTab === "look"}>Look</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "friends"} onClick={() => setActiveTab("friends")}>
-                      <SidebarIconImg $active={activeTab === "friends"} $src="/assets/profile-icons/friends.png" />
-                      <SidebarLabel $active={activeTab === "friends"}>Friends</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")}>
-                      <SidebarIconImg $active={activeTab === "inventory"} $src="/assets/profile-icons/inventory.png" />
-                      <SidebarLabel $active={activeTab === "inventory"}>Inventory</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "wishlist"} onClick={() => setActiveTab("wishlist")}>
-                      <SidebarIconImg $active={activeTab === "wishlist"} $src="/assets/profile-icons/wishlist.png" />
-                      <SidebarLabel $active={activeTab === "wishlist"}>Wishlist</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn $active={activeTab === "themes"} onClick={() => setActiveTab("themes")}>
-                      <SidebarIconImg $active={activeTab === "themes"} $src="/assets/profile-icons/themes.png" />
-                      <SidebarLabel $active={activeTab === "themes"}>Themes</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                </>
-              ) : (
-                <>
-                  <SidebarItem>
-                    <SidebarBtn
-                      onClick={handleLikeBtn}
-                      disabled={likeBusy || !currentUserId}
-                    >
-                      <SidebarIcon>{likeState.liked ? "♥" : "♡"}</SidebarIcon>
-                      <SidebarLabel>{likeState.liked ? "Liked" : "Like"}</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn
-                      onClick={handleFriendBtn}
-                      disabled={friendBusy || friendStatus === null}
-                    >
-                      <SidebarIconImg $src="/assets/profile-icons/friends.png" />
-                      <SidebarLabel>{friendBtnLabel()}</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn onClick={() => setComposing(true)}>
-                      <SidebarIconImg $src="/assets/profile-icons/mail.png" />
-                      <SidebarLabel>Mail</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn>
-                      <SidebarIconImg $src="/assets/profile-icons/wishlist.png" />
-                      <SidebarLabel>Wishlist</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn>
-                      <SidebarIcon>🎁</SidebarIcon>
-                      <SidebarLabel>Gift</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem>
-                    <SidebarBtn>
-                      <SidebarIcon>⇄</SidebarIcon>
-                      <SidebarLabel>Trade</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                  <SidebarItem $danger>
-                    <SidebarBtn $danger>
-                      <SidebarIcon>⚑</SidebarIcon>
-                      <SidebarLabel>Report</SidebarLabel>
-                    </SidebarBtn>
-                  </SidebarItem>
-                </>
-              )}
-            </SidebarNav>
-          </Sidebar>
-
           {/* ── Avatar Stage ── */}
           <AvatarStageCol>
             <StageContainer>
@@ -1201,156 +1042,253 @@ export default function PlayerProfile({
             )}
           </AvatarStageCol>
 
-          <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
-            <ProfileTab
-              onOpenProfile={onOpenProfile}
-              playerName={playerName}
-              popularity={likeState.popularity}
-              bio={bio}
-              onSaveBio={onSaveBio}
-              editingBio={editingBio}
-              setEditingBio={setEditingBio}
-              bioDraft={bioDraft}
-              setBioDraft={setBioDraft}
-              bioSaving={bioSaving}
-              setBioSaving={setBioSaving}
-              bioError={bioError}
-              setBioError={setBioError}
-              textareaRef={textareaRef}
-              isSelfView={isSelfView}
-              smState={smState}
-              smBusy={smBusy}
-              smError={smError}
-              smSendRequest={smSendRequest}
-              smAccept={smAccept}
-              smDecline={smDecline}
-              smCancel={smCancel}
-              smRemove={smRemove}
-              targetUserId={targetUserId}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-              selectedBadge={selectedBadge}
-              handleBadgeClick={handleBadgeClick}
-              badgesExpanded={badgesExpanded}
-              setBadgesExpanded={setBadgesExpanded}
-              badgeSaving={badgeSaving}
-              showcaseItems={showcaseItems}
-              gbOpen={gbOpen}
-              setGbOpen={setGbOpen}
-              gbStickers={gbStickers}
-              gbStickersLoading={gbStickersLoading}
-              gbPlacingAssetId={gbPlacingAssetId}
-              setGbPlacingAssetId={setGbPlacingAssetId}
-              gbDeleteTarget={gbDeleteTarget}
-              setGbDeleteTarget={setGbDeleteTarget}
-              canvasRef={canvasRef}
-              onGbStickerSelect={handleGbStickerSelect}
-              onGbConfirm={handleGbConfirm}
-              onGbCancel={handleGbCancel}
-              onGbDeleteConfirm={handleGbDeleteConfirm}
-              gbComments={gbComments}
-              gbLoading={gbLoading}
-              gbInput={gbInput}
-              setGbInput={setGbInput}
-              gbSubmitting={gbSubmitting}
-              handleSubmitComment={handleSubmitComment}
-              handleDeleteComment={handleDeleteComment}
-            />
-          </div>
+          <MiddleCol>
+            <NameCard>
+              <HeaderTitles>
+                <HeaderNameRow>
+                  <PlayerName>
+                    {playerName || "Player"}
+                    <PlayerNameMark> ✦</PlayerNameMark>
+                  </PlayerName>
+                  <LevelBadge>Lv. 78</LevelBadge>
+                </HeaderNameRow>
+                <HeaderMemberSince>Member since May 2024</HeaderMemberSince>
+              </HeaderTitles>
+              <HeaderStatsRow style={{ marginLeft: "auto" }}>
+                <HeaderStatBox>
+                  <HeaderStatTop>♥ {likeState.popularity.toLocaleString()}</HeaderStatTop>
+                  <HeaderStatLabel>Popularity</HeaderStatLabel>
+                </HeaderStatBox>
+              </HeaderStatsRow>
+            </NameCard>
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "mail" ? "contents" : "none" }}>
-              <MailTab
-                mailConversations={mailConversations}
-                mailLoading={mailLoading}
-                mailThread={mailThread}
-                mailThreadLoading={mailThreadLoading}
-                mailReplyBody={mailReplyBody}
-                setMailReplyBody={setMailReplyBody}
-                mailReplySending={mailReplySending}
-                mailReplyError={mailReplyError}
-                openMailThread={openMailThread}
-                handleMailReply={handleMailReply}
-                onNewSend={handleNewMailSend}
-                onClearThread={() => setMailThread(null)}
-                onLoadMore={handleLoadMoreMessages}
-                socket={socket}
-                onOpenProfile={onOpenProfile}
-              />
-            </div>
-          )}
+            <ContentPanel>
+              <BookmarkRail>
+                {isSelfView ? (
+                  <>
+                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="About Me">
+                      <BookmarkIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "mail"} onClick={() => setActiveTab("mail")} title="Mail">
+                      <BookmarkIconImg $active={activeTab === "mail"} $src="/assets/profile-icons/mail.png" />
+                      {(mailListsLoaded
+                        ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
+                        : unreadMailCount) > 0 && (
+                        <BookmarkNotifDot>
+                          {mailListsLoaded
+                            ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
+                            : unreadMailCount}
+                        </BookmarkNotifDot>
+                      )}
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "look"} onClick={() => setActiveTab("look")} title="Look">
+                      <BookmarkIconImg $active={activeTab === "look"} $src="/assets/profile-icons/look.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "friends"} onClick={() => setActiveTab("friends")} title="Friends">
+                      <BookmarkIconImg $active={activeTab === "friends"} $src="/assets/profile-icons/friends.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")} title="Inventory">
+                      <BookmarkIconImg $active={activeTab === "inventory"} $src="/assets/profile-icons/inventory.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "wishlist"} onClick={() => setActiveTab("wishlist")} title="Wishlist">
+                      <BookmarkIconImg $active={activeTab === "wishlist"} $src="/assets/profile-icons/wishlist.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "themes"} onClick={() => setActiveTab("themes")} title="Themes">
+                      <BookmarkIconImg $active={activeTab === "themes"} $src="/assets/profile-icons/themes.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "guestbook"} onClick={() => setActiveTab("guestbook")} title="Guestbook">
+                      <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
+                      <BookmarkIcon $active={activeTab === "club"}>🏛️</BookmarkIcon>
+                    </BookmarkTab>
+                  </>
+                ) : (
+                  <>
+                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="About Me">
+                      <BookmarkIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "guestbook"} onClick={() => setActiveTab("guestbook")} title="Guestbook">
+                      <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
+                    </BookmarkTab>
+                    <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
+                      <BookmarkIcon $active={activeTab === "club"}>🏛️</BookmarkIcon>
+                    </BookmarkTab>
+                    <BookmarkTab onClick={handleLikeBtn} disabled={likeBusy || !currentUserId} title={likeState.liked ? "Liked" : "Like"}>
+                      <BookmarkIcon>{likeState.liked ? "♥" : "♡"}</BookmarkIcon>
+                    </BookmarkTab>
+                    <BookmarkTab onClick={handleFriendBtn} disabled={friendBusy || friendStatus === null} title={friendBtnLabel()}>
+                      <BookmarkIconImg $src="/assets/profile-icons/friends.png" />
+                    </BookmarkTab>
+                    <BookmarkTab onClick={() => setComposing(true)} title="Mail">
+                      <BookmarkIconImg $src="/assets/profile-icons/mail.png" />
+                    </BookmarkTab>
+                    <BookmarkTab title="Wishlist">
+                      <BookmarkIconImg $src="/assets/profile-icons/wishlist.png" />
+                    </BookmarkTab>
+                    <BookmarkTab title="Gift">
+                      <BookmarkIcon>🎁</BookmarkIcon>
+                    </BookmarkTab>
+                    <BookmarkTab title="Trade">
+                      <BookmarkIcon>⇄</BookmarkIcon>
+                    </BookmarkTab>
+                    <BookmarkTab $danger title="Report">
+                      <BookmarkIcon $danger>⚑</BookmarkIcon>
+                    </BookmarkTab>
+                  </>
+                )}
+              </BookmarkRail>
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "friends" ? "contents" : "none" }}>
-              <FriendsTab
-                friendsTab={friendsTab}
-                setFriendsTab={setFriendsTab}
-                friendsData={friendsData}
-                friendsLoading={friendsLoading}
-                friendsSearch={friendsSearch}
-                setFriendsSearch={setFriendsSearch}
-                onRefresh={loadFriendsData}
-                acceptFriend={acceptFriend}
-                declineFriend={declineFriend}
-                socket={socket}
-                onOpenProfile={onOpenProfile}
-              />
-            </div>
-          )}
+              <ContentPanelBody>
+                <ContentPanelTitle>{TAB_TITLES[activeTab] || ""}</ContentPanelTitle>
+                <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
+                  <AboutMeTab
+                    bio={bio}
+                    onSaveBio={onSaveBio}
+                    editingBio={editingBio}
+                    setEditingBio={setEditingBio}
+                    bioDraft={bioDraft}
+                    setBioDraft={setBioDraft}
+                    bioSaving={bioSaving}
+                    setBioSaving={setBioSaving}
+                    bioError={bioError}
+                    setBioError={setBioError}
+                    textareaRef={textareaRef}
+                    isSelfView={isSelfView}
+                    selectedBadge={selectedBadge}
+                    handleBadgeClick={handleBadgeClick}
+                    badgesExpanded={badgesExpanded}
+                    setBadgesExpanded={setBadgesExpanded}
+                    badgeSaving={badgeSaving}
+                  />
+                </div>
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "look" ? "contents" : "none" }}>
-              <LookTab
-                invItems={invItems}
-                invLoading={invLoading}
-                lookSelectedEntries={lookSelectedEntries}
-                onSelectItem={lookSelectEntry}
-              />
-            </div>
-          )}
+                <div style={{ display: activeTab === "guestbook" ? "contents" : "none" }}>
+                  <GuestbookTab
+                    isSelfView={isSelfView}
+                    currentUserId={currentUserId}
+                    currentUserName={currentUserName}
+                    targetUserId={targetUserId}
+                    canvasRef={canvasRef}
+                    gbStickers={gbStickers}
+                    gbStickersLoading={gbStickersLoading}
+                    gbPlacingAssetId={gbPlacingAssetId}
+                    setGbPlacingAssetId={setGbPlacingAssetId}
+                    gbDeleteTarget={gbDeleteTarget}
+                    setGbDeleteTarget={setGbDeleteTarget}
+                    onGbStickerSelect={handleGbStickerSelect}
+                    onGbConfirm={handleGbConfirm}
+                    onGbDeleteConfirm={handleGbDeleteConfirm}
+                    gbComments={gbComments}
+                    gbLoading={gbLoading}
+                    gbInput={gbInput}
+                    setGbInput={setGbInput}
+                    gbSubmitting={gbSubmitting}
+                    handleSubmitComment={handleSubmitComment}
+                    handleDeleteComment={handleDeleteComment}
+                  />
+                </div>
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "wishlist" ? "contents" : "none" }}>
-              <WishlistTab
-                items={wishlistItems}
-                loading={wishlistLoading}
-                onRemove={handleWishlistRemove}
-              />
-            </div>
-          )}
+                <div style={{ display: activeTab === "club" ? "contents" : "none" }}>
+                  <ClubTab />
+                </div>
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "themes" ? "contents" : "none" }}>
-              <ThemesTab themeIdx={themeIdx} setThemeIdx={handleSelectTheme} />
-            </div>
-          )}
+                {isSelfView && (
+                  <div style={{ display: activeTab === "mail" ? "contents" : "none" }}>
+                    <MailTab
+                      mailConversations={mailConversations}
+                      mailLoading={mailLoading}
+                      mailThread={mailThread}
+                      mailThreadLoading={mailThreadLoading}
+                      mailReplyBody={mailReplyBody}
+                      setMailReplyBody={setMailReplyBody}
+                      mailReplySending={mailReplySending}
+                      mailReplyError={mailReplyError}
+                      openMailThread={openMailThread}
+                      handleMailReply={handleMailReply}
+                      onNewSend={handleNewMailSend}
+                      onClearThread={() => setMailThread(null)}
+                      onLoadMore={handleLoadMoreMessages}
+                      socket={socket}
+                      onOpenProfile={onOpenProfile}
+                    />
+                  </div>
+                )}
 
-          {isSelfView && (
-            <div style={{ display: activeTab === "inventory" ? "contents" : "none" }}>
-              <HubPanelContainer>
-                <InvItemsArea
-                  items={invDisplayItems}
-                  loading={invLoading}
-                  view={invView}
-                  isSelected={invIsSelected}
-                  canUse={invCanUse}
-                  toggleEntry={invToggleEntry}
-                  selling={invSelling}
-                  sellError={invSellError}
-                  onSell={invHandleSell}
-                  goToCategory={invGoToCategory}
-                  goToSubcategory={invGoToSubcategory}
-                  subCount={invSubCount}
-                  goToRecent={invGoToRecent}
-                  goToEquipped={invGoToEquipped}
-                  recentCount={invItems.length}
-                  equippedCount={invEquippedItems.length}
-                  onHoverItem={handleInvHover}
-                />
-                <InvBreadcrumbsBar crumbs={invCrumbs} />
-              </HubPanelContainer>
-            </div>
-          )}
+                {isSelfView && (
+                  <div style={{ display: activeTab === "friends" ? "contents" : "none" }}>
+                    <FriendsTab
+                      friendsTab={friendsTab}
+                      setFriendsTab={setFriendsTab}
+                      friendsData={friendsData}
+                      friendsLoading={friendsLoading}
+                      friendsSearch={friendsSearch}
+                      setFriendsSearch={setFriendsSearch}
+                      onRefresh={loadFriendsData}
+                      acceptFriend={acceptFriend}
+                      declineFriend={declineFriend}
+                      socket={socket}
+                      onOpenProfile={onOpenProfile}
+                    />
+                  </div>
+                )}
+
+                {isSelfView && (
+                  <div style={{ display: activeTab === "look" ? "contents" : "none" }}>
+                    <LookTab
+                      invItems={invItems}
+                      invLoading={invLoading}
+                      lookSelectedEntries={lookSelectedEntries}
+                      onSelectItem={lookSelectEntry}
+                    />
+                  </div>
+                )}
+
+                {isSelfView && (
+                  <div style={{ display: activeTab === "wishlist" ? "contents" : "none" }}>
+                    <WishlistTab
+                      items={wishlistItems}
+                      loading={wishlistLoading}
+                      onRemove={handleWishlistRemove}
+                    />
+                  </div>
+                )}
+
+                {isSelfView && (
+                  <div style={{ display: activeTab === "themes" ? "contents" : "none" }}>
+                    <ThemesTab themeIdx={themeIdx} setThemeIdx={handleSelectTheme} />
+                  </div>
+                )}
+
+                {isSelfView && (
+                  <div style={{ display: activeTab === "inventory" ? "contents" : "none" }}>
+                    <HubPanelContainer>
+                      <InvItemsArea
+                        items={invDisplayItems}
+                        loading={invLoading}
+                        view={invView}
+                        isSelected={invIsSelected}
+                        canUse={invCanUse}
+                        toggleEntry={invToggleEntry}
+                        selling={invSelling}
+                        sellError={invSellError}
+                        onSell={invHandleSell}
+                        goToCategory={invGoToCategory}
+                        goToSubcategory={invGoToSubcategory}
+                        subCount={invSubCount}
+                        goToRecent={invGoToRecent}
+                        goToEquipped={invGoToEquipped}
+                        recentCount={invItems.length}
+                        equippedCount={invEquippedItems.length}
+                        onHoverItem={handleInvHover}
+                      />
+                      <InvBreadcrumbsBar crumbs={invCrumbs} />
+                    </HubPanelContainer>
+                  </div>
+                )}
+              </ContentPanelBody>
+            </ContentPanel>
+          </MiddleCol>
 
         </ProfileWrapper>
         </ProfileOuter>

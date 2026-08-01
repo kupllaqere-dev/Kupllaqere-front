@@ -86,6 +86,7 @@ export const ProfileWrapper = styled.div`
   display: flex;
   flex-direction: row;
   overflow: hidden;
+  background: var(--pp-gradSidebar);
   border-radius: 40px;
   border-style: solid;
   border-width: 16px;
@@ -93,194 +94,134 @@ export const ProfileWrapper = styled.div`
   border-left-color: color-mix(in srgb, var(--pp-accent), white 35%);
   border-right-color: color-mix(in srgb, var(--pp-accent), black 35%);
   border-bottom-color: color-mix(in srgb, var(--pp-accent), black 35%);
-  box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.4);
+  /* box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.4); */
 `;
 
-/* ── Sidebar ── */
+/* ── Middle Column / Content Panel ── */
 
-export const Sidebar = styled.nav`
+export const MiddleCol = styled.div`
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 6px;
-  width: 80px;
-  flex-shrink: 0;
+  gap: 16px;
+  padding: 20px 20px 20px 6px;
   background: var(--pp-gradSidebar);
-  border-right: 1px solid ${"var(--pp-border)"};
+  overflow: hidden;
+`;
+
+export const NameCard = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 22px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--pp-accent), white 35%);
+  box-shadow: 0 4px 18px rgba(80,40,160,0.07);
+`;
+
+export const ContentPanel = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+`;
+
+export const ContentPanelTitle = styled.h2`
+  margin: 0;
+  padding: 2px 0 12px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: color-mix(in srgb, var(--pp-accent), black 50%);
+`;
+
+export const ContentPanelBody = styled.div`
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--pp-accent), white 35%);
+  box-shadow: 0 1px 4px rgba(80,40,160,0.05);
+  overflow: hidden;
+  position: relative;
   z-index: 2;
 `;
 
-export const SidebarLogoWrap = styled.div`
+export const BookmarkRail = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin-bottom: 18px;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 22px 0;
+  z-index: 1;
 `;
 
-export const SidebarLogoMark = styled.span`
-  font-size: 16px;
-  color: ${"var(--pp-accent)"};
-`;
-
-export const SidebarLogoText = styled.span`
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 2.5px;
-  color: ${"var(--pp-txt3)"};
-  text-transform: uppercase;
-`;
-
-export const SidebarNav = styled.ul`
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  padding: 0 8px;
-  flex: 1;
-`;
-
-export const SidebarItem = styled.li`
-  aspect-ratio: 1;
-`;
-
-export const SidebarBtn = styled.button`
+export const BookmarkTab = styled.button`
   all: unset;
+  box-sizing: border-box;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
+  width: 108px;
+  height: 74px;
+  padding: 0 16px;
+  margin-right: -18px;
+  border-radius: 18px 0 0 18px;
+  border: 2px solid transparent;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: background 0.2s, box-shadow 0.2s;
-  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.14)" : "transparent"};
-  box-shadow: ${p => p.$active ? `inset 0 0 0 1px rgba(var(--pp-accent-rgb),0.38), 0 2px 8px rgba(var(--pp-accent-rgb),0.1)` : "none"};
-  ${p => p.$active && css`
-    &::after {
-      content: '';
-      position: absolute;
-      right: 0; top: 22%; bottom: 22%;
-      width: 2.5px;
-      background: ${"var(--pp-accent)"};
-      border-radius: 0 2px 2px 0;
-    }
-  `}
-  &::before {
-    content: '';
-    position: absolute;
-    top: -20%; left: -60%;
-    width: 32%; height: 140%;
-    background: linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent);
-    transform: skewX(-18deg) translateX(-100%);
-    pointer-events: none;
-  }
+  transform-origin: center left;
+  background: ${p => p.$active ? "color-mix(in srgb, var(--pp-accent), white 35%)" : "rgba(255,255,255,0.55)"};
+  box-shadow: ${p => p.$active ? "0 6px 16px rgba(var(--pp-accent-rgb), 0.38)" : "none"};
+  transition: background 0.18s, transform 0.15s, border-color 0.18s, box-shadow 0.18s;
   &:hover:not(:disabled) {
-    background: ${p => p.$danger ? "rgba(220,38,38,0.1)" : p.$active ? "rgba(var(--pp-accent-rgb),0.2)" : "rgba(var(--pp-accent-rgb),0.08)"};
+    border-color: #fff;
+    transform: scale(1.07);
+    background: ${p => p.$danger ? "rgba(220,38,38,0.1)" : p.$active ? "color-mix(in srgb, var(--pp-accent), white 35%)" : "rgba(255,255,255,0.82)"};
   }
-  &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
-  &:disabled { opacity: 0.35; cursor: not-allowed; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
-export const SidebarIcon = styled.span`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 8px;
-  font-size: 22px;
-  color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
+export const BookmarkIconImg = styled.span`
+  width: 24px; height: 24px;
+  flex-shrink: 0;
+  display: inline-block;
+  background: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
+  mask-image: url(${p => p.$src});
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: url(${p => p.$src});
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+`;
+
+export const BookmarkIcon = styled.span`
+  font-size: 21px;
   line-height: 1;
-  opacity: 0.6;
-  pointer-events: none;
-  transition: color 0.2s, opacity 0.2s;
-  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt)"}; opacity: 0.8; }
+  flex-shrink: 0;
+  color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
+  filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff);
 `;
 
-export const SidebarIconImg = styled.span`
+export const BookmarkNotifDot = styled.span`
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 8px;
-  opacity: 0.6;
-  pointer-events: none;
-  transition: opacity 0.2s;
-  &::before {
-    content: '';
-    display: block;
-    width: 22px;
-    height: 22px;
-    background: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
-    mask-image: url(${p => p.$src});
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
-    -webkit-mask-image: url(${p => p.$src});
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    transition: background 0.2s;
-  }
-  ${SidebarBtn}:hover:not(:disabled) & { opacity: 0.8; }
-  ${SidebarBtn}:hover:not(:disabled) &::before { background: var(--pp-txt); }
-`;
-
-export const SidebarLabel = styled.span`
-  font-size: 10px;
-  font-weight: 700;
-  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  position: relative;
-  z-index: 1;
-  transition: color 0.2s;
-  ${SidebarBtn}:hover:not(:disabled) & { color: ${"var(--pp-txt2)"}; }
-`;
-
-export const SidebarFooter = styled.div`
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding-top: 12px;
-`;
-
-export const SidebarAvatarThumb = styled.div`
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5b21b6, #1e40af);
-  border: 2px solid rgba(var(--pp-accent-rgb),0.5);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  &:hover { transform: scale(1.1); box-shadow: 0 0 16px rgba(var(--pp-accent-rgb),0.55); }
-`;
-
-export const SidebarOnlinePip = styled.div`
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 6px #22c55e;
-  animation: pipBlink 2.4s ease-in-out infinite;
-  @keyframes pipBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-`;
-
-export const SidebarNotifDot = styled.span`
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 5px;
+  right: 6px;
   min-width: 14px;
   height: 14px;
   background: #e03131;
-  border: 1.5px solid var(--pp-card);
+  border: 1.5px solid var(--pp-surface);
   border-radius: 7px;
   font-size: 8px;
   font-weight: 700;
@@ -331,33 +272,6 @@ export const CloseBtn = styled.button`
   }
 `;
 
-export const ProfileHeader = styled.header`
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding-bottom: 16px;
-`;
-
-export const HeaderLeft = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-`;
-
-export const HeaderThumbnailWrap = styled.div`
-  flex-shrink: 0;
-  width: 130px;
-  height: 130px;
-`;
-
-export const HeaderRight = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-`;
-
 export const HeaderNameRow = styled.div`
   display: flex;
   align-items: baseline;
@@ -368,7 +282,7 @@ export const HeaderNameRow = styled.div`
 export const HeaderMemberSince = styled.div`
   font-size: 10.5px;
   font-weight: 600;
-  color: ${"var(--pp-txt3)"};
+  color: color-mix(in srgb, var(--pp-accent), black 45%);
   letter-spacing: 0.2px;
 `;
 
@@ -429,11 +343,11 @@ export const PlayerName = styled.h2`
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.3px;
-  color: ${"var(--pp-accent)"};
+  color: color-mix(in srgb, var(--pp-accent), black 50%);
 `;
 
 export const PlayerNameMark = styled.span`
-  color: ${"var(--pp-accentLt)"};
+  color: color-mix(in srgb, var(--pp-accent), black 35%);
   font-size: 20px;
 `;
 
@@ -446,7 +360,7 @@ export const ProfileMetaRow = styled.div`
 export const LevelBadge = styled.span`
   font-size: 13px;
   font-weight: 700;
-  color: ${"var(--pp-txt3)"};
+  color: color-mix(in srgb, var(--pp-accent), black 45%);
 `;
 
 export const MetaSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
@@ -887,157 +801,6 @@ export const XPLabelsRow = styled.div`
   font-weight: 600;
 `;
 
-/* ── Right Panel ── */
-
-export const RightPanel = styled.aside`
-  display: flex;
-  flex-direction: column;
-  width: 290px;
-  flex-shrink: 0;
-  background: var(--pp-gradPanel);
-  border-left: 1px solid ${"var(--pp-border)"};
-  overflow: hidden;
-`;
-
-export const RightSection = styled.section`
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  padding: 20px 17px;
-  flex: ${p => p.$flex ? "1" : "0 0 auto"};
-  min-height: 0;
-  overflow-y: ${p => p.$flex ? "hidden" : "auto"};
-  ${thinScrollbar}
-`;
-
-export const OrnamentDivider = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 17px;
-  flex-shrink: 0;
-`;
-
-export const OrnamentLine = styled.div`flex: 1; height: 1px; background: ${"var(--pp-border)"};`;
-
-export const OrnamentGem = styled.span`font-size: 9px; color: ${"var(--pp-accentLt)"};`;
-
-export const GBToggleBtn = styled.button`
-  all: unset;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  cursor: pointer;
-`;
-
-export const GBCountPill = styled.span`
-  font-size: 9.5px;
-  font-weight: 700;
-  color: ${"var(--pp-accent)"};
-  background: rgba(var(--pp-accent-rgb),0.1);
-  padding: 1px 7px;
-  border-radius: 10px;
-`;
-
-export const GBToggleArrow = styled.span`
-  font-size: 8px;
-  color: ${"var(--pp-txt3)"};
-  transition: transform 0.25s ease;
-  transform: ${p => p.$open ? "rotate(0deg)" : "rotate(180deg)"};
-  display: inline-block;
-`;
-
-export const GBPreviewList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(var(--pp-accent-rgb),0.28); border-radius: 3px; }
-`;
-
-export const GBPreviewCard = styled.div`
-  display: flex;
-  gap: 9px;
-  padding: 9px 11px;
-  background: ${"var(--pp-surface)"};
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 10px;
-  transition: border-color 0.18s, background 0.18s;
-  &:hover { background: ${"var(--pp-card)"}; border-color: ${"var(--pp-border2)"}; }
-`;
-
-export const GBPreviewAvatarWrap = styled.div`
-  flex-shrink: 0;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  overflow: hidden;
-`;
-
-export const GBPreviewBody = styled.div`flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;`;
-
-export const GBPreviewMeta = styled.div`display: flex; align-items: center; gap: 6px;`;
-
-export const GBPreviewName = styled.span`font-size: 11px; font-weight: 700; color: ${"var(--pp-accent)"};`;
-
-export const GBPreviewTime = styled.span`font-size: 9.5px; color: ${"var(--pp-txt3)"};`;
-
-export const GBPreviewText = styled.p`
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
-  color: ${"var(--pp-txt2)"};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-export const GBEmpty = styled.div`
-  font-size: ${p => p.$large ? "13px" : "11.5px"};
-  color: ${"var(--pp-txt3)"};
-  ${p => p.$large && "text-align: center; padding: 20px 0;"}
-`;
-
-export const GBInputArea = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-`;
-
-export const GBInput = styled.textarea`
-  width: 100%;
-  resize: none;
-  height: 44px;
-  background: ${"var(--pp-surface)"};
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 10px;
-  color: ${"var(--pp-txt)"};
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 1.4;
-  padding: 10px 36px 10px 12px;
-  box-sizing: border-box;
-  outline: none;
-  caret-color: ${"var(--pp-accent)"};
-  &:focus { border-color: ${"var(--pp-border2)"}; box-shadow: 0 0 0 2px rgba(var(--pp-accent-rgb),0.08); }
-  &::placeholder { color: ${"var(--pp-txt3)"}; }
-`;
-
-export const GBInputFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-export const GBCounter = styled.span`
-  font-size: 10px;
-  color: ${p => p.$warn ? "#b45309" : "var(--pp-txt3)"};
-`;
-
 export const PrimaryBtn = styled.button`
   background: rgba(var(--pp-accent-rgb),0.1);
   border: 1px solid rgba(var(--pp-accent-rgb),0.3);
@@ -1359,54 +1122,6 @@ export const SmDangerBtn = styled.button`
 
 export const SmError = styled.div`font-size: 11px; color: #dc2626;`;
 
-export const GuestBookOverlay = styled.div`
-  position: absolute;
-  top: 0; bottom: 0;
-  left: 470px; right: 0;
-  z-index: 20;
-  background: var(--pp-bg);  box-shadow: -4px 0 24px rgba(100,50,200,0.08);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transform: ${p => p.$open ? "translateX(0)" : "translateX(100%)"};
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: ${p => p.$open ? "auto" : "none"};
-`;
-
-export const GBOverlayClose = styled.button`
-  all: unset;
-  position: absolute;
-  top: 12px; left: 14px;
-  width: 28px; height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(var(--pp-accent-rgb),0.08);
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 8px;
-  color: ${"var(--pp-txt2)"};
-  font-size: 18px;
-  cursor: pointer;
-  z-index: 2;
-  transition: all 0.15s;
-  &:hover { background: rgba(220,38,38,0.08); border-color: rgba(220,38,38,0.28); color: #dc2626; }
-`;
-
-export const GBHeader = styled.div`padding: 22px 24px 0; flex-shrink: 0;`;
-
-export const GBTitle = styled.h2`
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  background: linear-gradient(120deg, #7c3aed, #c026d3, #0ea5e9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-align: center;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-`;
-
 export const GBSubtitle = styled.p`
   margin: 5px 0 14px;
   font-size: 11px;
@@ -1722,109 +1437,6 @@ export const AboutToggleBtn = styled.button`
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
-export const AboutOverlay = styled.div`
-  position: absolute;
-  top: 0; bottom: 0;
-  left: 470px; right: 0;
-  z-index: 20;
-  background: var(--pp-gradPanel);  border: 1px solid ${"var(--pp-border)"};
-  box-shadow: -4px 0 24px rgba(100,50,200,0.08);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transform: ${p => p.$open ? "translateX(0)" : "translateX(100%)"};
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: ${p => p.$open ? "auto" : "none"};
-`;
-
-export const AboutOverlayScroll = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 24px 24px;
-  ${thinScrollbar}
-`;
-
-export const SidePanelNav = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 52px 14px 18px;
-  gap: 10px;
-`;
-
-export const SidePanelBtn = styled.button`
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 13px 14px;
-  background: ${"var(--pp-card)"};
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 12px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.18s;
-  &::before {
-    content: '';
-    position: absolute; top: -20%; left: -60%;
-    width: 32%; height: 140%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-    transform: skewX(-18deg) translateX(-100%);
-    pointer-events: none;
-  }
-  &:hover {
-    background: rgba(var(--pp-accent-rgb), 0.08);
-    border-color: ${"var(--pp-border2)"};
-  }
-  &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
-`;
-
-export const SidePanelBtnIcon = styled.span`
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-`;
-
-export const SidePanelBtnImg = styled.div`
-  width: ${p => p.$size || 22}px;
-  height: ${p => p.$size || 22}px;
-  background: ${"var(--pp-accent)"};
-  mask-image: url(${p => p.$src});
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-image: url(${p => p.$src});
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-`;
-
-export const SidePanelBtnLabel = styled.span`
-  flex: 1;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: ${"var(--pp-txt)"};
-`;
-
-export const SidePanelBtnArrow = styled.span`
-  font-size: 16px;
-  color: ${"var(--pp-accent)"};
-  line-height: 1;
-`;
-
-export const SidePanelDivider = styled.div`
-  margin: 4px 14px;
-  height: 1px;
-  background: ${"var(--pp-border)"};
-`;
-
 export const ClubSection = styled.div`
   margin: 0 14px 18px;
   padding: 14px;
@@ -1932,7 +1544,7 @@ export const ProfileOuter = styled.div`
     content: '';
     position: absolute;
     inset: -8px;
-    background: #fff;
+    /* background: #fff; */
     border-radius: 50px;
     z-index: -1;
   }
@@ -1967,6 +1579,7 @@ export const HubPanelContainer = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: row;
+  border-radius: 18px;
   overflow: hidden;`;
 
 export const PanelHeaderRow = styled.div`
@@ -3392,8 +3005,11 @@ export const AvatarStageCol = styled.section`
   flex-direction: column;
   align-items: center;
   padding: 0 14px;
+  margin: 20px;
   background: var(--pp-gradPanel);
-  border-right: 1px solid ${"var(--pp-border)"};
+  border: 3px solid color-mix(in srgb, var(--pp-accent), white 35%);
+  border-radius: 26px;
+  box-shadow: 0 8px 28px rgba(80,40,160,0.08);
   gap: 10px;
   overflow: hidden;
   position: relative;

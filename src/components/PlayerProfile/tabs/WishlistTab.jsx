@@ -1,6 +1,6 @@
 import { STORE_LABELS, WL_RARITY } from "../constants";
 import {
-  HubPanelContainer, WishlistPanelInner, PanelHeaderRow, PanelTitle,
+  HubPanelContainer, WishlistPanelInner,
   WishlistScrollArea, WishlistMsg, WishlistItemCard, InvThumbImg, InvMidSection,
   WishlistNameRow, InvItemName, WishlistTag, WishlistRarityBadge, WishlistRemoveBtn,
 } from "../styles";
@@ -9,9 +9,6 @@ export default function WishlistTab({ items, loading, onRemove }) {
   return (
     <HubPanelContainer>
       <WishlistPanelInner>
-        <PanelHeaderRow style={{ padding: "14px 18px" }}>
-          <PanelTitle>☆ Wishlist</PanelTitle>
-        </PanelHeaderRow>
         <WishlistScrollArea>
           {loading && <WishlistMsg>Loading…</WishlistMsg>}
           {!loading && items.length === 0 && <WishlistMsg>Your wishlist is empty.</WishlistMsg>}

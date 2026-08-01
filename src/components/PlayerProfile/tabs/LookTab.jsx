@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY } from "../constants";
 import {
-  HubPanelContainer, LookPanelInner, PanelHeaderRow, PanelTitle,
+  HubPanelContainer, LookPanelInner,
   LookScrollArea, LookGrid, LookFeatureCard, LookFeatureLabel,
   LookSlotsRow, LookSlotWrap, LookSlot, LookSlotPlus, LookSlotSubLabel,
   LookSlotImg, LookPickerRow, LookPickerXBtn, LookPickerThumb, LookPickerEmpty,
@@ -61,10 +61,6 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
   return (
     <HubPanelContainer>
       <LookPanelInner>
-        <PanelHeaderRow>
-          <PanelTitle>✦ Look</PanelTitle>
-        </PanelHeaderRow>
-
         <LookScrollArea>
           <LookGrid>
             <LookFeatureCard>

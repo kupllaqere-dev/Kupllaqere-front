@@ -1,6 +1,6 @@
 import { PALETTES } from "../themes";
 import {
-  HubPanelContainer, ThemePanelInner, PanelHeaderRow, PanelTitle,
+  HubPanelContainer, ThemePanelInner,
   ThemeGrid, ThemeSwatch, ThemeSwatchTop, ThemeSwatchDot,
   ThemeSwatchBottom, ThemeSwatchName, ThemeSwatchBar,
 } from "../styles";
@@ -9,9 +9,6 @@ export default function ThemesTab({ themeIdx, setThemeIdx }) {
   return (
     <HubPanelContainer>
       <ThemePanelInner>
-        <PanelHeaderRow style={{ padding: "14px 18px" }}>
-          <PanelTitle>◑ Themes</PanelTitle>
-        </PanelHeaderRow>
         <ThemeGrid>
           {PALETTES.map((palette, i) => (
             <ThemeSwatch
