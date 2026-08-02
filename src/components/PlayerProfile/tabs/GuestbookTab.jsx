@@ -30,8 +30,6 @@ const GuestbookRoot = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 0 0 18px 18px;
-  background: var(--pp-gradPanel);
   overflow: hidden;
 `;
 

@@ -25,6 +25,17 @@ export const thinScrollbar = css`
   scrollbar-color: rgba(80,40,160,0.2) transparent;
 `;
 
+/* Frosted-glass surface: blur/saturate whatever sits behind it, plus a
+   faint light edge to sell the "glass" read. Only one ancestor per stack
+   should carry the blur — nested translucent children just add tint on
+   top of it, since stacking backdrop-filter repeatedly is wasted GPU cost. */
+export const glassPanel = css`
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 28px rgba(60,20,120,0.14);
+`;
+
 export const fadeIn = keyframes`from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}`;
 const shimmer = keyframes`from{background-position:-400px 0}to{background-position:400px 0}`;
 export const glassShine = keyframes`
@@ -86,15 +97,15 @@ export const ProfileWrapper = styled.div`
   display: flex;
   flex-direction: row;
   overflow: hidden;
-  background: var(--pp-gradSidebar);
+  background: url('/water.png') center / 100% 100% no-repeat;
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
   border-radius: 40px;
-  border-style: solid;
-  border-width: 16px;
-  border-top-color: color-mix(in srgb, var(--pp-accent), white 35%);
-  border-left-color: color-mix(in srgb, var(--pp-accent), white 35%);
-  border-right-color: color-mix(in srgb, var(--pp-accent), black 35%);
-  border-bottom-color: color-mix(in srgb, var(--pp-accent), black 35%);
-  /* box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.4); */
+  border: 1.5px solid rgba(255,255,255,0.4);
+  box-shadow:
+    0 24px 70px rgba(40,15,90,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    inset 0 0 50px rgba(var(--pp-accent-rgb),0.08);
 `;
 
 /* ── Middle Column / Content Panel ── */
@@ -106,7 +117,6 @@ export const MiddleCol = styled.div`
   flex-direction: column;
   gap: 16px;
   padding: 20px 20px 20px 6px;
-  background: var(--pp-gradSidebar);
   overflow: hidden;
 `;
 
@@ -116,38 +126,13 @@ export const NameCard = styled.div`
   align-items: center;
   gap: 16px;
   padding: 16px 22px;
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pp-accent), white 35%);
-  box-shadow: 0 4px 18px rgba(80,40,160,0.07);
 `;
 
 export const ContentPanel = styled.div`
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: row;
-  overflow: hidden;
-`;
-
-/* Column holding the title bar + content box as separate, stacked elements
-   (rather than the title living inside the content's own background) so the
-   two never paint overlapping backgrounds. */
-export const ContentColumn = styled.div`
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
   flex-direction: column;
-`;
-
-export const ContentPanelTitle = styled.h2`
-  margin: 0;
-  flex-shrink: 0;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  color: color-mix(in srgb, var(--pp-accent), black 50%);
 `;
 
 export const ContentPanelBody = styled.div`
@@ -156,12 +141,9 @@ export const ContentPanelBody = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 0 0 22px 22px;
-  border: 3px solid color-mix(in srgb, var(--pp-accent), white 35%);
-  border-top: none;
   box-shadow: ${p => p.$editing
     ? "0 0 0 3px rgba(var(--pp-accent-rgb),0.45), 0 10px 36px rgba(var(--pp-accent-rgb),0.32)"
-    : "0 1px 4px rgba(80,40,160,0.05)"};
+    : "none"};
   overflow: hidden;
   position: relative;
   z-index: ${p => p.$editing ? 3 : 2};
@@ -170,10 +152,12 @@ export const ContentPanelBody = styled.div`
 
 export const BookmarkRail = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
   flex-shrink: 0;
-  padding: 22px 0;
+  padding: 0 50px;
   z-index: 1;
 `;
 
@@ -193,26 +177,11 @@ export const CanvasClickBlocker = styled.div`
   cursor: not-allowed;
 `;
 
-/* Same background as ContentPanelBody's border, so the title bar reads as
-   a thickened extension of that border rather than a second, separate panel. */
-export const CanvasTitleWrap = styled.div`
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  background: color-mix(in srgb, var(--pp-accent), white 35%);
-  border-radius: 22px 22px 0 0;
-  padding: 4px 14px;
-`;
-
 export const CanvasActionsRow = styled.div`
   position: absolute;
   right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 10px;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -342,31 +311,28 @@ export const BookmarkTab = styled.button`
   all: unset;
   box-sizing: border-box;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 108px;
-  height: 74px;
-  padding: 0 16px;
-  margin-right: -18px;
-  border-radius: 18px 0 0 18px;
-  border: 2px solid transparent;
+  gap: 9px;
+  width: 72px;
+  height: 72px;
+  padding: 8px 4px 6px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid ${p => p.$active ? "var(--pp-accent)" : "transparent"};
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transform-origin: center left;
-  background: ${p => p.$active ? "color-mix(in srgb, var(--pp-accent), white 35%)" : "rgba(255,255,255,0.55)"};
-  box-shadow: ${p => p.$active ? "0 6px 16px rgba(var(--pp-accent-rgb), 0.38)" : "none"};
-  transition: background 0.18s, transform 0.15s, border-color 0.18s, box-shadow 0.18s;
-  &:hover:not(:disabled) {
-    border-color: #fff;
-    transform: scale(1.07);
-    background: ${p => p.$danger ? "rgba(220,38,38,0.1)" : p.$active ? "color-mix(in srgb, var(--pp-accent), white 35%)" : "rgba(255,255,255,0.82)"};
-  }
+  background: ${p => p.$active
+    ? "linear-gradient(to top, rgba(var(--pp-accent-rgb),0.48) 0%, rgba(var(--pp-accent-rgb),0.16) 25%, transparent 42%)"
+    : "transparent"};
+  transition: border-color 0.18s, background 0.18s;
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 export const BookmarkIconImg = styled.span`
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   flex-shrink: 0;
   display: inline-block;
   background: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
@@ -381,11 +347,21 @@ export const BookmarkIconImg = styled.span`
 `;
 
 export const BookmarkIcon = styled.span`
-  font-size: 21px;
+  font-size: 24px;
   line-height: 1;
   flex-shrink: 0;
   color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
   filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff);
+`;
+
+export const BookmarkLabel = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: ${p => p.$active ? "var(--pp-accent)" : p.$danger ? "#dc2626" : "var(--pp-txt3)"};
 `;
 
 export const BookmarkNotifDot = styled.span`
@@ -419,7 +395,6 @@ export const ProfileContent = styled.main`
   padding: 18px;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--pp-gradPanel);
   position: relative;
   ${thinScrollbar}
 `;
@@ -473,9 +448,6 @@ export const HeaderStatBox = styled.div`
   align-items: center;
   gap: 3px;
   padding: 8px 6px;
-  background: ${"var(--pp-card)"};
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 10px;
 `;
 
 export const HeaderStatTop = styled.div`
@@ -1626,16 +1598,12 @@ export const AboutToggleBtn = styled.button`
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
-/* Full-bleed backdrop matching every other tab's *PanelInner (e.g. FriendsPanelInner,
-   LookPanelInner) — ClubSection is a floating card, not a fill, so without this its
-   margin exposed transparent space clear through to the modal background. */
 export const ClubPanelInner = styled.div`
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 18px;
-  background: var(--pp-gradPanel);
   overflow: hidden;
 `;
 
@@ -1644,8 +1612,8 @@ export const ClubSection = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: ${"var(--pp-card)"};
-  border: 1px solid ${"var(--pp-border)"};
+  background: rgba(var(--pp-accent-rgb), 0.08);
+  border: 1px solid rgba(255,255,255,0.35);
   border-radius: 14px;
 `;
 
@@ -1732,7 +1700,7 @@ export const ClubViewBtn = styled.button`
 
 export const ProfileOuter = styled.div`
   position: relative;
-  width: min(96%, 1400px);
+  width: min(96%, 1600px);
   max-width: 98%;
   height: 92%;
   display: flex;
@@ -1864,8 +1832,7 @@ export const MailListCol = styled.div`
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradSidebar);
-  border-right: 1px solid ${"var(--pp-border)"};
+  border-right: 1px solid rgba(255,255,255,0.3);
   overflow: hidden;
 `;
 
@@ -2008,7 +1975,7 @@ export const MailDetailCol = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);  overflow: hidden;
+  overflow: hidden;
 `;
 
 export const MailPlaceholder = styled.div`
@@ -2305,7 +2272,7 @@ export const FriendsPanelInner = styled.div`
   flex-direction: column;
   padding: 18px;
   gap: 14px;
-  background: var(--pp-gradPanel);  overflow: hidden;
+  overflow: hidden;
 `;
 
 export const FriendsSearchRow = styled.div`
@@ -2466,7 +2433,7 @@ export const WishlistPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);  overflow: hidden;
+  overflow: hidden;
 `;
 
 export const WishlistScrollArea = styled.div`
@@ -2545,7 +2512,7 @@ export const LookPanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);  overflow: hidden;
+  overflow: hidden;
 `;
 
 export const LookScrollArea = styled.div`
@@ -2805,7 +2772,6 @@ export const InvContentCol = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--pp-gradPanel);
 `;
 
 export const InvCatScroll = styled.div`
@@ -3094,7 +3060,7 @@ export const ThemePanelInner = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--pp-gradPanel);  overflow: hidden;
+  overflow: hidden;
 `;
 
 export const ThemeGrid = styled.div`
@@ -3176,10 +3142,9 @@ export const AvatarStageCol = styled.section`
   align-items: center;
   padding: 0 14px;
   margin: 20px;
-  background: var(--pp-gradPanel);
-  border: 3px solid color-mix(in srgb, var(--pp-accent), white 35%);
+  background: transparent;
   border-radius: 26px;
-  box-shadow: 0 8px 28px rgba(80,40,160,0.08);
+  border: 1.5px solid rgba(255,255,255,0.4);
   gap: 10px;
   overflow: hidden;
   position: relative;

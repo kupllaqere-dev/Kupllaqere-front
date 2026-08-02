@@ -53,8 +53,8 @@ import { InvItemsArea } from "./tabs/InventoryTab";
 
 import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
-  MiddleCol, NameCard, ContentPanel, ContentColumn, ContentPanelBody, ContentPanelTitle,
-  BookmarkRail, BookmarkTab, BookmarkIconImg, BookmarkIcon, BookmarkNotifDot,
+  MiddleCol, NameCard, ContentPanel, ContentPanelBody,
+  BookmarkRail, BookmarkTab, BookmarkIconImg, BookmarkIcon, BookmarkLabel, BookmarkNotifDot,
   HeaderTitles, HeaderNameRow, PlayerName, PlayerNameMark, LevelBadge, HeaderMemberSince,
   HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatLabel,
   InvActionBar, InvNudeBtn, InvResetBtn, InvApplyBtn,
@@ -63,22 +63,10 @@ import {
   StatusCard, StatusCardTop, StatusSep, StatusLoc,
   PresenceDot, PresenceLabel,
   StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
-  CanvasClickBlocker, CanvasTitleWrap, CanvasActionsRow, CanvasEditToggleBtn,
+  CanvasClickBlocker, CanvasActionsRow, CanvasEditToggleBtn,
   CanvasSecondaryBtn, CanvasPrimaryBtn,
   CanvasInsertWrap, CanvasInsertMenu, CanvasInsertMenuItem, CanvasInsertMenuIcon,
 } from "./styles";
-
-const TAB_TITLES = {
-  profile: "About Me",
-  mail: "Mail",
-  look: "Look",
-  friends: "Friends",
-  inventory: "Inventory",
-  wishlist: "Wishlist",
-  themes: "Themes",
-  guestbook: "Guestbook",
-  club: "Club",
-};
 
 export default function PlayerProfile({
   onClose,
@@ -1026,11 +1014,13 @@ export default function PlayerProfile({
               <BookmarkRail>
                 {isSelfView ? (
                   <>
-                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="About Me">
+                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="Profile">
                       <BookmarkIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
+                      <BookmarkLabel $active={activeTab === "profile"}>Profile</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "mail"} onClick={() => setActiveTab("mail")} title="Mail">
                       <BookmarkIconImg $active={activeTab === "mail"} $src="/assets/profile-icons/mail.png" />
+                      <BookmarkLabel $active={activeTab === "mail"}>Mail</BookmarkLabel>
                       {(mailListsLoaded
                         ? mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0)
                         : unreadMailCount) > 0 && (
@@ -1043,91 +1033,103 @@ export default function PlayerProfile({
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "look"} onClick={() => setActiveTab("look")} title="Look">
                       <BookmarkIconImg $active={activeTab === "look"} $src="/assets/profile-icons/look.png" />
+                      <BookmarkLabel $active={activeTab === "look"}>Look</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "friends"} onClick={() => setActiveTab("friends")} title="Friends">
                       <BookmarkIconImg $active={activeTab === "friends"} $src="/assets/profile-icons/friends.png" />
+                      <BookmarkLabel $active={activeTab === "friends"}>Friends</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "inventory"} onClick={() => setActiveTab("inventory")} title="Inventory">
                       <BookmarkIconImg $active={activeTab === "inventory"} $src="/assets/profile-icons/inventory.png" />
+                      <BookmarkLabel $active={activeTab === "inventory"}>Inventory</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "wishlist"} onClick={() => setActiveTab("wishlist")} title="Wishlist">
                       <BookmarkIconImg $active={activeTab === "wishlist"} $src="/assets/profile-icons/wishlist.png" />
+                      <BookmarkLabel $active={activeTab === "wishlist"}>Wishlist</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "themes"} onClick={() => setActiveTab("themes")} title="Themes">
                       <BookmarkIconImg $active={activeTab === "themes"} $src="/assets/profile-icons/themes.png" />
+                      <BookmarkLabel $active={activeTab === "themes"}>Themes</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "guestbook"} onClick={() => setActiveTab("guestbook")} title="Guestbook">
                       <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
+                      <BookmarkLabel $active={activeTab === "guestbook"}>Guestbook</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
-                      <BookmarkIcon $active={activeTab === "club"}>🏛️</BookmarkIcon>
+                      <BookmarkIconImg $active={activeTab === "club"} $src="/assets/profile-icons/club.png" />
+                      <BookmarkLabel $active={activeTab === "club"}>Club</BookmarkLabel>
                     </BookmarkTab>
                   </>
                 ) : (
                   <>
-                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="About Me">
+                    <BookmarkTab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")} title="Profile">
                       <BookmarkIconImg $active={activeTab === "profile"} $src="/assets/profile-icons/profile.png" />
+                      <BookmarkLabel $active={activeTab === "profile"}>Profile</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "guestbook"} onClick={() => setActiveTab("guestbook")} title="Guestbook">
                       <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
+                      <BookmarkLabel $active={activeTab === "guestbook"}>Guestbook</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
-                      <BookmarkIcon $active={activeTab === "club"}>🏛️</BookmarkIcon>
+                      <BookmarkIconImg $active={activeTab === "club"} $src="/assets/profile-icons/club.png" />
+                      <BookmarkLabel $active={activeTab === "club"}>Club</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab onClick={handleLikeBtn} disabled={likeBusy || !currentUserId} title={likeState.liked ? "Liked" : "Like"}>
                       <BookmarkIcon>{likeState.liked ? "♥" : "♡"}</BookmarkIcon>
+                      <BookmarkLabel>{likeState.liked ? "Liked" : "Like"}</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab onClick={handleFriendBtn} disabled={friendBusy || friendStatus === null} title={friendBtnLabel()}>
                       <BookmarkIconImg $src="/assets/profile-icons/friends.png" />
+                      <BookmarkLabel>Friends</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab onClick={() => setComposing(true)} title="Mail">
                       <BookmarkIconImg $src="/assets/profile-icons/mail.png" />
+                      <BookmarkLabel>Mail</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab title="Wishlist">
                       <BookmarkIconImg $src="/assets/profile-icons/wishlist.png" />
+                      <BookmarkLabel>Wishlist</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab title="Gift">
                       <BookmarkIcon>🎁</BookmarkIcon>
+                      <BookmarkLabel>Gift</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab title="Trade">
                       <BookmarkIcon>⇄</BookmarkIcon>
+                      <BookmarkLabel>Trade</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab $danger title="Report">
                       <BookmarkIcon $danger>⚑</BookmarkIcon>
+                      <BookmarkLabel $danger>Report</BookmarkLabel>
                     </BookmarkTab>
                   </>
                 )}
               </BookmarkRail>
 
-              <ContentColumn>
-                <CanvasTitleWrap>
-                  <ContentPanelTitle>{TAB_TITLES[activeTab] || ""}</ContentPanelTitle>
-                  {activeTab === "profile" && isSelfView && (
-                    <CanvasActionsRow>
-                      {aboutMeEditMode ? (
-                        <>
-                          <CanvasInsertWrap ref={insertMenuRef}>
-                            <CanvasSecondaryBtn onClick={() => setInsertMenuOpen(v => !v)}>Insert</CanvasSecondaryBtn>
-                            {insertMenuOpen && (
-                              <CanvasInsertMenu>
-                                <CanvasInsertMenuItem onClick={handleInsertText}>
-                                  <CanvasInsertMenuIcon>🔤</CanvasInsertMenuIcon>
-                                  Text
-                                </CanvasInsertMenuItem>
-                              </CanvasInsertMenu>
-                            )}
-                          </CanvasInsertWrap>
-                          <CanvasSecondaryBtn onClick={handleCanvasCancel}>Cancel</CanvasSecondaryBtn>
-                          <CanvasPrimaryBtn onClick={handleCanvasSave}>Save</CanvasPrimaryBtn>
-                        </>
-                      ) : (
-                        <CanvasEditToggleBtn onClick={handleCanvasEditStart}>Edit</CanvasEditToggleBtn>
-                      )}
-                    </CanvasActionsRow>
-                  )}
-                </CanvasTitleWrap>
-
-                <ContentPanelBody $editing={isCanvasEditing}>
+              <ContentPanelBody $editing={isCanvasEditing}>
+                {activeTab === "profile" && isSelfView && (
+                  <CanvasActionsRow>
+                    {aboutMeEditMode ? (
+                      <>
+                        <CanvasInsertWrap ref={insertMenuRef}>
+                          <CanvasSecondaryBtn onClick={() => setInsertMenuOpen(v => !v)}>Insert</CanvasSecondaryBtn>
+                          {insertMenuOpen && (
+                            <CanvasInsertMenu>
+                              <CanvasInsertMenuItem onClick={handleInsertText}>
+                                <CanvasInsertMenuIcon>🔤</CanvasInsertMenuIcon>
+                                Text
+                              </CanvasInsertMenuItem>
+                            </CanvasInsertMenu>
+                          )}
+                        </CanvasInsertWrap>
+                        <CanvasSecondaryBtn onClick={handleCanvasCancel}>Cancel</CanvasSecondaryBtn>
+                        <CanvasPrimaryBtn onClick={handleCanvasSave}>Save</CanvasPrimaryBtn>
+                      </>
+                    ) : (
+                      <CanvasEditToggleBtn onClick={handleCanvasEditStart}>Edit</CanvasEditToggleBtn>
+                    )}
+                  </CanvasActionsRow>
+                )}
                 <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
                   <AboutMeTab
                     selectedBadge={selectedBadge}
@@ -1269,7 +1271,6 @@ export default function PlayerProfile({
                   </div>
                 )}
                 </ContentPanelBody>
-              </ContentColumn>
             </ContentPanel>
           </MiddleCol>
 
