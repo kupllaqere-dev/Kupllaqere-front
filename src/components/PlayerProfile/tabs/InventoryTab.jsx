@@ -12,14 +12,14 @@ import {
   InvItemScroll, InvErrTxt, InvItemList, InvItemCard, InvThumbImg, InvMidSection,
   InvItemName, InvWearingBadge, InvLockTxt, InvPricesArea, InvPricePanel, InvLevelBadge,
   InvBadgeAndPrice, InvCoinImg, InvPriceAmt, InvSellPanel,
-  InvBreadcrumbCol, InvCrumbStep,
+  InvBackBtn,
 } from "../styles";
 
 export function InvItemsArea({
   items, loading, view, isSelected, canUse, toggleEntry,
   selling, sellError, onSell, goToCategory, goToSubcategory,
   subCount, goToRecent, goToEquipped, recentCount, equippedCount,
-  onHoverItem,
+  onHoverItem, onBack,
 }) {
   useEffect(() => {
     items.forEach(item => avatarCompositor.preloadImage(item?.imageUrl));
@@ -77,6 +77,7 @@ export function InvItemsArea({
 
       {isListView && (
         <InvItemScroll>
+          <InvBackBtn onClick={onBack}>← Back</InvBackBtn>
           {sellError && <InvErrTxt>{sellError}</InvErrTxt>}
           {!loading && items.length === 0 && <InvMsg>{emptyMsg}</InvMsg>}
           <InvItemList>
@@ -113,21 +114,5 @@ export function InvItemsArea({
         </InvItemScroll>
       )}
     </InvContentCol>
-  );
-}
-
-export function InvBreadcrumbsBar({ crumbs }) {
-  return (
-    <InvBreadcrumbCol>
-      {crumbs.map((c, i) => {
-        const isLast = i === crumbs.length - 1;
-        const clickable = !isLast && !!c.onClick;
-        return (
-          <InvCrumbStep key={i} $active={isLast} $clickable={clickable} onClick={clickable ? c.onClick : undefined}>
-            {c.label}
-          </InvCrumbStep>
-        );
-      })}
-    </InvBreadcrumbCol>
   );
 }

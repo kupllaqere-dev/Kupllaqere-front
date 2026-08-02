@@ -129,9 +129,19 @@ export const ContentPanel = styled.div`
   overflow: hidden;
 `;
 
+/* Column holding the title bar + content box as separate, stacked elements
+   (rather than the title living inside the content's own background) so the
+   two never paint overlapping backgrounds. */
+export const ContentColumn = styled.div`
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+`;
+
 export const ContentPanelTitle = styled.h2`
   margin: 0;
-  padding: 2px 0 12px;
   flex-shrink: 0;
   text-align: center;
   font-size: 18px;
@@ -146,13 +156,16 @@ export const ContentPanelBody = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 14px;
-  border-radius: 26px;
-  background: color-mix(in srgb, var(--pp-accent), white 35%);
-  box-shadow: 0 1px 4px rgba(80,40,160,0.05);
+  border-radius: 0 0 22px 22px;
+  border: 3px solid color-mix(in srgb, var(--pp-accent), white 35%);
+  border-top: none;
+  box-shadow: ${p => p.$editing
+    ? "0 0 0 3px rgba(var(--pp-accent-rgb),0.45), 0 10px 36px rgba(var(--pp-accent-rgb),0.32)"
+    : "0 1px 4px rgba(80,40,160,0.05)"};
   overflow: hidden;
   position: relative;
-  z-index: 2;
+  z-index: ${p => p.$editing ? 3 : 2};
+  transition: box-shadow 0.25s;
 `;
 
 export const BookmarkRail = styled.div`
@@ -163,6 +176,167 @@ export const BookmarkRail = styled.div`
   padding: 22px 0;
   z-index: 1;
 `;
+
+/* ── Canvas edit mode (About Me) ── */
+
+/* Sits as a sibling of ProfileWrapper (inside ProfileOuter), so it covers
+   the full card including its border — ProfileWrapper's own overflow:hidden
+   would otherwise clip anything drawn from inside it before it ever reached
+   the border. ContentPanelBody stacks above it via its own higher z-index,
+   staying lit and clickable while this darkens and blocks everything else. */
+export const CanvasClickBlocker = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 40px;
+  background: rgba(10, 5, 25, 0.6);
+  cursor: not-allowed;
+`;
+
+/* Same background as ContentPanelBody's border, so the title bar reads as
+   a thickened extension of that border rather than a second, separate panel. */
+export const CanvasTitleWrap = styled.div`
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  background: color-mix(in srgb, var(--pp-accent), white 35%);
+  border-radius: 22px 22px 0 0;
+  padding: 4px 14px;
+`;
+
+export const CanvasActionsRow = styled.div`
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const CanvasEditToggleBtn = styled.button`
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: ${"var(--pp-accent)"};
+  padding: 4px 14px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(var(--pp-accent-rgb),0.35);
+  background: rgba(var(--pp-accent-rgb),0.08);
+  transition: all 0.18s;
+  &:hover { background: rgba(var(--pp-accent-rgb),0.16); border-color: ${"var(--pp-accent)"}; }
+`;
+
+export const CanvasInsertWrap = styled.div`
+  position: relative;
+`;
+
+export const CanvasInsertMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 140px;
+  background: #ffffff;
+  border: 1px solid rgba(var(--pp-accent-rgb),0.22);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: 0 10px 28px rgba(60,20,120,0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const CanvasInsertMenuItem = styled.button`
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${"var(--pp-txt2)"};
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: rgba(var(--pp-accent-rgb),0.1); color: ${"var(--pp-accent)"}; }
+`;
+
+export const CanvasInsertMenuIcon = styled.span`
+  font-size: 13px;
+  line-height: 1;
+`;
+
+/* ── Canvas surface + elements ── */
+
+export const CanvasSurface = styled.div`
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+`;
+
+export const CanvasTextBox = styled.div`
+  display: inline-block;
+  min-width: 30px;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 6px;
+  outline: none;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+  color: ${"var(--pp-txt)"};
+  cursor: ${p => p.$editable ? "text" : "default"};
+  user-select: ${p => p.$editable ? "text" : "none"};
+  border: 1px dashed ${p => p.$selected
+    ? "var(--pp-accent)"
+    : p.$editable ? "rgba(var(--pp-accent-rgb),0.28)" : "transparent"};
+  background: ${p => p.$selected ? "rgba(var(--pp-accent-rgb),0.06)" : "transparent"};
+`;
+
+export const CanvasDragHandle = styled.div`
+  position: absolute;
+  top: -11px;
+  left: -11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: ${"var(--pp-accent)"};
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  &:active { cursor: grabbing; }
+`;
+
+export const CanvasElementToolbar = styled.div`
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 6px;
+  background: #ffffff;
+  border: 1px solid rgba(var(--pp-accent-rgb),0.22);
+  border-radius: 9px;
+  box-shadow: 0 8px 22px rgba(60,20,120,0.2);
+  white-space: nowrap;
+  z-index: 5;
+`;
+
 
 export const BookmarkTab = styled.button`
   all: unset;
@@ -242,8 +416,9 @@ export const ProfileContent = styled.main`
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 52px 22px 22px 20px;
+  padding: 18px;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--pp-gradPanel);
   position: relative;
   ${thinScrollbar}
@@ -836,6 +1011,20 @@ export const SecondaryBtn = styled.button`
   &:disabled { opacity: 0.45; cursor: not-allowed; }
   &:hover:not(:disabled) { background: ${"var(--pp-card)"}; color: ${"var(--pp-txt2)"}; border-color: ${"var(--pp-border2)"}; }
   &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
+`;
+
+export const CanvasSecondaryBtn = styled(SecondaryBtn)`
+  background: #ffffff;
+  color: ${"var(--pp-txt2)"};
+  border-color: rgba(var(--pp-accent-rgb),0.22);
+  &:hover:not(:disabled) { background: #f3edff; color: ${"var(--pp-txt)"}; }
+`;
+
+export const CanvasPrimaryBtn = styled(PrimaryBtn)`
+  background: #ffffff;
+  color: ${"var(--pp-accent)"};
+  border-color: rgba(var(--pp-accent-rgb),0.35);
+  &:hover:not(:disabled) { background: #f3edff; }
 `;
 
 export const FormatToolbar = styled.div`display: flex; gap: 4px; margin-bottom: 4px;`;
@@ -1437,8 +1626,20 @@ export const AboutToggleBtn = styled.button`
   &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
 `;
 
+/* Full-bleed backdrop matching every other tab's *PanelInner (e.g. FriendsPanelInner,
+   LookPanelInner) — ClubSection is a floating card, not a fill, so without this its
+   margin exposed transparent space clear through to the modal background. */
+export const ClubPanelInner = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  background: var(--pp-gradPanel);
+  overflow: hidden;
+`;
+
 export const ClubSection = styled.div`
-  margin: 0 14px 18px;
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -1579,7 +1780,7 @@ export const HubPanelContainer = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: row;
-  border-radius: 18px;
+  border-radius: 0 0 18px 18px;
   overflow: hidden;`;
 
 export const PanelHeaderRow = styled.div`
@@ -1672,10 +1873,10 @@ export const NewMailBtn = styled.button`
   background: rgba(var(--pp-accent-rgb),0.1);
   border: 1px solid ${"var(--pp-border2)"};
   color: ${"var(--pp-accent)"};
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: 9px 20px;
+  border-radius: 10px;
   cursor: pointer;
   font-family: inherit;
   position: relative; overflow: hidden;
@@ -1691,7 +1892,7 @@ export const MailThreadList = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 8px 0;
+  padding: 18px 0 18px 18px;
   gap: 3px;
   ${thinScrollbar}
 `;
@@ -1874,7 +2075,7 @@ export const MailMessageList = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -2102,7 +2303,7 @@ export const FriendsPanelInner = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 52px 20px 0;
+  padding: 18px;
   gap: 14px;
   background: var(--pp-gradPanel);  overflow: hidden;
 `;
@@ -2272,7 +2473,7 @@ export const WishlistScrollArea = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 18px 18px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2351,7 +2552,7 @@ export const LookScrollArea = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 18px 18px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2547,7 +2748,7 @@ export const InvNudeBtn = styled.button`
   border: 1px solid rgba(220,38,38,0.3);
   background: rgba(220,38,38,0.07);
   color: #dc2626;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -2565,7 +2766,7 @@ export const InvResetBtn = styled.button`
   border: 1px solid ${"var(--pp-border)"};
   background: transparent;
   color: ${"var(--pp-txt3)"};
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -2583,7 +2784,7 @@ export const InvApplyBtn = styled.button`
   border: 1px solid rgba(var(--pp-accent-rgb),0.3);
   background: rgba(var(--pp-accent-rgb),0.1);
   color: ${"var(--pp-accent)"};
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -2610,7 +2811,7 @@ export const InvContentCol = styled.div`
 export const InvCatScroll = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 18px;
   ${thinScrollbar}
 `;
 
@@ -2657,13 +2858,13 @@ export const InvCatCardTop = styled.div`
   &:hover { background: rgba(var(--pp-accent-rgb),0.1); }
 `;
 
-export const InvCatLabel = styled.span`font-size: 13px; font-weight: 700; color: ${"var(--pp-txt)"}; flex: 1;`;
-export const InvCatArrow = styled.span`font-size: 13px; color: ${"var(--pp-txt3)"}; transition: transform 0.13s; ${InvCatCardTop}:hover & { transform: translateX(2px); }`;
+export const InvCatLabel = styled.span`font-size: 15px; font-weight: 700; color: ${"var(--pp-txt)"}; flex: 1;`;
+export const InvCatArrow = styled.span`font-size: 14px; color: ${"var(--pp-txt3)"}; transition: transform 0.13s; ${InvCatCardTop}:hover & { transform: translateX(2px); }`;
 
 export const InvCatSubList = styled.div`padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 1px;`;
 
 export const InvCatSubItem = styled.div`
-  font-size: 11.5px;
+  font-size: 13px;
   color: ${"var(--pp-txt2)"};
   padding: 4px 0;
   cursor: pointer;
@@ -2671,11 +2872,12 @@ export const InvCatSubItem = styled.div`
   align-items: center;
   gap: 5px;
   width: fit-content;
+  font-weight: 600;
   transition: color 0.1s;
-  &:hover { color: ${"var(--pp-accent)"}; font-weight: 600; }
+  &:hover { color: ${"var(--pp-accent)"}; }
 `;
 
-export const InvSubCount = styled.span`font-size: 10px; color: ${"var(--pp-txt3)"}; font-weight: 500;`;
+export const InvSubCount = styled.span`font-size: 11.5px; color: ${"var(--pp-txt3)"}; font-weight: 500;`;
 
 export const InvQuickNavRow = styled.div`
   display: grid;
@@ -2703,7 +2905,7 @@ export const InvQuickNavBtn = styled.div`
 
 export const InvQuickNavLabel = styled.span`
   flex: 1;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: ${"var(--pp-txt)"};
 `;
@@ -2715,13 +2917,13 @@ export const InvQuickNavRight = styled.div`
 `;
 
 export const InvQuickNavCount = styled.span`
-  font-size: 11px;
+  font-size: 12.5px;
   color: ${"var(--pp-txt3)"};
   font-weight: 500;
 `;
 
 export const InvQuickNavArrow = styled.span`
-  font-size: 13px;
+  font-size: 14px;
   color: ${"var(--pp-txt3)"};
   transition: transform 0.13s;
   ${InvQuickNavBtn}:hover & { transform: translateX(2px); color: ${"var(--pp-accent)"}; }
@@ -2730,15 +2932,15 @@ export const InvQuickNavArrow = styled.span`
 export const InvItemScroll = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 0;
   ${thinScrollbar}
 `;
 
-export const InvMsg = styled.div`text-align: center; color: ${"var(--pp-txt3)"}; padding: 20px 0; font-size: 13px;`;
-export const InvErrTxt = styled.div`font-size: 12px; color: #dc2626; padding: 8px 12px;`;
+export const InvMsg = styled.div`text-align: center; color: ${"var(--pp-txt3)"}; padding: 20px 0; font-size: 15px;`;
+export const InvErrTxt = styled.div`font-size: 13px; color: #dc2626; padding: 8px 12px;`;
 
 export const InvItemList = styled.div`display: flex; flex-direction: column; gap: 6px;`;
 
@@ -2773,7 +2975,7 @@ export const InvMidSection = styled.div`
 `;
 
 export const InvItemName = styled.div`
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: ${"var(--pp-txt)"};
   white-space: nowrap;
@@ -2784,7 +2986,7 @@ export const InvItemName = styled.div`
 export const InvWearingBadge = styled.div`
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: ${"var(--pp-accent)"};
   background: rgba(var(--pp-accent-rgb),0.1);
@@ -2794,7 +2996,7 @@ export const InvWearingBadge = styled.div`
   width: fit-content;
 `;
 
-export const InvLockTxt = styled.div`font-size: 10px; font-weight: 600; color: #dc2626;`;
+export const InvLockTxt = styled.div`font-size: 11px; font-weight: 600; color: #dc2626;`;
 
 export const InvPricesArea = styled.div`
   display: flex;
@@ -2819,7 +3021,7 @@ export const InvPricePanel = styled.div`
 `;
 
 export const InvLevelBadge = styled.div`
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
   padding: 4px 12px;
@@ -2836,7 +3038,7 @@ export const InvBadgeAndPrice = styled.div`display: flex; gap: 6px; align-items:
 
 export const InvCoinImg = styled.img`width: 32px; height: 32px; object-fit: contain;`;
 
-export const InvPriceAmt = styled.div`font-size: 13px; font-weight: 700; color: ${"var(--pp-coin)"};`;
+export const InvPriceAmt = styled.div`font-size: 14px; font-weight: 700; color: ${"var(--pp-coin)"};`;
 
 export const InvSellPanel = styled.button`
   width: 50%;
@@ -2847,7 +3049,7 @@ export const InvSellPanel = styled.button`
   justify-content: center;
   border: none;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: ${"var(--pp-txt3)"};
   font-family: inherit;
@@ -2859,63 +3061,31 @@ export const InvSellPanel = styled.button`
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
-/* ── Inventory breadcrumbs sidebar ── */
+/* ── Inventory back navigation ── */
 
-export const InvBreadcrumbCol = styled.div`
-  width: 160px;
-  flex-shrink: 0;
-  border-left: 1px solid ${"var(--pp-border)"};
-  padding: 52px 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--pp-gradSidebar);  overflow-y: auto;
-  ${thinScrollbar}
-`;
-
-export const InvCrumbStep = styled.button`
+export const InvBackBtn = styled.button`
   all: unset;
   box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  aspect-ratio: 1;
-  display: flex;
+  align-self: flex-start;
+  flex-shrink: 0;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 10px;
-  border-radius: 14px;
-  font-size: 16px;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding: 6px 12px 6px 9px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 700;
-  color: ${p => p.$active ? "var(--pp-accent)" : "var(--pp-txt3)"};
-  background: ${p => p.$active
-    ? "linear-gradient(145deg, rgba(var(--pp-accent-rgb),0.14), rgba(157,111,245,0.08))"
-    : "var(--pp-surface)"};
-  border: 1px solid ${p => p.$active ? "var(--pp-border2)" : "var(--pp-border)"};
-  box-shadow: ${p => p.$active ? "0 0 18px rgba(var(--pp-accent-rgb),0.12), inset 0 1px 0 rgba(255,255,255,0.6)" : "none"};
-  cursor: ${p => p.$clickable ? "pointer" : "default"};
-  transition: all 0.18s;
-  word-break: break-word;
-  line-height: 1.3;
-  &::before {
-    content: '';
-    position: absolute; top: -20%; left: -60%;
-    width: 32%; height: 140%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-    transform: skewX(-18deg) translateX(-100%);
-    pointer-events: none;
+  color: ${"var(--pp-txt2)"};
+  background: ${"var(--pp-surface)"};
+  border: 1px solid ${"var(--pp-border)"};
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: rgba(var(--pp-accent-rgb),0.1);
+    border-color: rgba(var(--pp-accent-rgb),0.35);
+    color: ${"var(--pp-accent)"};
   }
-  ${p => p.$clickable && css`
-    &:hover {
-      background: rgba(var(--pp-accent-rgb),0.1);
-      border-color: rgba(var(--pp-accent-rgb),0.35);
-      color: ${"var(--pp-accent)"};
-      box-shadow: 0 4px 14px rgba(var(--pp-accent-rgb),0.14);
-      transform: translateY(-2px);
-    }
-    &:hover::before { animation: ${glassShine} 0.52s ease-out forwards; }
-  `}
 `;
 
 /* ── Theme picker ── */
@@ -2931,7 +3101,7 @@ export const ThemeGrid = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 18px 18px;
+  padding: 18px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
@@ -2999,7 +3169,7 @@ export const ThemeSwatchBar = styled.div`
 /* ── Avatar Stage Column ── */
 
 export const AvatarStageCol = styled.section`
-  width: 350px;
+  width: 450px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

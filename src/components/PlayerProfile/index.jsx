@@ -35,7 +35,6 @@ import { getSlotKey, getConflictSlots } from "../../game/avatar/LayerConfig.js";
 
 import {
   BADGES,
-  INV_CATEGORY_LABELS, INV_SUBCATEGORY_LABELS, INV_CATEGORIES,
   BADGE_RARITY, PRESENCE_LABELS,
   LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
   ZOOM_LEVELS, POSE_ORDER,
@@ -50,11 +49,11 @@ import WishlistTab from "./tabs/WishlistTab";
 import ThemesTab from "./tabs/ThemesTab";
 import GuestbookTab from "./tabs/GuestbookTab";
 import ClubTab from "./tabs/ClubTab";
-import { InvItemsArea, InvBreadcrumbsBar } from "./tabs/InventoryTab";
+import { InvItemsArea } from "./tabs/InventoryTab";
 
 import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
-  MiddleCol, NameCard, ContentPanel, ContentPanelBody, ContentPanelTitle,
+  MiddleCol, NameCard, ContentPanel, ContentColumn, ContentPanelBody, ContentPanelTitle,
   BookmarkRail, BookmarkTab, BookmarkIconImg, BookmarkIcon, BookmarkNotifDot,
   HeaderTitles, HeaderNameRow, PlayerName, PlayerNameMark, LevelBadge, HeaderMemberSince,
   HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatLabel,
@@ -64,6 +63,9 @@ import {
   StatusCard, StatusCardTop, StatusSep, StatusLoc,
   PresenceDot, PresenceLabel,
   StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
+  CanvasClickBlocker, CanvasTitleWrap, CanvasActionsRow, CanvasEditToggleBtn,
+  CanvasSecondaryBtn, CanvasPrimaryBtn,
+  CanvasInsertWrap, CanvasInsertMenu, CanvasInsertMenuItem, CanvasInsertMenuIcon,
 } from "./styles";
 
 const TAB_TITLES = {
@@ -83,8 +85,6 @@ export default function PlayerProfile({
   playerName,
   outfit,
   gender,
-  bio = "",
-  onSaveBio,
   selectedBadge = null,
   onSaveBadge,
   currentUserId = null,
@@ -103,18 +103,10 @@ export default function PlayerProfile({
   popularity = 0,
   onOpenProfile = null,
 }) {
-  const textareaRef = useRef(null);
-
   const isSelfView = !!(
     currentUserId && targetUserId &&
     String(currentUserId) === String(targetUserId)
   );
-
-
-  const [editingBio, setEditingBio] = useState(false);
-  const [bioDraft, setBioDraft] = useState(bio);
-  const [bioSaving, setBioSaving] = useState(false);
-  const [bioError, setBioError] = useState(null);
 
   const [badgeSaving, setBadgeSaving] = useState(false);
   const [badgesExpanded, setBadgesExpanded] = useState(false);
@@ -140,20 +132,19 @@ export default function PlayerProfile({
   const [gbSubmitting, setGbSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
+  const [aboutMeEditMode, setAboutMeEditMode] = useState(false);
+  const isCanvasEditing = activeTab === "profile" && aboutMeEditMode;
+  const [canvasElements, setCanvasElements] = useState([]);
+  const [selectedElementId, setSelectedElementId] = useState(null);
+  const [insertMenuOpen, setInsertMenuOpen] = useState(false);
+  const canvasSnapshotRef = useRef(null);
+  const insertMenuRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [zoomIndex, setZoomIndex] = useState(0);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
   const [hasLockedView, setHasLockedView] = useState(false);
   const [viewLoaded, setViewLoaded] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const panAtDrag = useRef({ x: 0, y: 0 });
-  const panCurrentRef = useRef({ x: 0, y: 0 });
-  const dragLayerRef = useRef(null);
-  const zoomIndexRef = useRef(zoomIndex);
   const POSE_COUNT = POSE_ORDER.length;
 
   const [lookSelectedEntries, setLookSelectedEntries] = useState({});
@@ -229,7 +220,49 @@ export default function PlayerProfile({
     return outfit || {};
   }, [activeTab, outfit, equipped, invSelectedEntries, lookSelectedEntries, invLoaded]);
 
-  useEffect(() => { setBioDraft(bio); }, [bio]);
+  useEffect(() => { if (activeTab !== "profile") setAboutMeEditMode(false); }, [activeTab]);
+
+  useEffect(() => {
+    if (!insertMenuOpen) return;
+    const handler = (e) => {
+      if (!insertMenuRef.current?.contains(e.target)) setInsertMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [insertMenuOpen]);
+
+  const handleCanvasEditStart = () => {
+    canvasSnapshotRef.current = canvasElements;
+    setAboutMeEditMode(true);
+  };
+  const handleCanvasCancel = () => {
+    if (canvasSnapshotRef.current) setCanvasElements(canvasSnapshotRef.current);
+    setSelectedElementId(null);
+    setInsertMenuOpen(false);
+    setAboutMeEditMode(false);
+  };
+  const handleCanvasSave = () => {
+    // TODO: persist canvasElements once the customizable-canvas backend exists
+    canvasSnapshotRef.current = null;
+    setSelectedElementId(null);
+    setInsertMenuOpen(false);
+    setAboutMeEditMode(false);
+  };
+  const handleInsertText = () => {
+    const id = `text_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setCanvasElements(prev => [...prev, { id, type: "text", x: 50, y: 50, html: "Text", fontSize: 16 }]);
+    setSelectedElementId(id);
+    setInsertMenuOpen(false);
+  };
+  const updateCanvasElementHtml = (id, html) => {
+    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, html } : el));
+  };
+  const updateCanvasElementFontSize = (id, fontSize) => {
+    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, fontSize } : el));
+  };
+  const moveCanvasElement = (id, x, y) => {
+    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, x, y } : el));
+  };
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -272,45 +305,11 @@ export default function PlayerProfile({
         if (view.locked) {
           setPoseIndex(view.poseIndex ?? 0);
           setZoomIndex(view.zoomIndex ?? 0);
-          setPanX(view.panX ?? 0);
-          setPanY(view.panY ?? 0);
         }
       }
       setViewLoaded(true);
     }).catch(() => { setViewLoaded(true); });
   }, [targetUserId]);
-
-  useEffect(() => { zoomIndexRef.current = zoomIndex; }, [zoomIndex]);
-
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!isDragging.current) return;
-      const rawX = panAtDrag.current.x + (e.clientX - dragStart.current.x);
-      const rawY = panAtDrag.current.y + (e.clientY - dragStart.current.y);
-      const viewport = dragLayerRef.current?.parentElement;
-      const limitX = viewport ? viewport.clientWidth * 0.5 : Infinity;
-      const limitY = viewport ? viewport.clientHeight * 0.5 : Infinity;
-      const x = Math.max(-limitX, Math.min(limitX, rawX));
-      const y = Math.max(-limitY, Math.min(limitY, rawY));
-      panCurrentRef.current = { x, y };
-      if (dragLayerRef.current) {
-        dragLayerRef.current.style.transform =
-          `translate(${x}px, ${y}px) scale(${ZOOM_LEVELS[zoomIndexRef.current]})`;
-      }
-    };
-    const onUp = () => {
-      if (!isDragging.current) return;
-      isDragging.current = false;
-      setPanX(panCurrentRef.current.x);
-      setPanY(panCurrentRef.current.y);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
 
   const handleChangeStatus = async (newStatus) => {
     if (statusChanging) return;
@@ -331,19 +330,11 @@ export default function PlayerProfile({
   const zoomOut = useCallback(() => setZoomIndex(z => Math.max(0, z - 1)), []);
   const zoomIn = useCallback(() => setZoomIndex(z => Math.min(ZOOM_LEVELS.length - 1, z + 1)), []);
 
-  const onViewportMouseDown = useCallback((e) => {
-    isDragging.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    panAtDrag.current = { x: panX, y: panY };
-    panCurrentRef.current = { x: panX, y: panY };
-    e.preventDefault();
-  }, [panX, panY]);
-
   const handleSaveView = useCallback(async () => {
     if (viewSaving) return;
     setViewSaving(true);
     try {
-      await saveProfileView({ poseIndex, zoomIndex, panX, panY });
+      await saveProfileView({ poseIndex, zoomIndex });
       setHasLockedView(true);
       invalidateProfileViewCache(targetUserId);
     } catch (err) {
@@ -351,7 +342,7 @@ export default function PlayerProfile({
     } finally {
       setViewSaving(false);
     }
-  }, [viewSaving, poseIndex, zoomIndex, panX, panY, targetUserId]);
+  }, [viewSaving, poseIndex, zoomIndex, targetUserId]);
 
   const handleUnlockView = useCallback(async () => {
     if (unlocking) return;
@@ -453,20 +444,6 @@ export default function PlayerProfile({
     setLookSelectedEntries(initial);
   }, [activeTab, invLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-
-  const applyFormat = (marker) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const { selectionStart: ss, selectionEnd: se } = ta;
-    const selected = bioDraft.substring(ss, se);
-    const newText = bioDraft.substring(0, ss) + marker + selected + marker + bioDraft.substring(se);
-    setBioDraft(newText);
-    setTimeout(() => {
-      ta.focus();
-      if (ss === se) ta.setSelectionRange(ss + marker.length, ss + marker.length);
-      else ta.setSelectionRange(ss + marker.length, se + marker.length);
-    }, 0);
-  };
 
   const handleSelectTheme = useCallback((idx) => {
     setThemeIdx(idx);
@@ -910,23 +887,10 @@ export default function PlayerProfile({
 
   const invSubCount = (cat, sub) => invItems.filter(e => e.category === cat && e.subcategory === sub).length;
 
-  const isNonCategoryView = invView === "items" || invView === "recentlyAdded" || invView === "equipped";
-  const invCrumbs = [
-    { label: "Inventory", onClick: isNonCategoryView ? invGoCategories : null },
-    { label: "Clothing", onClick: isNonCategoryView ? invGoCategories : null },
-  ];
-  if (invView === "items") {
-    if (invCategory) invCrumbs.push({
-      label: INV_CATEGORY_LABELS[invCategory],
-      onClick: invSubcategory ? () => invGoToCategory(invCategory) : null,
-    });
-    if (invSubcategory) invCrumbs.push({
-      label: INV_SUBCATEGORY_LABELS[invSubcategory] || invSubcategory,
-      onClick: null,
-    });
-  }
-  if (invView === "recentlyAdded") invCrumbs.push({ label: "Recently Added", onClick: null });
-  if (invView === "equipped") invCrumbs.push({ label: "Equipped", onClick: null });
+  const invGoBack = () => {
+    if (invView === "items" && invSubcategory) invGoToCategory(invCategory);
+    else invGoCategories();
+  };
 
 
   return (
@@ -947,16 +911,12 @@ export default function PlayerProfile({
           {/* ── Avatar Stage ── */}
           <AvatarStageCol>
             <StageContainer>
-              <AvatarViewport
-                onMouseDown={onViewportMouseDown}
-                style={{ cursor: "grab" }}
-              >
+              <AvatarViewport>
                 <div
-                  ref={dragLayerRef}
                   style={{
                     width: "100%",
                     height: "100%",
-                    transform: `translate(${panX}px, ${panY}px) scale(${ZOOM_LEVELS[zoomIndex]})`,
+                    transform: `scale(${ZOOM_LEVELS[zoomIndex]})`,
                     transformOrigin: "top center",
                     visibility: viewLoaded ? "visible" : "hidden",
                   }}
@@ -1139,27 +1099,49 @@ export default function PlayerProfile({
                 )}
               </BookmarkRail>
 
-              <ContentPanelBody>
-                <ContentPanelTitle>{TAB_TITLES[activeTab] || ""}</ContentPanelTitle>
+              <ContentColumn>
+                <CanvasTitleWrap>
+                  <ContentPanelTitle>{TAB_TITLES[activeTab] || ""}</ContentPanelTitle>
+                  {activeTab === "profile" && isSelfView && (
+                    <CanvasActionsRow>
+                      {aboutMeEditMode ? (
+                        <>
+                          <CanvasInsertWrap ref={insertMenuRef}>
+                            <CanvasSecondaryBtn onClick={() => setInsertMenuOpen(v => !v)}>Insert</CanvasSecondaryBtn>
+                            {insertMenuOpen && (
+                              <CanvasInsertMenu>
+                                <CanvasInsertMenuItem onClick={handleInsertText}>
+                                  <CanvasInsertMenuIcon>🔤</CanvasInsertMenuIcon>
+                                  Text
+                                </CanvasInsertMenuItem>
+                              </CanvasInsertMenu>
+                            )}
+                          </CanvasInsertWrap>
+                          <CanvasSecondaryBtn onClick={handleCanvasCancel}>Cancel</CanvasSecondaryBtn>
+                          <CanvasPrimaryBtn onClick={handleCanvasSave}>Save</CanvasPrimaryBtn>
+                        </>
+                      ) : (
+                        <CanvasEditToggleBtn onClick={handleCanvasEditStart}>Edit</CanvasEditToggleBtn>
+                      )}
+                    </CanvasActionsRow>
+                  )}
+                </CanvasTitleWrap>
+
+                <ContentPanelBody $editing={isCanvasEditing}>
                 <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
                   <AboutMeTab
-                    bio={bio}
-                    onSaveBio={onSaveBio}
-                    editingBio={editingBio}
-                    setEditingBio={setEditingBio}
-                    bioDraft={bioDraft}
-                    setBioDraft={setBioDraft}
-                    bioSaving={bioSaving}
-                    setBioSaving={setBioSaving}
-                    bioError={bioError}
-                    setBioError={setBioError}
-                    textareaRef={textareaRef}
-                    isSelfView={isSelfView}
                     selectedBadge={selectedBadge}
                     handleBadgeClick={handleBadgeClick}
                     badgesExpanded={badgesExpanded}
                     setBadgesExpanded={setBadgesExpanded}
                     badgeSaving={badgeSaving}
+                    canvasElements={canvasElements}
+                    canvasEditable={aboutMeEditMode}
+                    selectedElementId={selectedElementId}
+                    onSelectElement={setSelectedElementId}
+                    onChangeElementHtml={updateCanvasElementHtml}
+                    onChangeElementFontSize={updateCanvasElementFontSize}
+                    onMoveElement={moveCanvasElement}
                   />
                 </div>
 
@@ -1281,16 +1263,18 @@ export default function PlayerProfile({
                         recentCount={invItems.length}
                         equippedCount={invEquippedItems.length}
                         onHoverItem={handleInvHover}
+                        onBack={invGoBack}
                       />
-                      <InvBreadcrumbsBar crumbs={invCrumbs} />
                     </HubPanelContainer>
                   </div>
                 )}
-              </ContentPanelBody>
+                </ContentPanelBody>
+              </ContentColumn>
             </ContentPanel>
           </MiddleCol>
 
         </ProfileWrapper>
+        {isCanvasEditing && <CanvasClickBlocker />}
         </ProfileOuter>
       </Overlay>
     </>

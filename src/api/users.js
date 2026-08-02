@@ -26,12 +26,12 @@ export function invalidateProfileViewCache(userId) {
   if (userId) profileViewCache.delete(userId);
 }
 
-export async function saveProfileView({ poseIndex, zoomIndex, panX, panY }) {
+export async function saveProfileView({ poseIndex, zoomIndex }) {
   const token = localStorage.getItem("fv_token");
   const res = await fetch(`${API}/api/auth/profile-view`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ poseIndex, zoomIndex, panX, panY }),
+    body: JSON.stringify({ poseIndex, zoomIndex }),
   });
   if (!res.ok) throw new Error("Failed to save profile view");
   return res.json();

@@ -19,7 +19,7 @@ const ConvoNameHover = styled.span`
 `;
 import { formatRelativeTime } from "../utils";
 import {
-  HubPanelContainer, MailListCol, PanelHeaderRow, PanelTitle, TabUnreadBadge,
+  HubPanelContainer, MailListCol, PanelHeaderRow, TabUnreadBadge,
   NewMailBtn, MailThreadList, MailThreadRow, SkeletonCircle, SkeletonLine,
   PanelEmpty, MailThumbWrap, MailThreadThumb, MailStatusDot, MailUnreadDot,
   MailThreadMeta, MailThreadMetaTop, MailThreadName, MailThreadTime, MailUnreadBadge,
@@ -192,11 +192,8 @@ export default function MailTab({
       {/* ── Left: conversation list ── */}
       <MailListCol>
         <PanelHeaderRow>
-          <PanelTitle>
-            Messages
-            {totalUnread > 0 && <TabUnreadBadge>{totalUnread > 99 ? "99+" : totalUnread}</TabUnreadBadge>}
-          </PanelTitle>
           <NewMailBtn onClick={startNew}>+ New</NewMailBtn>
+          {totalUnread > 0 && <TabUnreadBadge>{totalUnread > 99 ? "99+" : totalUnread}</TabUnreadBadge>}
         </PanelHeaderRow>
         <MailThreadList>
           {mailLoading ? (

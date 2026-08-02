@@ -87,7 +87,7 @@ export const GBTwoCol = styled.div`
   display: flex;
   flex-direction: row;
   gap: 6px;
-  padding: 4px 16px 16px;
+  padding: 18px;
   background: rgba(var(--pp-accent-rgb), 0.06);
   overflow: hidden;
 `;

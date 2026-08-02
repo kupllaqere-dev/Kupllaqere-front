@@ -1,84 +1,47 @@
-import { BIO_MAX, BADGES, BADGE_RARITY } from "../constants";
-import { bbcodeToHtml } from "../bbcode";
-import BBCodeEditor from "../BBCodeEditor";
+import { useRef } from "react";
+import { BADGES, BADGE_RARITY } from "../constants";
+import CanvasTextElement from "./CanvasTextElement";
 import {
   HubPanelContainer,
   ProfileContent,
+  CanvasSurface,
   SectionBlock, SectionHeaderRow, SectionTitle,
-  SectionEditBtn, SectionCountPill,
+  SectionCountPill,
   BadgesScrollWrap, BadgesRow, BadgeCard, BadgeCardIconWrap, BadgeImg, BadgeCardName, BadgeCardRarity, BadgeExpandBtn,
   CompanionCard, CompanionPetWrap, CompanionPetAura, CompanionPetEmoji,
   CompanionInfoBlock, CompanionNameRow, CompanionNameText, CompanionMoodText,
   CompanionLevelText, CompanionXPWrap, XPBarOuter, XPBarFill, XPLabelsRow,
-  BioFooter, BioCounter, BioActions, SecondaryBtn, PrimaryBtn, EmptyText,
-  BioErrorMsg,
-  BBContent,
 } from "../styles";
 
 export default function AboutMeTab({
-  bio, onSaveBio,
-  editingBio, setEditingBio,
-  bioDraft, setBioDraft,
-  bioSaving, setBioSaving,
-  bioError, setBioError,
-  textareaRef,
-  isSelfView,
   selectedBadge, handleBadgeClick, badgesExpanded, setBadgesExpanded, badgeSaving,
+  canvasElements = [], canvasEditable = false, selectedElementId = null,
+  onSelectElement, onChangeElementHtml, onChangeElementFontSize, onMoveElement,
 }) {
+  const canvasSurfaceRef = useRef(null);
+
   return (
     <HubPanelContainer>
       <ProfileContent>
 
-        {/* About Me / Bio */}
-        <SectionBlock>
-          <SectionHeaderRow style={{ justifyContent: "flex-end" }}>
-            {isSelfView && onSaveBio && !editingBio && (
-              <SectionEditBtn
-                onClick={() => { setBioDraft(bio); setBioError(null); setEditingBio(true); }}
-              >
-                Edit
-              </SectionEditBtn>
-            )}
-          </SectionHeaderRow>
-          {editingBio ? (
-            <>
-              <BBCodeEditor
-                value={bioDraft}
-                onChange={setBioDraft}
-                textareaRef={textareaRef}
-                disabled={bioSaving}
-              />
-              <BioFooter style={{ marginTop: 8 }}>
-                <BioCounter>{bioDraft.length}/{BIO_MAX}</BioCounter>
-                <BioActions>
-                  <SecondaryBtn
-                    disabled={bioSaving}
-                    onClick={() => { setEditingBio(false); setBioError(null); setBioDraft(bio); }}
-                  >
-                    Cancel
-                  </SecondaryBtn>
-                  <PrimaryBtn
-                    disabled={bioSaving || bioDraft === bio}
-                    onClick={async () => {
-                      setBioSaving(true);
-                      setBioError(null);
-                      try { await onSaveBio(bioDraft.trim()); setEditingBio(false); }
-                      catch (err) { setBioError(err.message || "Failed to save"); }
-                      finally { setBioSaving(false); }
-                    }}
-                  >
-                    {bioSaving ? "Saving…" : "Save"}
-                  </PrimaryBtn>
-                </BioActions>
-              </BioFooter>
-              {bioError && <BioErrorMsg>{bioError}</BioErrorMsg>}
-            </>
-          ) : bio?.trim() ? (
-            <BBContent dangerouslySetInnerHTML={{ __html: bbcodeToHtml(bio) }} />
-          ) : (
-            <BBContent><EmptyText>No bio yet.</EmptyText></BBContent>
-          )}
-        </SectionBlock>
+        <CanvasSurface
+          ref={canvasSurfaceRef}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) onSelectElement?.(null); }}
+        >
+          {canvasElements.map((el) => (
+            <CanvasTextElement
+              key={el.id}
+              element={el}
+              editable={canvasEditable}
+              selected={canvasEditable && selectedElementId === el.id}
+              onSelect={onSelectElement}
+              onChangeHtml={onChangeElementHtml}
+              onChangeFontSize={onChangeElementFontSize}
+              onMove={onMoveElement}
+              containerRef={canvasSurfaceRef}
+            />
+          ))}
+        </CanvasSurface>
 
         {/* TODO: re-enable badges when ready
         <SectionBlock>
