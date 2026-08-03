@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY } from "../constants";
+import { HubPanelContainer } from "../styles";
 import {
-  HubPanelContainer, LookPanelInner,
+  LookPanelInner,
   LookScrollArea, LookGrid, LookFeatureCard, LookFeatureLabel,
   LookSlotsRow, LookSlotWrap, LookSlot, LookSlotPlus, LookSlotSubLabel,
   LookSlotImg, LookPickerRow, LookPickerXBtn, LookPickerThumb, LookPickerEmpty,
   LookSliderRow, LookSliderLabel, LookSlider, LookSliderValue,
-} from "../styles";
+} from "./LookTab.styles";
 
 export default function LookTab({ invItems = [], invLoading, lookSelectedEntries = {}, onSelectItem }) {
   const [avatarWidth, setAvatarWidth] = useState(50);

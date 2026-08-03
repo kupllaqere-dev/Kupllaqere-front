@@ -38,10 +38,11 @@ import {
   BADGE_RARITY, PRESENCE_LABELS,
   LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
   ZOOM_LEVELS, POSE_ORDER,
+  DEFAULT_BIO_SECTIONS,
 } from "./constants";
 import { PALETTES, paletteToVars } from "./themes";
 
-import AboutMeTab from "./tabs/AboutMeTab";
+import BioTab from "./tabs/BioTab";
 import MailTab from "./tabs/MailTab";
 import FriendsTab from "./tabs/FriendsTab";
 import LookTab from "./tabs/LookTab";
@@ -65,7 +66,6 @@ import {
   StatusPickerWrap, StatusClickTarget, StatusDropdown, StatusOption, OptionDot,
   CanvasClickBlocker, CanvasActionsRow, CanvasEditToggleBtn,
   CanvasSecondaryBtn, CanvasPrimaryBtn,
-  CanvasInsertWrap, CanvasInsertMenu, CanvasInsertMenuItem, CanvasInsertMenuIcon,
 } from "./styles";
 
 export default function PlayerProfile({
@@ -122,11 +122,8 @@ export default function PlayerProfile({
   const [activeTab, setActiveTab] = useState("profile");
   const [aboutMeEditMode, setAboutMeEditMode] = useState(false);
   const isCanvasEditing = activeTab === "profile" && aboutMeEditMode;
-  const [canvasElements, setCanvasElements] = useState([]);
-  const [selectedElementId, setSelectedElementId] = useState(null);
-  const [insertMenuOpen, setInsertMenuOpen] = useState(false);
-  const canvasSnapshotRef = useRef(null);
-  const insertMenuRef = useRef(null);
+  const [bioSections, setBioSections] = useState(DEFAULT_BIO_SECTIONS);
+  const bioSectionsSnapshotRef = useRef(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [zoomIndex, setZoomIndex] = useState(0);
   const [hasLockedView, setHasLockedView] = useState(false);
@@ -210,46 +207,64 @@ export default function PlayerProfile({
 
   useEffect(() => { if (activeTab !== "profile") setAboutMeEditMode(false); }, [activeTab]);
 
-  useEffect(() => {
-    if (!insertMenuOpen) return;
-    const handler = (e) => {
-      if (!insertMenuRef.current?.contains(e.target)) setInsertMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [insertMenuOpen]);
-
   const handleCanvasEditStart = () => {
-    canvasSnapshotRef.current = canvasElements;
+    bioSectionsSnapshotRef.current = bioSections;
     setAboutMeEditMode(true);
   };
   const handleCanvasCancel = () => {
-    if (canvasSnapshotRef.current) setCanvasElements(canvasSnapshotRef.current);
-    setSelectedElementId(null);
-    setInsertMenuOpen(false);
+    if (bioSectionsSnapshotRef.current) setBioSections(bioSectionsSnapshotRef.current);
     setAboutMeEditMode(false);
   };
   const handleCanvasSave = () => {
-    // TODO: persist canvasElements once the customizable-canvas backend exists
-    canvasSnapshotRef.current = null;
-    setSelectedElementId(null);
-    setInsertMenuOpen(false);
+    // TODO: persist bioSections once the customizable-profile backend exists
+    bioSectionsSnapshotRef.current = null;
     setAboutMeEditMode(false);
   };
-  const handleInsertText = () => {
-    const id = `text_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    setCanvasElements(prev => [...prev, { id, type: "text", x: 50, y: 50, html: "Text", fontSize: 16 }]);
-    setSelectedElementId(id);
-    setInsertMenuOpen(false);
+
+  const reorderBioSections = (fromIdx, toIdx) => {
+    setBioSections(prev => {
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= prev.length || toIdx >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
   };
-  const updateCanvasElementHtml = (id, html) => {
-    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, html } : el));
+  const updateSectionTitle = (sectionId, title) => {
+    setBioSections(prev => prev.map(s => s.id === sectionId ? { ...s, title } : s));
   };
-  const updateCanvasElementFontSize = (id, fontSize) => {
-    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, fontSize } : el));
+  const updateSectionText = (sectionId, text) => {
+    setBioSections(prev => prev.map(s => s.id === sectionId ? { ...s, text } : s));
   };
-  const moveCanvasElement = (id, x, y) => {
-    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, x, y } : el));
+  const updateInfoColumnTitle = (sectionId, colIdx, title) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, title } : c) };
+    }));
+  };
+  const updateInfoColumnLine = (sectionId, colIdx, lineIdx, value) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return {
+        ...s,
+        columns: s.columns.map((c, i) => {
+          if (i !== colIdx) return c;
+          return { ...c, lines: c.lines.map((l, li) => li === lineIdx ? value : l) };
+        }),
+      };
+    }));
+  };
+  const updateFunFactSymbol = (sectionId, colIdx, symbol) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, symbol } : c) };
+    }));
+  };
+  const updateFunFactText = (sectionId, colIdx, text) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, text } : c) };
+    }));
   };
 
   useEffect(() => {
@@ -1111,17 +1126,6 @@ export default function PlayerProfile({
                   <CanvasActionsRow>
                     {aboutMeEditMode ? (
                       <>
-                        <CanvasInsertWrap ref={insertMenuRef}>
-                          <CanvasSecondaryBtn onClick={() => setInsertMenuOpen(v => !v)}>Insert</CanvasSecondaryBtn>
-                          {insertMenuOpen && (
-                            <CanvasInsertMenu>
-                              <CanvasInsertMenuItem onClick={handleInsertText}>
-                                <CanvasInsertMenuIcon>🔤</CanvasInsertMenuIcon>
-                                Text
-                              </CanvasInsertMenuItem>
-                            </CanvasInsertMenu>
-                          )}
-                        </CanvasInsertWrap>
                         <CanvasSecondaryBtn onClick={handleCanvasCancel}>Cancel</CanvasSecondaryBtn>
                         <CanvasPrimaryBtn onClick={handleCanvasSave}>Save</CanvasPrimaryBtn>
                       </>
@@ -1131,19 +1135,21 @@ export default function PlayerProfile({
                   </CanvasActionsRow>
                 )}
                 <div style={{ display: activeTab === "profile" ? "contents" : "none" }}>
-                  <AboutMeTab
+                  <BioTab
                     selectedBadge={selectedBadge}
                     handleBadgeClick={handleBadgeClick}
                     badgesExpanded={badgesExpanded}
                     setBadgesExpanded={setBadgesExpanded}
                     badgeSaving={badgeSaving}
-                    canvasElements={canvasElements}
                     canvasEditable={aboutMeEditMode}
-                    selectedElementId={selectedElementId}
-                    onSelectElement={setSelectedElementId}
-                    onChangeElementHtml={updateCanvasElementHtml}
-                    onChangeElementFontSize={updateCanvasElementFontSize}
-                    onMoveElement={moveCanvasElement}
+                    bioSections={bioSections}
+                    onReorderBioSections={reorderBioSections}
+                    onUpdateSectionTitle={updateSectionTitle}
+                    onUpdateSectionText={updateSectionText}
+                    onUpdateInfoColumnTitle={updateInfoColumnTitle}
+                    onUpdateInfoColumnLine={updateInfoColumnLine}
+                    onUpdateFunFactSymbol={updateFunFactSymbol}
+                    onUpdateFunFactText={updateFunFactText}
                   />
                 </div>
 
@@ -1274,8 +1280,8 @@ export default function PlayerProfile({
             </ContentPanel>
           </MiddleCol>
 
+          {isCanvasEditing && <CanvasClickBlocker />}
         </ProfileWrapper>
-        {isCanvasEditing && <CanvasClickBlocker />}
         </ProfileOuter>
       </Overlay>
     </>

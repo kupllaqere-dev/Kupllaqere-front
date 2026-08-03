@@ -47,7 +47,6 @@ export const INV_CATEGORY_DECO = {
 export const INV_CATEGORIES = Object.keys(INV_CATEGORY_LABELS);
 
 export const BADGE_RARITY = { diamond: "legendary", flame: "legendary", medal: "rare", paint: "rare", verified: "common" };
-export const BIO_MAX = 2000;
 export const SHOWCASE_SLOTS = 5;
 export const COMMENT_MAX = 100;
 
@@ -83,6 +82,41 @@ export const LOOK_FEATURE_CATEGORY = {
   mouth:    "appearance",
   beard:    "appearance",
 };
+
+export const DEFAULT_BIO_SECTIONS = [
+  {
+    id: "welcome",
+    type: "welcome",
+    title: "Welcome",
+    text: "Welcome to my profile! Thanks for stopping by — feel free to look around.",
+  },
+  {
+    id: "info",
+    type: "info",
+    title: "Info",
+    columns: [
+      { title: "About", lines: ["Line one", "Line two", "Line three", "Line four"] },
+      { title: "Favorites", lines: ["Line one", "Line two", "Line three", "Line four"] },
+      { title: "Stats", lines: ["Line one", "Line two", "Line three", "Line four"] },
+    ],
+  },
+  {
+    id: "quote",
+    type: "quote",
+    title: "Quote",
+    text: "\"Placeholder quote goes here.\"",
+  },
+  {
+    id: "funfacts",
+    type: "funfacts",
+    title: "Fun Facts",
+    columns: [
+      { symbol: "⭐", text: "Fun fact one" },
+      { symbol: "🎮", text: "Fun fact two" },
+      { symbol: "🎵", text: "Fun fact three" },
+    ],
+  },
+];
 
 export const LOOK_FEATURE_SUBCATEGORY = {
   hair:     null,

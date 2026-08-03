@@ -4,7 +4,7 @@ import {
   PickerBar, PickerScroll, PickerBtn,
   PlacementToolbar, PlacementHint,
   ToolGroup, ToolBtn, ConfirmBtn, CancelBtn,
-} from "./styles";
+} from "../GuestbookTab.styles";
 
 /**
  * Horizontal sticker tray + floating placement toolbar.

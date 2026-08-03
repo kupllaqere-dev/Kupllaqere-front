@@ -1,9 +1,10 @@
 import { PALETTES } from "../themes";
+import { HubPanelContainer } from "../styles";
 import {
-  HubPanelContainer, ThemePanelInner,
+  ThemePanelInner,
   ThemeGrid, ThemeSwatch, ThemeSwatchTop, ThemeSwatchDot,
   ThemeSwatchBottom, ThemeSwatchName, ThemeSwatchBar,
-} from "../styles";
+} from "./ThemesTab.styles";
 
 export default function ThemesTab({ themeIdx, setThemeIdx }) {
   return (

@@ -4,13 +4,16 @@ import { lookupUser } from "../../../api/auth";
 import PlayerThumbnail from "../../PlayerThumbnail";
 import PlayerContextMenu from "../../PlayerContextMenu";
 import {
-  HubPanelContainer, FriendsPanelInner, FriendsSearchRow, FriendsSearchInput,
+  HubPanelContainer, TabUnreadBadge, SkeletonCircle, SkeletonLine,
+  PanelEmpty, MailThumbWrap, MailThreadThumb, MailStatusDot,
+} from "../styles";
+import {
+  FriendsPanelInner, FriendsSearchRow, FriendsSearchInput,
   FriendsSearchIcon, FriendsSearchHint, PanelTabs, PanelTab, TabCountBadge,
-  TabUnreadBadge, FriendsListScroll, FriendCardTile, SkeletonCircle, SkeletonLine,
-  PanelEmpty, FriendsGroupLabel, MailThumbWrap, MailThreadThumb, MailStatusDot,
+  FriendsListScroll, FriendCardTile, FriendsGroupLabel,
   FriendCardRow, FriendCardAvatarWrap, FriendCardInfo, FriendCardName,
   FriendCardLocation, FriendInviteActions, SmPrimaryBtn, SmSecBtn,
-} from "../styles";
+} from "./FriendsTab.styles";
 
 export default function FriendsTab({
   friendsTab, setFriendsTab, friendsData, friendsLoading,

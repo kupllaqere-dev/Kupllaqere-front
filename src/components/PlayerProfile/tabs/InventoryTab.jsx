@@ -5,15 +5,16 @@ import {
 } from "../constants";
 import { invGetSellPrice } from "../utils";
 import { avatarCompositor } from "../../../game/avatar/AvatarCompositor";
+import { InvThumbImg, InvMidSection, InvItemName } from "../styles";
 import {
   InvContentCol, InvCatScroll, InvMsg, InvQuickNavRow, InvQuickNavBtn, InvQuickNavLabel,
   InvQuickNavRight, InvQuickNavCount, InvQuickNavArrow, InvCatGrid, InvCatCard, InvCatDeco,
   InvCatCardTop, InvCatLabel, InvCatArrow, InvCatSubList, InvCatSubItem, InvSubCount,
-  InvItemScroll, InvErrTxt, InvItemList, InvItemCard, InvThumbImg, InvMidSection,
-  InvItemName, InvWearingBadge, InvLockTxt, InvPricesArea, InvPricePanel, InvLevelBadge,
+  InvItemScroll, InvErrTxt, InvItemList, InvItemCard,
+  InvWearingBadge, InvLockTxt, InvPricesArea, InvPricePanel, InvLevelBadge,
   InvBadgeAndPrice, InvCoinImg, InvPriceAmt, InvSellPanel,
   InvBackBtn,
-} from "../styles";
+} from "./InventoryTab.styles";
 
 export function InvItemsArea({
   items, loading, view, isSelected, canUse, toggleEntry,

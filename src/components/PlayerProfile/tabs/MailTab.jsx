@@ -19,18 +19,21 @@ const ConvoNameHover = styled.span`
 `;
 import { formatRelativeTime } from "../utils";
 import {
-  HubPanelContainer, MailListCol, PanelHeaderRow, TabUnreadBadge,
-  NewMailBtn, MailThreadList, MailThreadRow, SkeletonCircle, SkeletonLine,
-  PanelEmpty, MailThumbWrap, MailThreadThumb, MailStatusDot, MailUnreadDot,
+  HubPanelContainer, TabUnreadBadge, SkeletonCircle, SkeletonLine,
+  PanelEmpty, MailThumbWrap, MailThreadThumb, MailStatusDot, PrimaryBtn,
+} from "../styles";
+import {
+  MailListCol, PanelHeaderRow,
+  NewMailBtn, MailThreadList, MailThreadRow, MailUnreadDot,
   MailThreadMeta, MailThreadMetaTop, MailThreadName, MailThreadTime, MailUnreadBadge,
   MailDetailCol, MailNewPanel, MailNewTitle, MailToRow, MailToLabel, MailToInput,
   MailFindBtn, MailLookupHint, MailNewTextarea, MailReplyError, MailReplyFooter,
-  MailReplyCounter, PrimaryBtn, MailPlaceholder, MailPlaceholderText, MailPlaceholderIcon,
+  MailReplyCounter, MailPlaceholder, MailPlaceholderText, MailPlaceholderIcon,
   MailDetailHeader, MailDetailWith, MailMessageList, MailLoadingMore,
   MailMessageCompact, MailCompactTime, MailBubbleBody, MailMessageRow, MailMsgThumb,
   MailMsgContent, MailMsgHeader, MailMsgName, MailBubbleTime, MailReplyBox,
   MailReplyTextarea,
-} from "../styles";
+} from "./MailTab.styles";
 
 export default function MailTab({
   mailConversations, mailLoading,

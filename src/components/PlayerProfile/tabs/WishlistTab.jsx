@@ -1,9 +1,10 @@
 import { STORE_LABELS, WL_RARITY } from "../constants";
+import { HubPanelContainer, InvThumbImg, InvMidSection, InvItemName } from "../styles";
 import {
-  HubPanelContainer, WishlistPanelInner,
-  WishlistScrollArea, WishlistMsg, WishlistItemCard, InvThumbImg, InvMidSection,
-  WishlistNameRow, InvItemName, WishlistTag, WishlistRarityBadge, WishlistRemoveBtn,
-} from "../styles";
+  WishlistPanelInner,
+  WishlistScrollArea, WishlistMsg, WishlistItemCard,
+  WishlistNameRow, WishlistTag, WishlistRarityBadge, WishlistRemoveBtn,
+} from "./WishlistTab.styles";
 
 export default function WishlistTab({ items, loading, onRemove }) {
   return (

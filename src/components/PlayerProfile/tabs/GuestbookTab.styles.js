@@ -12,6 +12,33 @@ const slideUp = keyframes`
 `;
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`;
 
+export const GuestbookRoot = styled.div`
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+export const GuestbookCanvasWrap = styled.div`
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #fdf8f0;
+  cursor: default;
+
+  /* Force the Phaser canvas to fill this container */
+  canvas {
+    display: block !important;
+    width: 100%  !important;
+    height: 100% !important;
+    touch-action: none; /* prevent browser scroll during drag */
+  }
+`;
+
 // ── Top modal header ──────────────────────────────────────────────────────
 
 export const GBModalHeader = styled.div`

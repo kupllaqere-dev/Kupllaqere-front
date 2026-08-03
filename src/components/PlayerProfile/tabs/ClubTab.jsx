@@ -1,7 +1,8 @@
+import { HubPanelContainer } from "../styles";
 import {
-  HubPanelContainer, ClubPanelInner,
+  ClubPanelInner,
   ClubSection, ClubCard, ClubAvatar, ClubInfo, ClubName, ClubRole, ClubViewBtn,
-} from "../styles";
+} from "./ClubTab.styles";
 
 export default function ClubTab() {
   return (
