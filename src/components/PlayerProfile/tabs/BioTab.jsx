@@ -10,10 +10,27 @@ import {
   CompanionInfoBlock, CompanionNameRow, CompanionNameText, CompanionMoodText,
   CompanionLevelText, CompanionXPWrap, XPBarOuter, XPBarFill, XPLabelsRow,
   BioSectionsWrap, BioSection, BioSectionHeaderRow, BioSectionDragHandle,
-  BioSectionTitle, BioSectionSeparator, BioSectionText,
+  BioSectionTitle, BioSectionSeparator, BioSectionText, QuoteText,
+  EditableRow, InfoRowDeleteBtn,
   InfoColumnsRow, InfoColumn, InfoColumnTitle, InfoColumnSeparator, InfoColumnLine,
-  ColumnDivider, FunFactsRow, FunFactItem, FunFactSymbol, FunFactText,
+  InfoColumnSettingsBtn, InfoColumnSettingsMenu, InfoColumnSettingsOption,
+  InfoColumnLines, InfoColumnListItem, InfoColumnBullet,
+  InfoTableRows, InfoTableRow, InfoTableKey, InfoTableValue,
+  InfoTableStaticDivider, TitleDividerRow, TitleDividerLine,
+  ColumnDivider, BadgeSlotsRow, BadgeSlot,
 } from "./BioTab.styles";
+
+const INFO_COLUMN_STYLES = [
+  { key: "text", label: "Text" },
+  { key: "list", label: "List" },
+  { key: "table", label: "Table" },
+];
+
+// Info columns keep a fixed number of row slots so deleting a row shifts
+// the rest up and leaves an empty placeholder instead of resizing the column.
+const INFO_ROW_SLOTS = 4;
+
+const sectionDividerVisible = (section) => section.titleDividerVisible !== false;
 
 // Uncontrolled contentEditable: only overwrite textContent while the field
 // isn't focused, or every keystroke would reset the caret to the start as
@@ -41,16 +58,173 @@ function EditableField({ as: Component, editable, value, onCommit, ...rest }) {
   );
 }
 
-// Relative height split by position (not by section identity), so
-// reordering sections carries the ratio along with the slot: 20% / 40% / 20% / 20%.
-const HEIGHT_RATIOS = [20, 40, 20, 20];
+function InfoColumnBlock({
+  column, sectionId, colIdx, editable,
+  onUpdateTitle, onUpdateLine, onUpdateStyle,
+  onUpdateRowKey, onUpdateRowValue, onDeleteSlot, onToggleTitleDivider,
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const style = column.style || "text";
+  const lines = column.lines || [];
+  const rows = (column.rows && column.rows.length)
+    ? column.rows
+    : lines.map((line) => ({ key: "Key", value: line }));
+  const titleDividerVisible = column.titleDividerVisible !== false;
+
+  // In edit mode always walk a fixed number of slots so a deleted row's
+  // spot is backfilled by the rows below it, padded with an empty
+  // placeholder at the end instead of shrinking the column.
+  const rowSlots = editable ? INFO_ROW_SLOTS : rows.length;
+  const lineSlots = editable ? INFO_ROW_SLOTS : lines.length;
+
+  return (
+    <InfoColumn ref={wrapRef} $editable={editable}>
+      {editable && (
+        <>
+          <InfoColumnSettingsBtn onClick={() => setMenuOpen(v => !v)} title="Column style">⚙</InfoColumnSettingsBtn>
+          {menuOpen && (
+            <InfoColumnSettingsMenu>
+              {INFO_COLUMN_STYLES.map(opt => (
+                <InfoColumnSettingsOption
+                  key={opt.key}
+                  $active={style === opt.key}
+                  onClick={() => { onUpdateStyle?.(sectionId, colIdx, opt.key); setMenuOpen(false); }}
+                >
+                  {opt.label}
+                </InfoColumnSettingsOption>
+              ))}
+            </InfoColumnSettingsMenu>
+          )}
+        </>
+      )}
+
+      <EditableRow $editable={editable}>
+        <EditableField
+          as={InfoColumnTitle}
+          editable={editable}
+          value={column.title}
+          onCommit={(v) => onUpdateTitle?.(sectionId, colIdx, v)}
+        />
+        {editable && (
+          <InfoRowDeleteBtn onClick={() => onUpdateTitle?.(sectionId, colIdx, "")} title="Clear title">×</InfoRowDeleteBtn>
+        )}
+      </EditableRow>
+      {editable ? (
+        <TitleDividerRow>
+          <TitleDividerLine $visible={titleDividerVisible} />
+          <InfoRowDeleteBtn
+            onClick={() => onToggleTitleDivider?.(sectionId, colIdx)}
+            title={titleDividerVisible ? "Remove divider" : "Add divider"}
+          >
+            {titleDividerVisible ? "×" : "+"}
+          </InfoRowDeleteBtn>
+        </TitleDividerRow>
+      ) : (
+        titleDividerVisible && <InfoColumnSeparator />
+      )}
+
+      {style === "table" ? (
+        <InfoTableRows>
+          {Array.from({ length: rowSlots }, (_, ri) => {
+            const row = rows[ri];
+            const isEmpty = !row || (!row.key && !row.value);
+            return (
+              <InfoTableRow key={ri} $divider={ri > 0} $editable={editable} $empty={isEmpty}>
+                {ri > 0 && <InfoTableStaticDivider />}
+                <EditableField
+                  as={InfoTableKey}
+                  editable={editable}
+                  value={row?.key ?? ""}
+                  data-placeholder="Key"
+                  onCommit={(v) => onUpdateRowKey?.(sectionId, colIdx, ri, v)}
+                />
+                <EditableField
+                  as={InfoTableValue}
+                  editable={editable}
+                  value={row?.value ?? ""}
+                  data-placeholder="Value"
+                  onCommit={(v) => onUpdateRowValue?.(sectionId, colIdx, ri, v)}
+                />
+                {editable && !isEmpty && (
+                  <InfoRowDeleteBtn onClick={() => onDeleteSlot?.(sectionId, colIdx, ri)} title="Remove row">×</InfoRowDeleteBtn>
+                )}
+              </InfoTableRow>
+            );
+          })}
+        </InfoTableRows>
+      ) : style === "list" ? (
+        <InfoColumnLines>
+          {Array.from({ length: lineSlots }, (_, li) => {
+            const line = lines[li];
+            const isEmpty = !line;
+            return (
+              <EditableRow key={li} $editable={editable} $empty={isEmpty}>
+                <InfoColumnListItem>
+                  <InfoColumnBullet $empty={isEmpty}>•</InfoColumnBullet>
+                  <EditableField
+                    as={InfoColumnLine}
+                    editable={editable}
+                    value={line ?? ""}
+                    $align="left"
+                    data-placeholder="Add text…"
+                    onCommit={(v) => onUpdateLine?.(sectionId, colIdx, li, v)}
+                  />
+                </InfoColumnListItem>
+                {editable && !isEmpty && (
+                  <InfoRowDeleteBtn onClick={() => onDeleteSlot?.(sectionId, colIdx, li)} title="Remove line">×</InfoRowDeleteBtn>
+                )}
+              </EditableRow>
+            );
+          })}
+        </InfoColumnLines>
+      ) : (
+        <InfoColumnLines>
+          {Array.from({ length: lineSlots }, (_, li) => {
+            const line = lines[li];
+            const isEmpty = !line;
+            return (
+              <EditableRow key={li} $editable={editable} $empty={isEmpty}>
+                <EditableField
+                  as={InfoColumnLine}
+                  editable={editable}
+                  value={line ?? ""}
+                  data-placeholder="Add text…"
+                  onCommit={(v) => onUpdateLine?.(sectionId, colIdx, li, v)}
+                />
+                {editable && !isEmpty && (
+                  <InfoRowDeleteBtn onClick={() => onDeleteSlot?.(sectionId, colIdx, li)} title="Remove line">×</InfoRowDeleteBtn>
+                )}
+              </EditableRow>
+            );
+          })}
+        </InfoColumnLines>
+      )}
+    </InfoColumn>
+  );
+}
+
+// Relative height keyed by section type (not by position), so a section
+// keeps its own size as it's dragged to a different spot in the list.
+const HEIGHT_RATIOS = { welcome: 20, info: 40, quote: 20, badges: 20 };
 
 function BioSections({
   sections = [], editable = false,
   onReorder,
   onUpdateTitle, onUpdateText,
-  onUpdateInfoColumnTitle, onUpdateInfoColumnLine,
-  onUpdateFunFactSymbol, onUpdateFunFactText,
+  onUpdateInfoColumnTitle, onUpdateInfoColumnLine, onUpdateInfoColumnStyle,
+  onUpdateInfoColumnRowKey, onUpdateInfoColumnRowValue, onDeleteInfoColumnSlot,
+  onToggleInfoColumnTitleDivider, onToggleSectionTitleDivider,
 }) {
   const dragIndexRef = useRef(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
@@ -61,7 +235,7 @@ function BioSections({
       {sections.map((section, idx) => (
         <BioSection
           key={section.id}
-          $flexGrow={HEIGHT_RATIOS[idx] ?? 20}
+          $flexGrow={HEIGHT_RATIOS[section.type] ?? 20}
           $dragOver={editable && dragOverIdx === idx}
           $dragging={editable && draggingIdx === idx}
           onDragOver={(e) => {
@@ -98,73 +272,89 @@ function BioSections({
                 </BioSectionDragHandle>
               )}
               {section.type !== "info" && (
-                <EditableField
-                  as={BioSectionTitle}
-                  editable={editable}
-                  value={section.title}
-                  onCommit={(v) => onUpdateTitle?.(section.id, v)}
-                />
+                <EditableRow $editable={editable}>
+                  <EditableField
+                    as={BioSectionTitle}
+                    editable={editable}
+                    value={section.title}
+                    onCommit={(v) => onUpdateTitle?.(section.id, v)}
+                  />
+                  {editable && (
+                    <InfoRowDeleteBtn onClick={() => onUpdateTitle?.(section.id, "")} title="Clear title">×</InfoRowDeleteBtn>
+                  )}
+                </EditableRow>
               )}
             </BioSectionHeaderRow>
           )}
 
-          {section.type !== "info" && <BioSectionSeparator />}
+          {section.type !== "info" && (
+            editable ? (
+              <TitleDividerRow>
+                <TitleDividerLine $visible={sectionDividerVisible(section)} $color="var(--pp-border2)" />
+                <InfoRowDeleteBtn
+                  onClick={() => onToggleSectionTitleDivider?.(section.id)}
+                  title={sectionDividerVisible(section) ? "Remove divider" : "Add divider"}
+                >
+                  {sectionDividerVisible(section) ? "×" : "+"}
+                </InfoRowDeleteBtn>
+              </TitleDividerRow>
+            ) : (
+              sectionDividerVisible(section) && <BioSectionSeparator />
+            )
+          )}
 
           {section.type === "info" ? (
             <InfoColumnsRow>
               {section.columns.map((col, ci) => (
                 <Fragment key={ci}>
                   {ci > 0 && <ColumnDivider />}
-                  <InfoColumn>
-                    <EditableField
-                      as={InfoColumnTitle}
-                      editable={editable}
-                      value={col.title}
-                      onCommit={(v) => onUpdateInfoColumnTitle?.(section.id, ci, v)}
-                    />
-                    <InfoColumnSeparator />
-                    {col.lines.map((line, li) => (
-                      <EditableField
-                        key={li}
-                        as={InfoColumnLine}
-                        editable={editable}
-                        value={line}
-                        onCommit={(v) => onUpdateInfoColumnLine?.(section.id, ci, li, v)}
-                      />
-                    ))}
-                  </InfoColumn>
+                  <InfoColumnBlock
+                    column={col}
+                    sectionId={section.id}
+                    colIdx={ci}
+                    editable={editable}
+                    onUpdateTitle={onUpdateInfoColumnTitle}
+                    onUpdateLine={onUpdateInfoColumnLine}
+                    onUpdateStyle={onUpdateInfoColumnStyle}
+                    onUpdateRowKey={onUpdateInfoColumnRowKey}
+                    onUpdateRowValue={onUpdateInfoColumnRowValue}
+                    onDeleteSlot={onDeleteInfoColumnSlot}
+                    onToggleTitleDivider={onToggleInfoColumnTitleDivider}
+                  />
                 </Fragment>
               ))}
             </InfoColumnsRow>
-          ) : section.type === "funfacts" ? (
-            <FunFactsRow>
-              {section.columns.map((col, ci) => (
-                <Fragment key={ci}>
-                  {ci > 0 && <ColumnDivider />}
-                  <FunFactItem>
-                    <EditableField
-                      as={FunFactSymbol}
-                      editable={editable}
-                      value={col.symbol}
-                      onCommit={(v) => onUpdateFunFactSymbol?.(section.id, ci, v)}
-                    />
-                    <EditableField
-                      as={FunFactText}
-                      editable={editable}
-                      value={col.text}
-                      onCommit={(v) => onUpdateFunFactText?.(section.id, ci, v)}
-                    />
-                  </FunFactItem>
-                </Fragment>
+          ) : section.type === "badges" ? (
+            <BadgeSlotsRow>
+              {(section.slots || []).map((slot, si) => (
+                <BadgeSlot key={si} />
               ))}
-            </FunFactsRow>
+            </BadgeSlotsRow>
+          ) : section.type === "quote" ? (
+            <EditableRow $editable={editable}>
+              <EditableField
+                as={QuoteText}
+                editable={editable}
+                value={section.text}
+                onCommit={(v) => onUpdateText?.(section.id, v)}
+                data-placeholder="Add a favorite quote…"
+              />
+              {editable && (
+                <InfoRowDeleteBtn onClick={() => onUpdateText?.(section.id, "")} title="Clear text">×</InfoRowDeleteBtn>
+              )}
+            </EditableRow>
           ) : (
-            <EditableField
-              as={BioSectionText}
-              editable={editable}
-              value={section.text}
-              onCommit={(v) => onUpdateText?.(section.id, v)}
-            />
+            <EditableRow $editable={editable}>
+              <EditableField
+                as={BioSectionText}
+                editable={editable}
+                value={section.text}
+                onCommit={(v) => onUpdateText?.(section.id, v)}
+              />
+              {editable && (
+                <InfoRowDeleteBtn onClick={() => onUpdateText?.(section.id, "")} title="Clear text">×</InfoRowDeleteBtn>
+              )}
+            </EditableRow>
           )}
         </BioSection>
       ))}
@@ -173,12 +363,12 @@ function BioSections({
 }
 
 export default function BioTab({
-  selectedBadge, handleBadgeClick, badgesExpanded, setBadgesExpanded, badgeSaving,
   canvasEditable = false,
   bioSections = [], onReorderBioSections,
   onUpdateSectionTitle, onUpdateSectionText,
-  onUpdateInfoColumnTitle, onUpdateInfoColumnLine,
-  onUpdateFunFactSymbol, onUpdateFunFactText,
+  onUpdateInfoColumnTitle, onUpdateInfoColumnLine, onUpdateInfoColumnStyle,
+  onUpdateInfoColumnRowKey, onUpdateInfoColumnRowValue, onDeleteInfoColumnSlot,
+  onToggleInfoColumnTitleDivider, onToggleSectionTitleDivider,
 }) {
   return (
     <HubPanelContainer>
@@ -192,8 +382,12 @@ export default function BioTab({
           onUpdateText={onUpdateSectionText}
           onUpdateInfoColumnTitle={onUpdateInfoColumnTitle}
           onUpdateInfoColumnLine={onUpdateInfoColumnLine}
-          onUpdateFunFactSymbol={onUpdateFunFactSymbol}
-          onUpdateFunFactText={onUpdateFunFactText}
+          onUpdateInfoColumnStyle={onUpdateInfoColumnStyle}
+          onUpdateInfoColumnRowKey={onUpdateInfoColumnRowKey}
+          onUpdateInfoColumnRowValue={onUpdateInfoColumnRowValue}
+          onDeleteInfoColumnSlot={onDeleteInfoColumnSlot}
+          onToggleInfoColumnTitleDivider={onToggleInfoColumnTitleDivider}
+          onToggleSectionTitleDivider={onToggleSectionTitleDivider}
         />
 
         {/* TODO: re-enable badges when ready

@@ -291,15 +291,50 @@ const editableFieldCss = css`
   border-radius: 4px;
   cursor: ${p => p.$editable ? "text" : "default"};
   ${p => p.$editable && css`
-    &:hover { background: rgba(var(--pp-accent-rgb),0.05); }
     &:focus { background: rgba(var(--pp-accent-rgb),0.08); box-shadow: 0 0 0 1px rgba(var(--pp-accent-rgb),0.3); }
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: rgba(255,255,255,0.38);
+      pointer-events: none;
+    }
   `}
+`;
+
+// Shared full-width hover container for every deletable "thing" (titles,
+// texts, rows, dividers) so the highlight always spans the whole row,
+// not just the width of the text inside it.
+const editableRowCss = css`
+  position: relative;
+  border-radius: 8px;
+  transition: background 0.15s;
+  ${p => p.$editable && css`
+    &:hover { background: rgba(var(--pp-accent-rgb),0.07); }
+  `}
+`;
+
+// Visual "empty box" affordance for a row slot that has no content yet —
+// still a real editable field underneath, just styled to look like an
+// open placeholder the player can click straight into.
+const emptyBoxCss = css`
+  ${p => p.$empty && css`
+    box-sizing: border-box;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.045);
+  `}
+`;
+
+export const EditableRow = styled.div`
+  width: 100%;
+  ${editableRowCss}
+  ${emptyBoxCss}
 `;
 
 export const BioSectionTitle = styled.h3`
   margin: 0;
   font-family: "Cormorant Infant", serif;
-  font-size: 24px;
+  font-size: 40px;
   font-weight: 600;
   font-style: italic;
   letter-spacing: 0.5px;
@@ -319,11 +354,42 @@ export const BioSectionSeparator = styled.div`
 export const BioSectionText = styled.p`
   margin: 0;
   font-family: "Inter", sans-serif;
-  font-size: 12.5px;
+  font-size: 18px;
   line-height: 1.6;
   text-align: center;
   color: #ffffff;
   white-space: pre-wrap;
+  ${editableFieldCss}
+`;
+
+export const QuoteText = styled.p`
+  margin: 0;
+  font-family: "Cormorant Infant", serif;
+  font-size: 24px;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+  color: #ffffff;
+  white-space: pre-wrap;
+  position: relative;
+  padding: 0 30px;
+  &:not(:empty)::before, &:not(:empty)::after {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-60%);
+    font-family: Georgia, serif;
+    font-size: 34px;
+    font-style: normal;
+    line-height: 0;
+    color: rgba(var(--pp-accent-rgb), 0.65);
+  }
+  &:not(:empty)::before { content: "\\201C"; left: 0; }
+  &:not(:empty)::after  { content: "\\201D"; right: 0; }
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: rgba(255,255,255,0.45);
+  }
   ${editableFieldCss}
 `;
 
@@ -334,16 +400,178 @@ export const InfoColumnsRow = styled.div`
 `;
 
 export const InfoColumn = styled.div`
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 0 14px;
+  padding-top: ${p => p.$editable ? "20px" : "0"};
+`;
+
+export const InfoRowDeleteBtn = styled.button`
+  all: unset;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255,255,255,0.4);
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: rgba(220,38,38,0.35); color: #ffffff; }
+`;
+
+export const InfoColumnSettingsBtn = styled.button`
+  all: unset;
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: rgba(255,255,255,0.14); color: #ffffff; }
+`;
+
+export const InfoColumnSettingsMenu = styled.div`
+  position: absolute;
+  top: 22px;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 96px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(20,10,40,0.94);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  backdrop-filter: blur(8px);
+`;
+
+export const InfoColumnSettingsOption = styled.button`
+  all: unset;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: "Inter", sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  color: ${p => p.$active ? "#ffffff" : "rgba(255,255,255,0.65)"};
+  background: ${p => p.$active ? "rgba(var(--pp-accent-rgb),0.35)" : "transparent"};
+  &:hover { background: rgba(255,255,255,0.12); color: #ffffff; }
+`;
+
+export const InfoColumnLines = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+`;
+
+export const InfoColumnListItem = styled.div`
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  text-align: left;
+`;
+
+export const InfoColumnBullet = styled.span`
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: ${p => p.$empty ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.6)"};
+`;
+
+export const InfoTableRows = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+`;
+
+export const InfoTableRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  ${editableRowCss}
+  ${emptyBoxCss}
+  ${p => p.$editable && css`padding-right: 22px;`}
+  ${p => p.$divider && css`padding-top: 7px;`}
+`;
+
+export const InfoTableStaticDivider = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.3);
+`;
+
+// Interactive divider row used directly under a section/column title —
+// the only dividers players can remove. Rendered only in edit mode; the
+// plain static separator is used otherwise.
+export const TitleDividerRow = styled.div`
+  position: relative;
+  padding: 6px 0;
+  border-radius: 6px;
+  transition: background 0.15s;
+  &:hover { background: rgba(var(--pp-accent-rgb),0.07); }
+`;
+
+export const TitleDividerLine = styled.div`
+  height: 1px;
+  width: 100%;
+  background: ${p => p.$visible ? (p.$color || "var(--pp-border)") : "transparent"};
+`;
+
+export const InfoTableKey = styled.div`
+  flex: 1;
+  min-width: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 700;
+  text-align: left;
+  color: #ffffff;
+  ${editableFieldCss}
+`;
+
+export const InfoTableValue = styled.div`
+  flex: 1;
+  min-width: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+  text-align: right;
+  color: #ffffff;
+  ${editableFieldCss}
 `;
 
 export const InfoColumnTitle = styled.div`
   font-family: "Cormorant Infant", serif;
-  font-size: 18px;
+  font-size: 40px;
   font-weight: 600;
   font-style: italic;
   letter-spacing: 0.4px;
@@ -362,9 +590,9 @@ export const InfoColumnSeparator = styled.div`
 
 export const InfoColumnLine = styled.div`
   font-family: "Inter", sans-serif;
-  font-size: 11.5px;
+  font-size: 16px;
   line-height: 1.6;
-  text-align: center;
+  text-align: ${p => p.$align || "center"};
   color: #ffffff;
   ${editableFieldCss}
 `;
@@ -381,32 +609,19 @@ export const ColumnDivider = styled.div`
     transparent 100%);
 `;
 
-export const FunFactsRow = styled.div`
+export const BadgeSlotsRow = styled.div`
   display: flex;
-  align-items: stretch;
-  gap: 16px;
-`;
-
-export const FunFactItem = styled.div`
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  text-align: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
 `;
 
-export const FunFactSymbol = styled.div`
-  font-size: 22px;
-  line-height: 1;
-  ${editableFieldCss}
-`;
-
-export const FunFactText = styled.div`
-  font-family: "Inter", sans-serif;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: #ffffff;
-  ${editableFieldCss}
+export const BadgeSlot = styled.div`
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1.5px dashed ${"var(--pp-border2)"};
+  background: rgba(255,255,255,0.04);
 `;

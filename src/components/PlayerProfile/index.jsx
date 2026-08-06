@@ -56,8 +56,8 @@ import {
   Overlay, ProfileOuter, GlobalCloseBtn, ProfileWrapper,
   MiddleCol, NameCard, ContentPanel, ContentPanelBody,
   BookmarkRail, BookmarkTab, BookmarkIconImg, BookmarkIcon, BookmarkLabel, BookmarkNotifDot,
-  HeaderTitles, HeaderNameRow, PlayerName, PlayerNameMark, LevelBadge, HeaderMemberSince,
-  HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatLabel,
+  HeaderTitles, HeaderNameRow, PlayerName, LevelBadge, HeaderMemberSince,
+  HeaderStatsRow, HeaderStatBox, HeaderStatTop, HeaderStatWord,
   InvActionBar, InvNudeBtn, InvResetBtn, InvApplyBtn,
   HubPanelContainer,
   AvatarStageCol, StageContainer, AvatarViewport, Controls, ArrowBtn,
@@ -242,6 +242,20 @@ export default function PlayerProfile({
       return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, title } : c) };
     }));
   };
+  // Writes past the end of the array pad with "" so typing into a slot
+  // that was previously deleted (or never filled) extends it in place.
+  const setAtIndex = (arr, idx, value) => {
+    const next = [...arr];
+    while (next.length < idx) next.push("");
+    next[idx] = value;
+    return next;
+  };
+  const setRowAtIndex = (rows, idx, patch) => {
+    const next = [...rows];
+    while (next.length <= idx) next.push({ key: "", value: "" });
+    next[idx] = { ...next[idx], ...patch };
+    return next;
+  };
   const updateInfoColumnLine = (sectionId, colIdx, lineIdx, value) => {
     setBioSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
@@ -249,24 +263,76 @@ export default function PlayerProfile({
         ...s,
         columns: s.columns.map((c, i) => {
           if (i !== colIdx) return c;
-          return { ...c, lines: c.lines.map((l, li) => li === lineIdx ? value : l) };
+          return { ...c, lines: setAtIndex(c.lines || [], lineIdx, value) };
         }),
       };
     }));
   };
-  const updateFunFactSymbol = (sectionId, colIdx, symbol) => {
+  const updateInfoColumnStyle = (sectionId, colIdx, style) => {
     setBioSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
-      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, symbol } : c) };
+      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, style } : c) };
     }));
   };
-  const updateFunFactText = (sectionId, colIdx, text) => {
+  const columnRows = (c) => (c.rows && c.rows.length)
+    ? c.rows
+    : (c.lines || []).map((line) => ({ key: "Key", value: line }));
+  const updateInfoColumnRowKey = (sectionId, colIdx, rowIdx, key) => {
     setBioSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
-      return { ...s, columns: s.columns.map((c, i) => i === colIdx ? { ...c, text } : c) };
+      return {
+        ...s,
+        columns: s.columns.map((c, i) => {
+          if (i !== colIdx) return c;
+          return { ...c, rows: setRowAtIndex(columnRows(c), rowIdx, { key }) };
+        }),
+      };
     }));
   };
-
+  const updateInfoColumnRowValue = (sectionId, colIdx, rowIdx, value) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return {
+        ...s,
+        columns: s.columns.map((c, i) => {
+          if (i !== colIdx) return c;
+          return { ...c, rows: setRowAtIndex(columnRows(c), rowIdx, { value }) };
+        }),
+      };
+    }));
+  };
+  const deleteInfoColumnSlot = (sectionId, colIdx, slotIdx) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return {
+        ...s,
+        columns: s.columns.map((c, i) => {
+          if (i !== colIdx) return c;
+          return {
+            ...c,
+            lines: (c.lines || []).filter((_, li) => li !== slotIdx),
+            rows: columnRows(c).filter((_, ri) => ri !== slotIdx),
+          };
+        }),
+      };
+    }));
+  };
+  const toggleInfoColumnTitleDivider = (sectionId, colIdx) => {
+    setBioSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      return {
+        ...s,
+        columns: s.columns.map((c, i) => i === colIdx
+          ? { ...c, titleDividerVisible: c.titleDividerVisible === false }
+          : c),
+      };
+    }));
+  };
+  const toggleSectionTitleDivider = (sectionId) => {
+    setBioSections(prev => prev.map(s => s.id === sectionId
+      ? { ...s, titleDividerVisible: s.titleDividerVisible === false }
+      : s));
+  };
   useEffect(() => {
     if (!targetUserId) return;
     fetchUserStatus(targetUserId).then(setUserStatus).catch(() => {});
@@ -1011,16 +1077,14 @@ export default function PlayerProfile({
                 <HeaderNameRow>
                   <PlayerName>
                     {playerName || "Player"}
-                    <PlayerNameMark> ✦</PlayerNameMark>
                   </PlayerName>
                   <LevelBadge>Lv. 78</LevelBadge>
                 </HeaderNameRow>
                 <HeaderMemberSince>Member since May 2024</HeaderMemberSince>
               </HeaderTitles>
-              <HeaderStatsRow style={{ marginLeft: "auto" }}>
+              <HeaderStatsRow>
                 <HeaderStatBox>
-                  <HeaderStatTop>♥ {likeState.popularity.toLocaleString()}</HeaderStatTop>
-                  <HeaderStatLabel>Popularity</HeaderStatLabel>
+                  <HeaderStatTop><HeaderStatWord>Popularity</HeaderStatWord> {likeState.popularity.toLocaleString()}</HeaderStatTop>
                 </HeaderStatBox>
               </HeaderStatsRow>
             </NameCard>
@@ -1148,8 +1212,12 @@ export default function PlayerProfile({
                     onUpdateSectionText={updateSectionText}
                     onUpdateInfoColumnTitle={updateInfoColumnTitle}
                     onUpdateInfoColumnLine={updateInfoColumnLine}
-                    onUpdateFunFactSymbol={updateFunFactSymbol}
-                    onUpdateFunFactText={updateFunFactText}
+                    onUpdateInfoColumnStyle={updateInfoColumnStyle}
+                    onUpdateInfoColumnRowKey={updateInfoColumnRowKey}
+                    onUpdateInfoColumnRowValue={updateInfoColumnRowValue}
+                    onDeleteInfoColumnSlot={deleteInfoColumnSlot}
+                    onToggleInfoColumnTitleDivider={toggleInfoColumnTitleDivider}
+                    onToggleSectionTitleDivider={toggleSectionTitleDivider}
                   />
                 </div>
 

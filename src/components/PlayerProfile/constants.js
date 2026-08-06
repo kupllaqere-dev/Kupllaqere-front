@@ -95,26 +95,49 @@ export const DEFAULT_BIO_SECTIONS = [
     type: "info",
     title: "Info",
     columns: [
-      { title: "About", lines: ["Line one", "Line two", "Line three", "Line four"] },
-      { title: "Favorites", lines: ["Line one", "Line two", "Line three", "Line four"] },
-      { title: "Stats", lines: ["Line one", "Line two", "Line three", "Line four"] },
+      {
+        title: "About", style: "text",
+        lines: ["Line one", "Line two", "Line three", "Line four"],
+        rows: [
+          { key: "Key", value: "Line one" },
+          { key: "Key", value: "Line two" },
+          { key: "Key", value: "Line three" },
+          { key: "Key", value: "Line four" },
+        ],
+      },
+      {
+        title: "Favorites", style: "text",
+        lines: ["Line one", "Line two", "Line three", "Line four"],
+        rows: [
+          { key: "Key", value: "Line one" },
+          { key: "Key", value: "Line two" },
+          { key: "Key", value: "Line three" },
+          { key: "Key", value: "Line four" },
+        ],
+      },
+      {
+        title: "Stats", style: "text",
+        lines: ["Line one", "Line two", "Line three", "Line four"],
+        rows: [
+          { key: "Key", value: "Line one" },
+          { key: "Key", value: "Line two" },
+          { key: "Key", value: "Line three" },
+          { key: "Key", value: "Line four" },
+        ],
+      },
     ],
   },
   {
     id: "quote",
     type: "quote",
     title: "Quote",
-    text: "\"Placeholder quote goes here.\"",
+    text: "Placeholder quote goes here.",
   },
   {
-    id: "funfacts",
-    type: "funfacts",
-    title: "Fun Facts",
-    columns: [
-      { symbol: "⭐", text: "Fun fact one" },
-      { symbol: "🎮", text: "Fun fact two" },
-      { symbol: "🎵", text: "Fun fact three" },
-    ],
+    id: "badges",
+    type: "badges",
+    title: "Badges",
+    slots: [null, null, null, null, null, null, null],
   },
 ];
 

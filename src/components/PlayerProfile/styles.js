@@ -122,7 +122,8 @@ export const MiddleCol = styled.div`
 
 export const NameCard = styled.div`
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
   padding: 16px 22px;
@@ -306,14 +307,15 @@ export const CloseBtn = styled.button`
 export const HeaderNameRow = styled.div`
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 22px;
   flex-wrap: wrap;
 `;
 
 export const HeaderMemberSince = styled.div`
   font-size: 10.5px;
   font-weight: 600;
-  color: color-mix(in srgb, var(--pp-accent), black 45%);
+  color: rgba(255,255,255,0.75);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
   letter-spacing: 0.2px;
 `;
 
@@ -332,18 +334,21 @@ export const HeaderStatBox = styled.div`
 `;
 
 export const HeaderStatTop = styled.div`
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 36px;
   font-weight: 800;
-  color: ${"var(--pp-txt)"};
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
   line-height: 1;
+  white-space: nowrap;
 `;
 
-export const HeaderStatLabel = styled.div`
-  font-size: 8.5px;
-  font-weight: 600;
-  color: ${"var(--pp-txt3)"};
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+export const HeaderStatWord = styled.span`
+  font-family: "Birthstone", cursive;
+  font-weight: 400;
 `;
 
 export const ProfileEmblem = styled.div`
@@ -367,16 +372,12 @@ export const HeaderTitles = styled.div`display: flex; flex-direction: column; ga
 
 export const PlayerName = styled.h2`
   margin: 0;
-  font-size: 26px;
+  font-size: 36px;
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.3px;
-  color: color-mix(in srgb, var(--pp-accent), black 50%);
-`;
-
-export const PlayerNameMark = styled.span`
-  color: color-mix(in srgb, var(--pp-accent), black 35%);
-  font-size: 20px;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
 `;
 
 export const ProfileMetaRow = styled.div`
@@ -386,9 +387,10 @@ export const ProfileMetaRow = styled.div`
 `;
 
 export const LevelBadge = styled.span`
-  font-size: 13px;
+  font-size: 19px;
   font-weight: 700;
-  color: color-mix(in srgb, var(--pp-accent), black 45%);
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 `;
 
 export const MetaSep = styled.span`color: ${"var(--pp-txt3)"}; font-size: 11px;`;
@@ -1108,7 +1110,7 @@ export const GlobalCloseBtn = styled.button`
   z-index: 30;
   background: ${"var(--pp-card)"};
   border: 1px solid ${"var(--pp-border)"};
-  border-radius: 10px;
+  border-radius: 50%;
   width: 30px; height: 30px;
   display: flex;
   align-items: center;
