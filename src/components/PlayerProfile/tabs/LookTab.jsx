@@ -1,18 +1,37 @@
-import { useState, useMemo } from "react";
-import { LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY } from "../constants";
+import { Fragment, useState, useMemo } from "react";
+import {
+  LOOK_FEATURES, LOOK_FEATURE_CATEGORY, LOOK_FEATURE_SUBCATEGORY,
+  LOOK_SKIN_COLORS, LOOK_FEATURE_COLORS,
+} from "../constants";
 import { HubPanelContainer } from "../styles";
 import {
-  LookPanelInner,
-  LookScrollArea, LookGrid, LookFeatureCard, LookFeatureLabel,
-  LookSlotsRow, LookSlotWrap, LookSlot, LookSlotPlus, LookSlotSubLabel,
-  LookSlotImg, LookPickerRow, LookPickerXBtn, LookPickerThumb, LookPickerEmpty,
+  LookPanelInner, LookSidebar, LookNavItem, LookNavIcon, LookNavDivider, LookContent,
+  LookScrollArea, LookSectionTitle, LookGrid, LookItemCard, LookItemThumb, LookItemImg, LookItemName,
+  LookColorGrid, LookColorSwatch, LookEmptyMsg, LookPlaceholderThumb, LookPageNav, LookPageArrow, LookPageLabel,
   LookSliderRow, LookSliderLabel, LookSlider, LookSliderValue,
 } from "./LookTab.styles";
 
+const NAV_ITEMS = [
+  { key: "skin", label: "Skin" },
+  ...LOOK_FEATURES,
+  { key: "size", label: "Size" },
+];
+
+const ITEM_PAGE_SIZE = 10;
+const ITEM_PAGE_COUNT = 2;
+
 export default function LookTab({ invItems = [], invLoading, lookSelectedEntries = {}, onSelectItem }) {
+  const [activeKey, setActiveKey] = useState("skin");
+  const [itemPage, setItemPage] = useState(0);
   const [avatarWidth, setAvatarWidth] = useState(50);
   const [avatarHeight, setAvatarHeight] = useState(50);
-  const [openKey, setOpenKey] = useState(null);
+  const [skinColor, setSkinColor] = useState(LOOK_SKIN_COLORS[0]);
+  const [featureColors, setFeatureColors] = useState({});
+
+  const handleSelectCategory = (key) => {
+    setActiveKey(key);
+    setItemPage(0);
+  };
 
   const itemsByFeature = useMemo(() => {
     const map = {};
@@ -28,119 +47,151 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
     return map;
   }, [invItems]);
 
-  const handleSlotClick = (featureKey) => {
-    setOpenKey(prev => (prev === featureKey ? null : featureKey));
-  };
-
-  const handleSelectItem = (featureKey, item) => {
-    onSelectItem(featureKey, item);
-    setOpenKey(null);
-  };
-
-  const handleClear = (featureKey) => {
-    onSelectItem(featureKey, null);
-    setOpenKey(null);
-  };
-
-  const getSlotContent = (featureKey) => {
-    const entry = lookSelectedEntries[featureKey];
-    if (entry) {
-      return (
-        <LookSlotImg
-          src={entry.thumbnailUrl || entry.imageUrl}
-          alt={entry.name}
-          crossOrigin="anonymous"
-        />
-      );
-    }
-    return <LookSlotPlus>+</LookSlotPlus>;
-  };
-
   const isSelected = (featureKey, item) =>
     lookSelectedEntries[featureKey]?._id?.toString() === item._id?.toString();
+
+  const handleSelectItem = (featureKey, item) => {
+    onSelectItem(featureKey, isSelected(featureKey, item) ? null : item);
+  };
+
+  const handleSelectFeatureColor = (featureKey, color) => {
+    setFeatureColors(prev => ({ ...prev, [featureKey]: color }));
+  };
+
+  const activeFeature = LOOK_FEATURES.find(f => f.key === activeKey);
+  const activeItems = itemsByFeature[activeKey] ?? [];
+  const pageStart = itemPage * ITEM_PAGE_SIZE;
+  const pageSlots = Array.from({ length: ITEM_PAGE_SIZE }, (_, i) => activeItems[pageStart + i] ?? null);
 
   return (
     <HubPanelContainer>
       <LookPanelInner>
-        <LookScrollArea>
-          <LookGrid>
-            <LookFeatureCard>
-              <LookFeatureLabel>Skin Color</LookFeatureLabel>
-              <LookSlotsRow>
-                <LookSlotWrap>
-                  <LookSlot><LookSlotPlus>+</LookSlotPlus></LookSlot>
-                  <LookSlotSubLabel>Color</LookSlotSubLabel>
-                </LookSlotWrap>
-              </LookSlotsRow>
-            </LookFeatureCard>
+        <LookSidebar>
+          {NAV_ITEMS.map(({ key, label }, i) => (
+            <Fragment key={key}>
+              {i > 0 && <LookNavDivider />}
+              <LookNavItem $active={activeKey === key} onClick={() => handleSelectCategory(key)}>
+                <LookNavIcon $src={`/assets/look-icons/${key}.png`} />
+                {label}
+              </LookNavItem>
+            </Fragment>
+          ))}
+        </LookSidebar>
 
-            {LOOK_FEATURES.map(({ key, label }) => {
-              const items = itemsByFeature[key] ?? [];
-              const expanded = openKey === key;
-              return (
-                <LookFeatureCard key={key}>
-                  <LookFeatureLabel>{label}</LookFeatureLabel>
-                  <LookSlotsRow>
-                    <LookSlotWrap>
-                      <LookSlot
-                        onClick={() => handleSlotClick(key)}
-                        style={expanded ? { borderStyle: "solid", borderColor: "var(--pp-accent)" } : undefined}
-                      >
-                        {getSlotContent(key)}
-                      </LookSlot>
-                      <LookSlotSubLabel>Item</LookSlotSubLabel>
-                    </LookSlotWrap>
-                    <LookSlotWrap>
-                      <LookSlot><LookSlotPlus>+</LookSlotPlus></LookSlot>
-                      <LookSlotSubLabel>Color</LookSlotSubLabel>
-                    </LookSlotWrap>
-                  </LookSlotsRow>
+        <LookContent>
+          <LookScrollArea>
+            {activeKey === "skin" && (
+              <div>
+                <LookSectionTitle>Skin Color</LookSectionTitle>
+                <LookGrid style={{ marginTop: 10 }}>
+                  {LOOK_SKIN_COLORS.map(color => (
+                    <LookColorSwatch
+                      key={color}
+                      role="button"
+                      tabIndex={0}
+                      $color={color}
+                      $selected={skinColor === color}
+                      onClick={() => setSkinColor(color)}
+                      title={color}
+                    />
+                  ))}
+                </LookGrid>
+              </div>
+            )}
 
-                  {expanded && (
-                    <LookPickerRow>
-                      <LookPickerXBtn onClick={() => handleClear(key)} title="Remove">×</LookPickerXBtn>
-                      {invLoading && <LookPickerEmpty>Loading…</LookPickerEmpty>}
-                      {!invLoading && items.length === 0 && <LookPickerEmpty>No items owned</LookPickerEmpty>}
-                      {items.map(item => (
-                        <LookPickerThumb
-                          key={item._id}
-                          src={item.thumbnailUrl || item.imageUrl}
-                          alt={item.name}
-                          crossOrigin="anonymous"
-                          title={item.name}
-                          $selected={isSelected(key, item)}
-                          onClick={() => handleSelectItem(key, item)}
-                        />
-                      ))}
-                    </LookPickerRow>
-                  )}
-                </LookFeatureCard>
-              );
-            })}
-          </LookGrid>
+            {activeKey === "size" && (
+              <div>
+                <LookSectionTitle>Body Size</LookSectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+                  <LookSliderRow>
+                    <LookSliderLabel>Width</LookSliderLabel>
+                    <LookSlider
+                      type="range" min={0} max={100}
+                      value={avatarWidth}
+                      onChange={e => setAvatarWidth(Number(e.target.value))}
+                    />
+                    <LookSliderValue>{avatarWidth}</LookSliderValue>
+                  </LookSliderRow>
+                  <LookSliderRow>
+                    <LookSliderLabel>Height</LookSliderLabel>
+                    <LookSlider
+                      type="range" min={0} max={100}
+                      value={avatarHeight}
+                      onChange={e => setAvatarHeight(Number(e.target.value))}
+                    />
+                    <LookSliderValue>{avatarHeight}</LookSliderValue>
+                  </LookSliderRow>
+                </div>
+              </div>
+            )}
 
-          <LookFeatureCard>
-            <LookFeatureLabel>Body Size</LookFeatureLabel>
-            <LookSliderRow>
-              <LookSliderLabel>Width</LookSliderLabel>
-              <LookSlider
-                type="range" min={0} max={100}
-                value={avatarWidth}
-                onChange={e => setAvatarWidth(Number(e.target.value))}
-              />
-              <LookSliderValue>{avatarWidth}</LookSliderValue>
-            </LookSliderRow>
-            <LookSliderRow>
-              <LookSliderLabel>Height</LookSliderLabel>
-              <LookSlider
-                type="range" min={0} max={100}
-                value={avatarHeight}
-                onChange={e => setAvatarHeight(Number(e.target.value))}
-              />
-              <LookSliderValue>{avatarHeight}</LookSliderValue>
-            </LookSliderRow>
-          </LookFeatureCard>
-        </LookScrollArea>
+            {activeFeature && (
+              <>
+                <div>
+                  <LookSectionTitle>{activeFeature.label} Style</LookSectionTitle>
+                  <LookGrid style={{ marginTop: 10 }}>
+                    {invLoading && <LookEmptyMsg>Loading…</LookEmptyMsg>}
+                    {!invLoading && pageSlots.map((item, i) => {
+                      if (!item) {
+                        return (
+                          <LookItemCard key={`placeholder-${i}`}>
+                            <LookPlaceholderThumb />
+                            <LookItemName>&nbsp;</LookItemName>
+                          </LookItemCard>
+                        );
+                      }
+                      const selected = isSelected(activeKey, item);
+                      return (
+                        <LookItemCard key={item._id} onClick={() => handleSelectItem(activeKey, item)}>
+                          <LookItemThumb $selected={selected}>
+                            <LookItemImg
+                              src={item.thumbnailUrl || item.imageUrl}
+                              alt={item.name}
+                              crossOrigin="anonymous"
+                            />
+                          </LookItemThumb>
+                          <LookItemName $selected={selected}>{item.name}</LookItemName>
+                        </LookItemCard>
+                      );
+                    })}
+                  </LookGrid>
+                  <LookPageNav>
+                    <LookPageArrow
+                      disabled={itemPage === 0}
+                      onClick={() => setItemPage(p => Math.max(0, p - 1))}
+                    >
+                      ‹
+                    </LookPageArrow>
+                    <LookPageLabel>{itemPage + 1} / {ITEM_PAGE_COUNT}</LookPageLabel>
+                    <LookPageArrow
+                      disabled={itemPage === ITEM_PAGE_COUNT - 1}
+                      onClick={() => setItemPage(p => Math.min(ITEM_PAGE_COUNT - 1, p + 1))}
+                    >
+                      ›
+                    </LookPageArrow>
+                  </LookPageNav>
+                </div>
+
+                <div>
+                  <LookSectionTitle>{activeFeature.label} Color</LookSectionTitle>
+                  <LookColorGrid style={{ marginTop: 10 }}>
+                    {LOOK_FEATURE_COLORS.map(color => (
+                      <LookColorSwatch
+                        key={color}
+                        role="button"
+                        tabIndex={0}
+                        $color={color}
+                        $selected={(featureColors[activeKey] ?? LOOK_FEATURE_COLORS[0]) === color}
+                        onClick={() => handleSelectFeatureColor(activeKey, color)}
+                        title={color}
+                      />
+                    ))}
+                  </LookColorGrid>
+                </div>
+              </>
+            )}
+          </LookScrollArea>
+        </LookContent>
       </LookPanelInner>
     </HubPanelContainer>
   );

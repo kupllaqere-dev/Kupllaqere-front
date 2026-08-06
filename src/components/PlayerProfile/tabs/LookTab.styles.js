@@ -4,8 +4,84 @@ import { thinScrollbar } from "../styles";
 export const LookPanelInner = styled.div`
   flex: 1;
   display: flex;
+  overflow: hidden;
+  margin: 14px;
+  border: 2px solid ${"var(--pp-accent)"};
+  border-radius: 14px;
+  box-shadow: 0 0 14px rgba(var(--pp-accent-rgb),0.35), inset 0 0 10px rgba(var(--pp-accent-rgb),0.08);
+`;
+
+export const LookSidebar = styled.div`
+  flex-shrink: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 12px;
+  overflow-y: auto;
+  ${thinScrollbar}
+`;
+
+export const LookNavDivider = styled.div`
+  flex-shrink: 0;
+  height: 2px;
+  margin: 2px 4px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    ${"var(--pp-accent)"} 50%,
+    transparent
+  );
+`;
+
+export const LookNavIcon = styled.span`
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background-color: #fff;
+  -webkit-mask-image: ${({ $src }) => `url(${$src})`};
+  mask-image: ${({ $src }) => `url(${$src})`};
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+`;
+
+export const LookNavItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 15px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: ${({ $active }) => $active ? "rgba(var(--pp-accent-rgb),0.12)" : "transparent"};
+  border-color: ${({ $active }) => $active ? "var(--pp-accent)" : "transparent"};
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.14s, border-color 0.14s;
+  &:hover {
+    background: rgba(var(--pp-accent-rgb),0.1);
+  }
+`;
+
+export const LookContent = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-left: 2px solid ${"var(--pp-accent)"};
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+  box-shadow: inset 4px 0 10px -6px rgba(var(--pp-accent-rgb),0.5);
 `;
 
 export const LookScrollArea = styled.div`
@@ -15,81 +91,145 @@ export const LookScrollArea = styled.div`
   padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 18px;
   ${thinScrollbar}
 `;
 
-export const LookGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-`;
-
-export const LookFeatureCard = styled.div`
-  background: ${"var(--pp-surface)"};
-  border: 1px solid ${"var(--pp-border)"};
-  border-radius: 12px;
-  padding: 13px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-export const LookFeatureLabel = styled.div`
-  font-size: 9.5px;
+export const LookSectionTitle = styled.div`
+  font-size: 16px;
   font-weight: 700;
   color: ${"var(--pp-txt3)"};
   text-transform: uppercase;
   letter-spacing: 0.9px;
 `;
 
-export const LookSlotsRow = styled.div`
-  display: flex;
-  gap: 8px;
+export const LookGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 12px;
 `;
 
-export const LookSlotWrap = styled.div`
+export const LookColorGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+`;
+
+export const LookItemCard = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  cursor: pointer;
 `;
 
-export const LookSlot = styled.div`
-  width: 76px;
-  height: 76px;
+export const LookItemThumb = styled.div`
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 10px;
   background: ${"var(--pp-card)"};
-  border: 1px dashed ${"var(--pp-border2)"};
+  border: 1.5px solid ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-border)"};
+  box-shadow: ${({ $selected }) => $selected ? "0 0 0 2px rgba(var(--pp-accent-rgb),0.22)" : "none"};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.14s, box-shadow 0.14s, transform 0.1s;
+  &:hover {
+    border-color: var(--pp-accent);
+    transform: scale(1.03);
+  }
+`;
+
+export const LookItemImg = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+`;
+
+export const LookItemName = styled.div`
+  font-size: 20px;
+  font-weight: 600;
+  color: ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-txt2)"};
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+`;
+
+export const LookColorSwatch = styled.div`
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: ${({ $color }) => $color};
+  border: 1.5px solid ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-border)"};
+  box-shadow: ${({ $selected }) => $selected ? "0 0 0 2px rgba(var(--pp-accent-rgb),0.22)" : "none"};
+  cursor: pointer;
+  transition: border-color 0.14s, box-shadow 0.14s, transform 0.1s;
+  &:hover {
+    border-color: var(--pp-accent);
+    transform: scale(1.03);
+  }
+`;
+
+export const LookPlaceholderThumb = styled.div`
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: ${"var(--pp-card)"};
+  border: 1.5px dashed ${"var(--pp-border)"};
+  opacity: 0.5;
+`;
+
+export const LookPageNav = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 10px;
+`;
+
+export const LookPageArrow = styled.button`
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1.5px solid ${"var(--pp-border)"};
+  background: ${"var(--pp-card)"};
+  color: ${"var(--pp-txt2)"};
+  font-size: 18px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-  position: relative;
-  overflow: hidden;
-  &:hover {
-    border-style: solid;
-    border-color: ${"var(--pp-accent)"};
+  font-family: inherit;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+  &:hover:not(:disabled) {
+    border-color: var(--pp-accent);
+    color: var(--pp-accent);
     background: rgba(var(--pp-accent-rgb),0.1);
-    box-shadow: 0 0 12px rgba(var(--pp-accent-rgb),0.14);
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 `;
 
-export const LookSlotPlus = styled.span`
-  font-size: 22px;
+export const LookPageLabel = styled.div`
+  font-size: 13px;
+  font-weight: 700;
   color: ${"var(--pp-txt3)"};
-  line-height: 1;
-  pointer-events: none;
-  ${LookSlot}:hover & { color: ${"var(--pp-accent)"}; }
+  min-width: 46px;
+  text-align: center;
 `;
 
-export const LookSlotSubLabel = styled.div`
-  font-size: 9px;
-  font-weight: 600;
+export const LookEmptyMsg = styled.div`
+  font-size: 12px;
   color: ${"var(--pp-txt3)"};
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  font-style: italic;
 `;
 
 export const LookSliderRow = styled.div`
@@ -118,65 +258,4 @@ export const LookSliderValue = styled.div`
   color: ${"var(--pp-txt3)"};
   min-width: 28px;
   text-align: right;
-`;
-
-export const LookSlotImg = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
-  pointer-events: none;
-`;
-
-export const LookPickerRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 4px 0 2px;
-  ${thinScrollbar}
-  scrollbar-width: thin;
-  &::-webkit-scrollbar { height: 3px; }
-`;
-
-export const LookPickerXBtn = styled.button`
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  border: 1.5px solid rgba(220,38,38,0.3);
-  background: rgba(220,38,38,0.07);
-  color: #dc2626;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.13s, border-color 0.13s;
-  &:hover { background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.55); }
-`;
-
-export const LookPickerThumb = styled.img`
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  border-radius: 8px;
-  background: ${"var(--pp-card)"};
-  border: 1.5px solid ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-border)"};
-  box-shadow: ${({ $selected }) => $selected ? "0 0 0 2px rgba(var(--pp-accent-rgb),0.22)" : "none"};
-  cursor: pointer;
-  transition: border-color 0.14s, transform 0.1s, box-shadow 0.14s;
-  &:hover { border-color: ${"var(--pp-accent)"}; transform: scale(1.07); }
-`;
-
-export const LookPickerEmpty = styled.div`
-  font-size: 10px;
-  color: ${"var(--pp-txt3)"};
-  font-style: italic;
-  white-space: nowrap;
-  padding: 4px 2px;
 `;

@@ -67,8 +67,8 @@ export const WL_RARITY = {
 
 export const LOOK_FEATURES = [
   { key: "hair",      label: "Hair" },
-  { key: "eyebrows",  label: "Eyebrows" },
   { key: "eyes",      label: "Eyes" },
+  { key: "eyebrows",  label: "Eyebrows" },
   { key: "nose",      label: "Nose" },
   { key: "mouth",     label: "Mouth" },
   { key: "beard",     label: "Beard" },
@@ -82,6 +82,24 @@ export const LOOK_FEATURE_CATEGORY = {
   mouth:    "appearance",
   beard:    "appearance",
 };
+
+export const LOOK_SKIN_COLORS = [
+  "#ffe0bd", "#ffcd94", "#eeac81", "#e0ac69", "#c68642",
+  "#a56b3f", "#8d5524", "#6b4226", "#4a2c1c", "#3a2116",
+];
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = x => Math.round(255 * x).toString(16).padStart(2, "0");
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
+
+export const LOOK_FEATURE_COLORS = Array.from({ length: 40 }, (_, i) =>
+  hslToHex((i * 360) / 40, 65, 50)
+);
 
 export const DEFAULT_BIO_SECTIONS = [
   {
