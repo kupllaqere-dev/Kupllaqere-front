@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
+import EmojiPicker from "emoji-picker-react";
 import { fetchUserStatus } from "../../../api/users";
 import { lookupUser } from "../../../api/auth";
+import { fetchFriends } from "../../../api/friends";
 import PlayerThumbnail from "../../PlayerThumbnail";
 import PlayerContextMenu from "../../PlayerContextMenu";
 
@@ -20,20 +22,145 @@ const ConvoNameHover = styled.span`
 import { formatRelativeTime } from "../utils";
 import {
   HubPanelContainer, TabUnreadBadge, SkeletonCircle, SkeletonLine,
-  PanelEmpty, MailThumbWrap, MailThreadThumb, MailStatusDot, PrimaryBtn,
+  PanelEmpty, MailThreadThumb, MailStatusDot, PrimaryBtn,
 } from "../styles";
 import {
   MailListCol, PanelHeaderRow,
-  NewMailBtn, MailThreadList, MailThreadRow, MailUnreadDot,
+  MailSearchWrap, MailSearchIcon, MailSearchInput, MailFilterTabs, MailFilterTab,
+  NewMailBtn, MailThreadList, MailThreadRow, MailRowThumbWrap, MailRowThreadThumb, MailUnreadDot,
   MailThreadMeta, MailThreadMetaTop, MailThreadName, MailThreadTime, MailUnreadBadge,
+  MailThreadPreview,
   MailDetailCol, MailNewPanel, MailNewTitle, MailToRow, MailToLabel, MailToInput,
   MailFindBtn, MailLookupHint, MailNewTextarea, MailReplyError, MailReplyFooter,
   MailReplyCounter, MailPlaceholder, MailPlaceholderText, MailPlaceholderIcon,
-  MailDetailHeader, MailDetailWith, MailMessageList, MailLoadingMore,
-  MailMessageCompact, MailCompactTime, MailBubbleBody, MailMessageRow, MailMsgThumb,
-  MailMsgContent, MailMsgHeader, MailMsgName, MailBubbleTime, MailReplyBox,
-  MailReplyTextarea,
+  MailDetailHeader, MailHeaderThumbWrap, MailHeaderNameCol, MailHeaderStatusText,
+  MailHeaderActions, MailHeaderBtn, MailHeaderIconBtn,
+  MailDetailWith, MailMessageList, MailLoadingMore,
+  MailDateDivider, MailDateDividerLine, MailDateDividerPill, MailBubbleGroup, MailBubbleAvatarSlot,
+  MailBubbleCol, MailBubble, MailBubbleTime, MailBubbleGifWrap, MailBubbleGifImg, MailBubbleGifTime,
+  MailReplyBox, MailComposerBar, MailComposerIconBtn, MailComposerInput, MailComposerSendBtn,
+  MailEmojiPickerWrap, MailGifPickerWrap, MailGifSearchInput, MailGifStatus,
 } from "./MailTab.styles";
+
+const KLIPY_KEY = "REEXWlCMkIFXqQdJQBzTBCsS8QNdShFb7dUCYfZSPknZA2vSlDJlJ8CpwswaPKry";
+const GIF_URL_PREFIX = "https://static.klipy.com";
+
+const MAIL_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "friends", label: "Friends" },
+  { key: "system", label: "System", disabled: true },
+  { key: "trades", label: "Trades", disabled: true },
+  { key: "event", label: "Event", disabled: true },
+];
+
+function formatDateDivider(dateString) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const isSameDay = (a, b) => a.toDateString() === b.toDateString();
+  if (isSameDay(d, today)) return "Today";
+  if (isSameDay(d, yesterday)) return "Yesterday";
+  return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatShortTime(dateString) {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+function IconProfile() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
+function IconGift() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13M19 12v9H5v-9" />
+      <path d="M12 8c-1.5 0-3-1-3-2.5S10 3 12 5c0-2 1.5-2.5 3-2.5S17.5 4 16 5.5C15 8 12 8 12 8Z" />
+    </svg>
+  );
+}
+
+function IconMore() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="19" cy="12" r="2" />
+    </svg>
+  );
+}
+
+function IconAttach() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function IconSend() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+    </svg>
+  );
+}
+
+function GifPicker({ onSelect, style, wrapRef }) {
+  const [query, setQuery] = useState("");
+  const [gifs, setGifs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const delay = query.trim() ? 400 : 0;
+    const t = setTimeout(() => {
+      const url = query.trim()
+        ? `https://api.klipy.com/api/v1/${KLIPY_KEY}/gifs/search?q=${encodeURIComponent(query.trim())}&per_page=24`
+        : `https://api.klipy.com/api/v1/${KLIPY_KEY}/gifs/trending?per_page=24`;
+      setLoading(true);
+      fetch(url)
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled) { setGifs(d.data?.data || []); setLoading(false); } })
+        .catch(() => { if (!cancelled) setLoading(false); });
+    }, delay);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query]);
+
+  return (
+    <MailGifPickerWrap ref={wrapRef} style={style}>
+      <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid rgba(130,80,220,0.18)" }}>
+        <MailGifSearchInput
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search GIFs…"
+          autoFocus
+        />
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: 8, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, alignContent: "start" }}>
+        {loading && <MailGifStatus>Loading…</MailGifStatus>}
+        {!loading && gifs.length === 0 && <MailGifStatus>No results</MailGifStatus>}
+        {!loading && gifs.map((gif) => (
+          <img
+            key={gif.id}
+            src={gif.file.sm.gif.url}
+            alt={gif.title}
+            style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 7, cursor: "pointer", display: "block" }}
+            onClick={() => onSelect(gif)}
+          />
+        ))}
+      </div>
+    </MailGifPickerWrap>
+  );
+}
 
 export default function MailTab({
   mailConversations, mailLoading,
@@ -48,6 +175,44 @@ export default function MailTab({
   const [onlineMap, setOnlineMap] = useState(() => new Map());
   const [playerMenu, setPlayerMenu] = useState(null);
   const playerMenuRef = useRef(null);
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [friendIds, setFriendIds] = useState(() => new Set());
+  const [emojiPickerAnchor, setEmojiPickerAnchor] = useState(null);
+  const [gifPickerAnchor, setGifPickerAnchor] = useState(null);
+  const emojiPickerRef = useRef(null);
+  const gifPickerRef = useRef(null);
+  const replyInputRef = useRef(null);
+
+  useEffect(() => {
+    fetchFriends()
+      .then((data) => setFriendIds(new Set((data.friends || []).map((f) => String(f.id)))))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!emojiPickerAnchor && !gifPickerAnchor) return;
+    function onDown(e) {
+      if (emojiPickerAnchor && emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) setEmojiPickerAnchor(null);
+      if (gifPickerAnchor && gifPickerRef.current && !gifPickerRef.current.contains(e.target)) setGifPickerAnchor(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [emojiPickerAnchor, gifPickerAnchor]);
+
+  function toggleEmojiPicker(e) {
+    if (emojiPickerAnchor) { setEmojiPickerAnchor(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setEmojiPickerAnchor({ left: rect.left, bottom: window.innerHeight - rect.top + 8 });
+    setGifPickerAnchor(null);
+  }
+
+  function toggleGifPicker(e) {
+    if (gifPickerAnchor) { setGifPickerAnchor(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setGifPickerAnchor({ left: rect.left, bottom: window.innerHeight - rect.top + 8 });
+    setEmojiPickerAnchor(null);
+  }
 
   useEffect(() => {
     if (!playerMenu) return;
@@ -148,6 +313,40 @@ export default function MailTab({
   const totalUnread = mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
   const activeThreadId = isNew ? null : mailThread?.threadId;
 
+  const searchLower = search.trim().toLowerCase();
+  const filteredConversations = mailConversations.filter((c) => {
+    if (searchLower && !c.otherParticipant.name.toLowerCase().includes(searchLower)) return false;
+    if (activeFilter === "friends" && !friendIds.has(String(c.otherParticipant.id))) return false;
+    return true;
+  });
+
+  function handleViewProfile() {
+    if (!mailThread) return;
+    onOpenProfile?.({ userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name });
+  }
+
+  const messageItems = [];
+  if (mailThread) {
+    let lastDayKey = null;
+    let lastGroup = null;
+    for (const msg of mailThread.messages) {
+      const dayKey = new Date(msg.createdAt).toDateString();
+      if (dayKey !== lastDayKey) {
+        messageItems.push({ kind: "divider", key: `d-${msg.id}`, label: formatDateDivider(msg.createdAt) });
+        lastDayKey = dayKey;
+        lastGroup = null;
+      }
+      const canJoin = lastGroup && lastGroup.mine === msg.isFromMe &&
+        new Date(msg.createdAt) - new Date(lastGroup.msgs[lastGroup.msgs.length - 1].createdAt) < 5 * 60 * 1000;
+      if (canJoin) {
+        lastGroup.msgs.push(msg);
+      } else {
+        lastGroup = { kind: "group", key: `g-${msg.id}`, mine: msg.isFromMe, fromName: msg.fromName, msgs: [msg] };
+        messageItems.push(lastGroup);
+      }
+    }
+  }
+
   function startNew() {
     setIsNew(true);
     onClearThread();
@@ -194,9 +393,38 @@ export default function MailTab({
     <HubPanelContainer>
       {/* ── Left: conversation list ── */}
       <MailListCol>
+        <MailSearchWrap>
+          <MailSearchIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </MailSearchIcon>
+          <MailSearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search messages…"
+          />
+        </MailSearchWrap>
+        <MailFilterTabs>
+          {MAIL_FILTERS.map((f) => (
+            <MailFilterTab
+              key={f.key}
+              $active={activeFilter === f.key}
+              $disabled={f.disabled}
+              disabled={f.disabled}
+              title={f.disabled ? "Coming soon" : undefined}
+              onClick={() => !f.disabled && setActiveFilter(f.key)}
+            >
+              {f.label}
+            </MailFilterTab>
+          ))}
+        </MailFilterTabs>
         <PanelHeaderRow>
           <NewMailBtn onClick={startNew}>+ New</NewMailBtn>
-          {totalUnread > 0 && <TabUnreadBadge>{totalUnread > 99 ? "99+" : totalUnread}</TabUnreadBadge>}
+          {totalUnread > 0 && (
+            <TabUnreadBadge style={{ position: "absolute", top: -6, right: -6 }}>
+              {totalUnread > 99 ? "99+" : totalUnread}
+            </TabUnreadBadge>
+          )}
         </PanelHeaderRow>
         <MailThreadList>
           {mailLoading ? (
@@ -210,26 +438,32 @@ export default function MailTab({
             ))
           ) : mailConversations.length === 0 ? (
             <PanelEmpty>No conversations yet.</PanelEmpty>
+          ) : filteredConversations.length === 0 ? (
+            <PanelEmpty>No matching conversations.</PanelEmpty>
           ) : (
-            mailConversations.map((c) => (
+            filteredConversations.map((c) => (
               <MailThreadRow
                 key={c.threadId}
                 $unread={c.unreadCount > 0}
                 $active={activeThreadId === c.threadId}
                 onClick={() => { setIsNew(false); openMailThread(c.threadId); }}
               >
-                <MailThumbWrap>
-                  <MailThreadThumb>
-                    <PlayerThumbnail playerName={c.otherParticipant.name} size={38} />
-                  </MailThreadThumb>
+                <MailRowThumbWrap>
+                  <MailRowThreadThumb>
+                    <PlayerThumbnail playerName={c.otherParticipant.name} size={56} />
+                  </MailRowThreadThumb>
                   <MailStatusDot $status={onlineMap.get(String(c.otherParticipant.id)) || "offline"} />
                   {c.unreadCount > 0 && <MailUnreadDot />}
-                </MailThumbWrap>
+                </MailRowThumbWrap>
                 <MailThreadMeta>
                   <MailThreadMetaTop>
                     <MailThreadName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</MailThreadName>
                     <MailThreadTime>{formatRelativeTime(c.lastMessage.createdAt)}</MailThreadTime>
                   </MailThreadMetaTop>
+                  <MailThreadPreview $unread={c.unreadCount > 0}>
+                    {c.lastMessage.isFromMe ? "You: " : ""}
+                    {c.lastMessage.body?.startsWith(GIF_URL_PREFIX) ? "GIF" : c.lastMessage.body}
+                  </MailThreadPreview>
                 </MailThreadMeta>
                 {c.unreadCount > 0 && <MailUnreadBadge>{c.unreadCount}</MailUnreadBadge>}
               </MailThreadRow>
@@ -291,72 +525,140 @@ export default function MailTab({
         ) : (
           <>
             <MailDetailHeader>
-              <ConvoThumbHover onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
-                <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={28} />
-              </ConvoThumbHover>
-              <MailDetailWith>
-                <ConvoNameHover onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
-                  {mailThread.otherParticipant.name}
-                </ConvoNameHover>
-              </MailDetailWith>
+              <MailHeaderThumbWrap onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
+                <MailThreadThumb>
+                  <PlayerThumbnail playerName={mailThread.otherParticipant.name} size={40} />
+                </MailThreadThumb>
+                <MailStatusDot $status={onlineMap.get(String(mailThread.otherParticipant.id)) || "offline"} />
+              </MailHeaderThumbWrap>
+              <MailHeaderNameCol>
+                <MailDetailWith>
+                  <ConvoNameHover onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
+                    {mailThread.otherParticipant.name}
+                  </ConvoNameHover>
+                </MailDetailWith>
+                <MailHeaderStatusText $online={(onlineMap.get(String(mailThread.otherParticipant.id)) || "offline") === "online"}>
+                  {onlineMap.get(String(mailThread.otherParticipant.id)) || "offline"}
+                </MailHeaderStatusText>
+              </MailHeaderNameCol>
+              <MailHeaderActions>
+                <MailHeaderBtn onClick={handleViewProfile}>
+                  <IconProfile /> View Profile
+                </MailHeaderBtn>
+                <MailHeaderIconBtn disabled title="Coming soon">
+                  <IconGift />
+                </MailHeaderIconBtn>
+                <MailHeaderIconBtn onClick={(e) => openPlayerMenu({ id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: mailThread.otherParticipant.name }, e)}>
+                  <IconMore />
+                </MailHeaderIconBtn>
+              </MailHeaderActions>
             </MailDetailHeader>
             <MailMessageList ref={messageListRef}>
               {loadingMore && <MailLoadingMore>Loading…</MailLoadingMore>}
-              {mailThread.messages.map((msg, i) => {
-                const prev = mailThread.messages[i - 1];
-                const isFollowUp = prev &&
-                  prev.fromName === msg.fromName &&
-                  new Date(msg.createdAt) - new Date(prev.createdAt) < 60 * 60 * 1000;
-                const hoverTime = msg.createdAt
-                  ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                  : "";
-                const msgPlayer = !msg.isFromMe
-                  ? { id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: msg.fromName }
-                  : { id: null, userId: null, name: msg.fromName };
-                return isFollowUp ? (
-                  <MailMessageCompact key={msg.id}>
-                    <MailCompactTime>{hoverTime}</MailCompactTime>
-                    <MailBubbleBody>{msg.body}</MailBubbleBody>
-                  </MailMessageCompact>
-                ) : (
-                  <MailMessageRow key={msg.id}>
-                    <MailMsgThumb>
+              {messageItems.map((item) => {
+                if (item.kind === "divider") {
+                  return (
+                    <MailDateDivider key={item.key}>
+                      <MailDateDividerLine />
+                      <MailDateDividerPill>{item.label}</MailDateDividerPill>
+                      <MailDateDividerLine $flip />
+                    </MailDateDivider>
+                  );
+                }
+                const msgPlayer = !item.mine
+                  ? { id: mailThread.otherParticipant.id, userId: mailThread.otherParticipant.id, name: item.fromName }
+                  : { id: null, userId: null, name: item.fromName };
+                return (
+                  <MailBubbleGroup key={item.key} $mine={item.mine}>
+                    <MailBubbleAvatarSlot>
                       <ConvoThumbHover onClick={(e) => openPlayerMenu(msgPlayer, e)}>
-                        <PlayerThumbnail playerName={msg.fromName} size={42} />
+                        <PlayerThumbnail playerName={item.fromName} size={40} />
                       </ConvoThumbHover>
-                    </MailMsgThumb>
-                    <MailMsgContent>
-                      <MailMsgHeader>
-                        <MailMsgName $mine={msg.isFromMe}>
-                          <ConvoNameHover onClick={(e) => openPlayerMenu(msgPlayer, e)}>{msg.fromName}</ConvoNameHover>
-                        </MailMsgName>
-                        <MailBubbleTime>{formatRelativeTime(msg.createdAt)}{hoverTime && ` · ${hoverTime}`}</MailBubbleTime>
-                      </MailMsgHeader>
-                      <MailBubbleBody>{msg.body}</MailBubbleBody>
-                    </MailMsgContent>
-                  </MailMessageRow>
+                    </MailBubbleAvatarSlot>
+                    <MailBubbleCol $mine={item.mine}>
+                      {item.msgs.map((msg) => (
+                        msg.body?.startsWith(GIF_URL_PREFIX) ? (
+                          <MailBubbleGifWrap key={msg.id}>
+                            <MailBubbleGifImg src={msg.body} alt="GIF" />
+                            <MailBubbleGifTime>{formatShortTime(msg.createdAt)}</MailBubbleGifTime>
+                          </MailBubbleGifWrap>
+                        ) : (
+                          <MailBubble key={msg.id} $mine={item.mine}>
+                            {msg.body}
+                            <MailBubbleTime $mine={item.mine}>{formatShortTime(msg.createdAt)}</MailBubbleTime>
+                          </MailBubble>
+                        )
+                      ))}
+                    </MailBubbleCol>
+                  </MailBubbleGroup>
                 );
               })}
               <div ref={messagesEndRef} />
             </MailMessageList>
             <MailReplyBox>
-              <MailReplyTextarea
-                value={mailReplyBody}
-                onChange={(e) => setMailReplyBody(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleMailReply(); }}
-                maxLength={2000}
-                placeholder="Write a reply… (Ctrl+Enter to send)"
-                disabled={mailReplySending}
-                rows={3}
-              />
               {mailReplyError && <MailReplyError>{mailReplyError}</MailReplyError>}
-              <MailReplyFooter>
-                <MailReplyCounter>{mailReplyBody.length}/2000</MailReplyCounter>
-                <PrimaryBtn onClick={handleMailReply} disabled={!mailReplyBody.trim() || mailReplySending}>
-                  {mailReplySending ? "Sending…" : "Send"}
-                </PrimaryBtn>
-              </MailReplyFooter>
+              <MailComposerBar>
+                <MailComposerIconBtn type="button" title="Emoji" onClick={toggleEmojiPicker}>
+                  😊
+                </MailComposerIconBtn>
+                <MailComposerIconBtn
+                  type="button"
+                  title="GIF"
+                  style={{ fontSize: 10, fontWeight: 800 }}
+                  onClick={toggleGifPicker}
+                >
+                  GIF
+                </MailComposerIconBtn>
+                <MailComposerIconBtn type="button" title="Attachments (coming soon)" disabled>
+                  <IconAttach />
+                </MailComposerIconBtn>
+                <MailComposerInput
+                  ref={replyInputRef}
+                  value={mailReplyBody}
+                  onChange={(e) => setMailReplyBody(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleMailReply(); } }}
+                  maxLength={2000}
+                  placeholder="Write a message…"
+                  disabled={mailReplySending}
+                />
+                <MailComposerSendBtn
+                  onClick={handleMailReply}
+                  disabled={!mailReplyBody.trim() || mailReplySending}
+                  title="Send"
+                >
+                  <IconSend />
+                </MailComposerSendBtn>
+              </MailComposerBar>
             </MailReplyBox>
+            {emojiPickerAnchor && createPortal(
+              <MailEmojiPickerWrap ref={emojiPickerRef} style={{ left: emojiPickerAnchor.left, bottom: emojiPickerAnchor.bottom }}>
+                <EmojiPicker
+                  theme="light"
+                  height={320}
+                  width={300}
+                  previewConfig={{ showPreview: false }}
+                  skinTonesDisabled
+                  onEmojiClick={(emojiData) => {
+                    setMailReplyBody(mailReplyBody + emojiData.emoji);
+                    setEmojiPickerAnchor(null);
+                    replyInputRef.current?.focus();
+                  }}
+                />
+              </MailEmojiPickerWrap>,
+              document.body
+            )}
+            {gifPickerAnchor && createPortal(
+              <GifPicker
+                wrapRef={gifPickerRef}
+                style={{ left: gifPickerAnchor.left, bottom: gifPickerAnchor.bottom }}
+                onSelect={(gif) => {
+                  setMailReplyBody(gif.file.hd.gif.url);
+                  setGifPickerAnchor(null);
+                  replyInputRef.current?.focus();
+                }}
+              />,
+              document.body
+            )}
           </>
         )}
       </MailDetailCol>
