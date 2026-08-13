@@ -3,8 +3,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
 import MapsModal from "./MapsModal";
-import AngelModal from "./AngelModal";
 import PlayerThumbnail from "./PlayerThumbnail";
+import AngelModal from "./AngelModal";
 import ChessWindow from "./ChessWindow";
 import ChessInviteNotification from "./ChessInviteNotification";
 import { fetchUnreadCount } from "../api/mail";
@@ -19,8 +19,32 @@ const CHESS_IDLE = {
   externalResult: null,
 };
 
+const ARC_ITEMS = [
+  { key: "store", label: "Store", icon: "/icons/shop.png" },
+  { key: "maps", label: "Maps", emoji: "🗺" },
+  { key: "quests", label: "Quests", emoji: "📜" },
+];
+
+// Buttons ride the ring's rim down its right side. The step keeps the chord
+// between neighbouring centres (2 * ARC_RADIUS * sin(step / 2) ≈ 50px) clear of
+// the 46px button diameter, and the end angle keeps the last button above the
+// name block below the ring.
+const ARC_START_DEG = -18;
+const ARC_STEP_DEG = 36;
+
+function arcPosition(index) {
+  const rad = ((ARC_START_DEG + index * ARC_STEP_DEG) * Math.PI) / 180;
+  const centre = S.RING_SIZE / 2;
+  return {
+    left: centre + S.ARC_RADIUS * Math.cos(rad) - S.ARC_BTN / 2,
+    top: centre + S.ARC_RADIUS * Math.sin(rad) - S.ARC_BTN / 2,
+  };
+}
+
 function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [membershipActive, setMembershipActive] = useState(false);
+  const menuRef = useRef(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
@@ -42,6 +66,18 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  // Close the settings panel when clicking anywhere outside the HUD stack
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [settingsOpen]);
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -210,6 +246,12 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     setShowChess(false);
   }, []);
 
+  const menuActions = {
+    store: () => setShowStore(true),
+    maps: () => setShowMaps(true),
+    quests: () => {},
+  };
+
   async function handleOpenProfile(user) {
     let data = user;
     if (user?.name && !user?.gender) {
@@ -313,81 +355,72 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       />
 
       <S.Container>
-        <S.LogoWrapper>
-          <img src="/Logo.png" className="logo-img" />
-        </S.LogoWrapper>
-
-        <S.TopBar>
-          <S.SidePanel>
-            <S.NavBubbleWrapper>
-              <S.NavButton onClick={() => setShowProfile(true)}>
-                <img src="/assets/menus/about.png" />
-                <span>Profile</span>
-              </S.NavButton>
-              {unreadCount > 0 && (
-                <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
-              )}
-            </S.NavBubbleWrapper>
-            <S.NavButton onClick={() => setShowStore(true)}>
-              <img src="/icons/shop.png" />
-              <span>Store</span>
-            </S.NavButton>
-            <S.NavButton onClick={() => setShowMaps(true)}>
-              <span className="nav-emoji">🗺</span>
-              <span>Maps</span>
-            </S.NavButton>
-            <S.NavButton onClick={() => {}}>
-              <span className="nav-emoji">📜</span>
-              <span>Quests</span>
-            </S.NavButton>
-          </S.SidePanel>
-
-          <S.PlayerCenter>
+        <S.PanelStack>
+          <S.AvatarRing onClick={() => setShowProfile(true)} title="Open profile">
             <S.AvatarFrame>
-              <PlayerThumbnail playerName={playerName} gender={gender} outfit={outfit} size={70} />
+              <PlayerThumbnail
+                playerName={playerName}
+                gender={gender}
+                outfit={outfit}
+                size={S.AVATAR_SIZE}
+              />
             </S.AvatarFrame>
+            <S.MembershipBadge
+              title={membershipActive ? "Membership active" : "No membership"}
+            >
+              <S.MembershipIcon $active={membershipActive} />
+            </S.MembershipBadge>
+            {unreadCount > 0 && (
+              <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
+            )}
+          </S.AvatarRing>
+
+          <S.NameBlock>
             <S.PlayerName>{playerName || "Player"}</S.PlayerName>
             <S.LevelSection>
-              <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
               <S.LevelTrack>
                 <S.LevelFill style={{ width: "35%" }} />
               </S.LevelTrack>
+              <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
             </S.LevelSection>
-          </S.PlayerCenter>
+          </S.NameBlock>
 
-          <S.SidePanel>
-            <S.CurrencyCol>
-              <S.Currency>
-                <img src="/icons/Nectar.png" alt="coins" />
-                <span>{(coins ?? 0).toLocaleString()}</span>
-              </S.Currency>
-              <S.Currency>
-                <img src="/icons/Lis.png" alt="gems" />
-                <span>{(gems ?? 0).toLocaleString()}</span>
-              </S.Currency>
-            </S.CurrencyCol>
-          </S.SidePanel>
-        </S.TopBar>
+          {ARC_ITEMS.map((item, i) => (
+            <S.ArcButton
+              key={item.key}
+              $index={i}
+              style={arcPosition(i)}
+              title={item.label}
+              onClick={() => menuActions[item.key]?.()}
+            >
+              {item.icon ? (
+                <img src={item.icon} alt={item.label} />
+              ) : (
+                <span className="nav-emoji">{item.emoji}</span>
+              )}
+            </S.ArcButton>
+          ))}
+        </S.PanelStack>
 
-        <S.SettingsWrapper>
+        <S.SettingsWrapper ref={menuRef}>
           {settingsOpen && (
-            <S.Dropdown>
+            <S.MenuDropdown>
+              <S.MembershipToggle
+                $active={membershipActive}
+                onClick={() => setMembershipActive((v) => !v)}
+              >
+                <span className="dot" />
+                Membership {membershipActive ? "On" : "Off"}
+              </S.MembershipToggle>
               <S.LogoutButton onClick={onLogout}>Logout</S.LogoutButton>
-            </S.Dropdown>
+            </S.MenuDropdown>
           )}
           <S.BottomButtons>
-            <S.SettingsBtn
-              onClick={() => setShowChess((v) => !v)}
-              title="Chess"
-              style={{ fontSize: "22px", color: "#fff" }}
-            >
-              ♟
-            </S.SettingsBtn>
             <S.SettingsBtn onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
               <span style={{ fontSize: "20px", color: "#fff" }}>{isFullscreen ? "⤡" : "⤢"}</span>
             </S.SettingsBtn>
-            <S.SettingsBtn onClick={() => setSettingsOpen((prev) => !prev)}>
-              <img src="/icons/settings.png" />
+            <S.SettingsBtn onClick={() => setSettingsOpen((v) => !v)} title="Settings">
+              <img src="/icons/settings.png" alt="Settings" />
             </S.SettingsBtn>
           </S.BottomButtons>
         </S.SettingsWrapper>

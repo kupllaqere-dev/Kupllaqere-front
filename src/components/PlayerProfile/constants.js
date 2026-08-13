@@ -72,6 +72,7 @@ export const LOOK_FEATURES = [
   { key: "nose",      label: "Nose" },
   { key: "mouth",     label: "Mouth" },
   { key: "beard",     label: "Beard" },
+  { key: "makeup",    label: "Makeup" },
 ];
 
 export const LOOK_FEATURE_CATEGORY = {
@@ -81,6 +82,7 @@ export const LOOK_FEATURE_CATEGORY = {
   nose:     "appearance",
   mouth:    "appearance",
   beard:    "appearance",
+  makeup:   "appearance",
 };
 
 export const LOOK_SKIN_COLORS = [
@@ -97,9 +99,13 @@ function hslToHex(h, s, l) {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
-export const LOOK_FEATURE_COLORS = Array.from({ length: 40 }, (_, i) =>
-  hslToHex((i * 360) / 40, 65, 50)
-);
+// 40 swatches = exactly 4 rows of 10 in the color grid.
+// Row 1: neutrals + browns; rows 2-4: an even sweep around the hue wheel.
+export const LOOK_FEATURE_COLORS = [
+  "#ffffff", "#d9d9d9", "#9a9a9a", "#4a4a4a", "#000000",
+  "#e3c496", "#c08f57", "#8b5a2b", "#5c3a1e", "#3b2314",
+  ...Array.from({ length: 30 }, (_, i) => hslToHex((i * 360) / 30, 65, 50)),
+];
 
 export const DEFAULT_BIO_SECTIONS = [
   {
@@ -166,4 +172,5 @@ export const LOOK_FEATURE_SUBCATEGORY = {
   nose:     "nose",
   mouth:    "mouth",
   beard:    "beard",
+  makeup:   "makeup",
 };

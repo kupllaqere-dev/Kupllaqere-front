@@ -13,105 +13,167 @@ export const Container = styled.div`
   pointer-events: none;
 `;
 
-export const LogoWrapper = styled.div`
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  pointer-events: none;
-
-  .logo-img {
-    width: 80px;
-    height: 80px;
-    object-fit: contain;
-    display: block;
+const dropIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(3px) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 `;
 
-export const TopBar = styled.div`
+const PANEL_BG = "#3b1478";
+const PANEL_BG_HOVER = "#4d1f9c";
+
+// Avatar geometry — the arc buttons are positioned from these in HUD.jsx
+export const AVATAR_SIZE = 138; // 1.5x the previous 92px thumbnail
+export const RING_SIZE = 162; // outer ring: avatar + its own background band
+export const ARC_BTN = 46; // matches the membership badge
+// Centres sit on the ring's rim, so the buttons straddle its edge and overlap
+// the avatar the same way the membership badge does.
+export const ARC_RADIUS = RING_SIZE / 2;
+
+export const PanelStack = styled.div`
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: flex-start;
+  top: 10px;
+  left: 10px;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 5;
 `;
 
-export const SidePanel = styled.div`
-  background: linear-gradient(160deg, rgba(80, 35, 170, 0.42), rgba(45, 12, 120, 0.5));
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 16px;
-  width: 240px;
-  height: 80px;
+export const AvatarRing = styled.div`
+  position: relative;
+  pointer-events: all;
+  cursor: pointer;
+  box-sizing: border-box;
+  width: ${RING_SIZE}px;
+  height: ${RING_SIZE}px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
-  pointer-events: all;
-  gap: 6px;
-  box-shadow:
-    0 6px 30px rgba(70, 20, 180, 0.35),
-    0 8px 16px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
-`;
+  flex-shrink: 0;
+  background: ${PANEL_BG};
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 
-export const PlayerCenter = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 10px;
-  pointer-events: none;
+  &:hover {
+    border-color: rgba(235, 210, 255, 0.95);
+    box-shadow:
+      0 0 10px rgba(180, 120, 255, 0.75),
+      0 0 26px rgba(140, 70, 245, 0.5);
+  }
+
+  &:active {
+    filter: brightness(0.55) saturate(0.8);
+    transform: scale(0.98);
+  }
 `;
 
 export const AvatarFrame = styled.div`
-  width: 80px;
-  height: 80px;
+  width: ${AVATAR_SIZE}px;
+  height: ${AVATAR_SIZE}px;
   border-radius: 50%;
-  border: 2px solid rgba(180, 120, 255, 0.55);
-  box-shadow:
-    0 0 0 1px rgba(180, 120, 255, 0.15),
-    0 0 20px rgba(123, 47, 247, 0.5);
+  border: 2px solid rgba(180, 120, 255, 0.75);
+  background: rgba(0, 0, 0, 0.22);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 4px;
+`;
+
+export const ArcButton = styled.div`
+  position: absolute;
+  width: ${ARC_BTN}px;
+  height: ${ARC_BTN}px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${PANEL_BG};
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: all;
+  box-sizing: border-box;
+  transition: background 0.2s ease, transform 0.15s ease;
+  animation: ${dropIn} 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: ${({ $index }) => $index * 70}ms;
+
+  img {
+    width: 24px;
+    height: 24px;
+    filter: brightness(0) invert(1);
+  }
+
+  .nav-emoji {
+    font-size: 21px;
+    line-height: 1;
+  }
+
+  &:hover {
+    background: ${PANEL_BG_HOVER};
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+`;
+
+export const NameBlock = styled.div`
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-left: 6px;
+  pointer-events: none;
 `;
 
 export const PlayerName = styled.div`
   color: rgba(240, 225, 255, 0.97);
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
-  margin-bottom: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
 `;
 
 export const LevelSection = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 `;
 
 export const PlayerLevel = styled.div`
   color: #f0c040;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.3px;
   white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
 `;
 
 export const LevelTrack = styled.div`
-  width: 80px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  width: 60px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
   overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
 `;
 
 export const LevelFill = styled.div`
@@ -121,79 +183,58 @@ export const LevelFill = styled.div`
   transition: width 0.3s ease;
 `;
 
-export const CurrencyCol = styled.div`
+export const MembershipBadge = styled.div`
+  position: absolute;
+  left: -2px;
+  bottom: 6px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: ${PANEL_BG};
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  box-sizing: border-box;
   display: flex;
-  flex-direction: row;
-  gap: 16px;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const MembershipIcon = styled.div`
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background-color: ${({ $active }) => ($active ? "#3fd469" : "#8b8b99")};
+  -webkit-mask: url("/assets/membership/membership.png") center / contain no-repeat;
+  mask: url("/assets/membership/membership.png") center / contain no-repeat;
+  transition: background-color 0.25s ease, filter 0.25s ease;
+  filter: ${({ $active }) => ($active ? "drop-shadow(0 0 6px rgba(63, 212, 105, 0.75))" : "none")};
+`;
+
+export const CurrencyGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  width: 160px;
+  flex-shrink: 0;
 `;
 
 export const Currency = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: rgba(225, 205, 255, 0.9);
-  font-size: 13px;
-  font-weight: 600;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(240, 228, 255, 0.97);
+  font-size: 19px;
+  font-weight: 700;
 
   img {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-export const NavBubbleWrapper = styled.div`
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-`;
-
-export const NavButton = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, rgba(90, 40, 180, 0.38), rgba(50, 15, 120, 0.45));
-  backdrop-filter: blur(16px);
-  border: 1px solid #fff;
-  box-shadow:
-    0 4px 20px rgba(70, 20, 180, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #fff;
-  flex-shrink: 0;
-
-  span {
-    display: none;
-  }
-
-  img {
-    width: 24px;
-    height: 24px;
-    filter: brightness(0) invert(1);
-  }
-
-  .nav-emoji {
-    display: flex;
-    font-size: 20px;
-    line-height: 1;
-  }
-
-  &:hover {
-    background: linear-gradient(145deg, rgba(110, 55, 210, 0.5), rgba(70, 25, 160, 0.55));
-    border-color: #fff;
-    box-shadow:
-      0 6px 28px rgba(90, 30, 220, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
-    transform: scale(1.06);
-  }
-
-  &:active {
-    transform: scale(0.94);
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 `;
 
@@ -218,13 +259,8 @@ export const SettingsBtn = styled.div`
   width: 50px;
   height: 50px;
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(90, 40, 180, 0.38), rgba(50, 15, 120, 0.45));
-  backdrop-filter: blur(16px);
+  background: ${PANEL_BG};
   border: 1px solid #fff;
-  box-shadow:
-    0 4px 20px rgba(70, 20, 180, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,13 +274,8 @@ export const SettingsBtn = styled.div`
   }
 
   &:hover {
-    background: linear-gradient(145deg, rgba(110, 55, 210, 0.5), rgba(70, 25, 160, 0.55));
+    background: ${PANEL_BG_HOVER};
     border-color: #fff;
-    box-shadow:
-      0 6px 28px rgba(90, 30, 220, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
-    transform: scale(1.06);
   }
 
   &:active {
@@ -252,15 +283,34 @@ export const SettingsBtn = styled.div`
   }
 `;
 
-export const Dropdown = styled.div`
+export const MembershipToggle = styled.button`
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: linear-gradient(145deg, #252525, #191919);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.65);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.16)" : "transparent")};
+  border: 1px solid ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.55)" : "rgba(255, 255, 255, 0.18)")};
+  color: ${({ $active }) => ($active ? "#6ff09a" : "#cfc2e8")};
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: ${({ $active }) => ($active ? "#3fd469" : "#8b8b99")};
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.24)" : "rgba(255, 255, 255, 0.08)")};
+  }
 `;
 
 export const LogoutButton = styled.button`
@@ -286,16 +336,30 @@ export const LogoutButton = styled.button`
   }
 `;
 
+export const MenuDropdown = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 190px;
+  box-sizing: border-box;
+  background: #250c50;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  padding: 8px;
+  pointer-events: all;
+  animation: ${dropIn} 0.25s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+`;
+
 export const NotifBadge = styled.div`
   position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 16px;
-  height: 16px;
+  top: 10px;
+  right: 10px;
+  min-width: 22px;
+  height: 22px;
   background: #e03131;
-  border-radius: 8px;
+  border-radius: 11px;
   border: 2px solid rgba(18, 18, 18, 0.9);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
   display: flex;

@@ -167,6 +167,7 @@ export default function MailTab({
   mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
   mailReplySending, mailReplyError, openMailThread, handleMailReply,
   onNewSend, onClearThread, onLoadMore, socket, onOpenProfile,
+  composeTarget, onComposeHandled, mailListsLoaded,
 }) {
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
@@ -286,6 +287,28 @@ export default function MailTab({
   const [newBody, setNewBody] = useState("");
   const [newSending, setNewSending] = useState(false);
   const [newError, setNewError] = useState(null);
+
+  // A "Message" click in the Friends tab hands us a recipient: open the existing
+  // thread with them, or drop into a pre-addressed new conversation.
+  useEffect(() => {
+    if (!composeTarget || !mailListsLoaded || mailLoading) return;
+    const existing = mailConversations.find(
+      (c) => String(c.otherParticipant.id) === String(composeTarget.id)
+    );
+    if (existing) {
+      setIsNew(false);
+      openMailThread(existing.threadId);
+    } else {
+      onClearThread();
+      setIsNew(true);
+      setNewToInput(composeTarget.name || "");
+      setNewResolved({ id: composeTarget.id, name: composeTarget.name });
+      setLookupStatus("found");
+      setNewBody("");
+      setNewError(null);
+    }
+    onComposeHandled?.();
+  }, [composeTarget, mailListsLoaded, mailLoading, mailConversations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mailThread) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

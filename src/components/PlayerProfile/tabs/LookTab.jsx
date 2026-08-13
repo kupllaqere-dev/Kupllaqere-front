@@ -6,8 +6,8 @@ import {
 import { HubPanelContainer } from "../styles";
 import {
   LookPanelInner, LookSidebar, LookNavItem, LookNavIcon, LookNavDivider, LookContent,
-  LookScrollArea, LookSectionTitle, LookGrid, LookItemCard, LookItemThumb, LookItemImg, LookItemName,
-  LookColorGrid, LookColorSwatch, LookEmptyMsg, LookPlaceholderThumb, LookPageNav, LookPageArrow, LookPageLabel,
+  LookScrollArea, LookGrid, LookItemCard, LookItemThumb, LookItemImg, LookItemName,
+  LookColorSection, LookColorGrid, LookColorSwatch, LookEmptyMsg, LookPlaceholderThumb, LookPageNav, LookPageArrow, LookPageLabel,
   LookSliderRow, LookSliderLabel, LookSlider, LookSliderValue,
 } from "./LookTab.styles";
 
@@ -81,9 +81,8 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
         <LookContent>
           <LookScrollArea>
             {activeKey === "skin" && (
-              <div>
-                <LookSectionTitle>Skin Color</LookSectionTitle>
-                <LookGrid style={{ marginTop: 10 }}>
+              <LookColorSection>
+                <LookColorGrid>
                   {LOOK_SKIN_COLORS.map(color => (
                     <LookColorSwatch
                       key={color}
@@ -95,41 +94,37 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
                       title={color}
                     />
                   ))}
-                </LookGrid>
-              </div>
+                </LookColorGrid>
+              </LookColorSection>
             )}
 
             {activeKey === "size" && (
-              <div>
-                <LookSectionTitle>Body Size</LookSectionTitle>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
-                  <LookSliderRow>
-                    <LookSliderLabel>Width</LookSliderLabel>
-                    <LookSlider
-                      type="range" min={0} max={100}
-                      value={avatarWidth}
-                      onChange={e => setAvatarWidth(Number(e.target.value))}
-                    />
-                    <LookSliderValue>{avatarWidth}</LookSliderValue>
-                  </LookSliderRow>
-                  <LookSliderRow>
-                    <LookSliderLabel>Height</LookSliderLabel>
-                    <LookSlider
-                      type="range" min={0} max={100}
-                      value={avatarHeight}
-                      onChange={e => setAvatarHeight(Number(e.target.value))}
-                    />
-                    <LookSliderValue>{avatarHeight}</LookSliderValue>
-                  </LookSliderRow>
-                </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <LookSliderRow>
+                  <LookSliderLabel>Width</LookSliderLabel>
+                  <LookSlider
+                    type="range" min={0} max={100}
+                    value={avatarWidth}
+                    onChange={e => setAvatarWidth(Number(e.target.value))}
+                  />
+                  <LookSliderValue>{avatarWidth}</LookSliderValue>
+                </LookSliderRow>
+                <LookSliderRow>
+                  <LookSliderLabel>Height</LookSliderLabel>
+                  <LookSlider
+                    type="range" min={0} max={100}
+                    value={avatarHeight}
+                    onChange={e => setAvatarHeight(Number(e.target.value))}
+                  />
+                  <LookSliderValue>{avatarHeight}</LookSliderValue>
+                </LookSliderRow>
               </div>
             )}
 
             {activeFeature && (
               <>
                 <div>
-                  <LookSectionTitle>{activeFeature.label} Style</LookSectionTitle>
-                  <LookGrid style={{ marginTop: 10 }}>
+                  <LookGrid>
                     {invLoading && <LookEmptyMsg>Loading…</LookEmptyMsg>}
                     {!invLoading && pageSlots.map((item, i) => {
                       if (!item) {
@@ -172,9 +167,8 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
                   </LookPageNav>
                 </div>
 
-                <div>
-                  <LookSectionTitle>{activeFeature.label} Color</LookSectionTitle>
-                  <LookColorGrid style={{ marginTop: 10 }}>
+                <LookColorSection>
+                  <LookColorGrid>
                     {LOOK_FEATURE_COLORS.map(color => (
                       <LookColorSwatch
                         key={color}
@@ -187,7 +181,7 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
                       />
                     ))}
                   </LookColorGrid>
-                </div>
+                </LookColorSection>
               </>
             )}
           </LookScrollArea>

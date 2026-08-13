@@ -97,9 +97,7 @@ export const ProfileWrapper = styled.div`
   display: flex;
   flex-direction: row;
   overflow: hidden;
-  background: url('/water.png') center / 100% 100% no-repeat;
-  backdrop-filter: blur(30px) saturate(170%);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  background: #33363c;
   border-radius: 40px;
   border: 1.5px solid rgba(255,255,255,0.4);
   box-shadow:
@@ -1103,20 +1101,23 @@ export const ProfileOuter = styled.div`
   }
 `;
 
+/* Seated inside the wrapper's 40px corner: the circle is inset far enough along
+   the diagonal that its edge tracks the border's curve. */
 export const GlobalCloseBtn = styled.button`
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 22px;
+  right: 22px;
   z-index: 30;
   background: ${"var(--pp-card)"};
   border: 1px solid ${"var(--pp-border)"};
   border-radius: 50%;
-  width: 30px; height: 30px;
+  width: 42px; height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${"var(--pp-txt3)"};
-  font-size: 18px;
+  font-size: 26px;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;

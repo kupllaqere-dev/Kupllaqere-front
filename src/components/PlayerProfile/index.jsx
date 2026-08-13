@@ -49,7 +49,6 @@ import LookTab from "./tabs/LookTab";
 import WishlistTab from "./tabs/WishlistTab";
 import ThemesTab from "./tabs/ThemesTab";
 import GuestbookTab from "./tabs/GuestbookTab";
-import ClubTab from "./tabs/ClubTab";
 import { InvItemsArea } from "./tabs/InventoryTab";
 
 import {
@@ -167,6 +166,7 @@ export default function PlayerProfile({
   const [mailReplyBody, setMailReplyBody] = useState("");
   const [mailReplySending, setMailReplySending] = useState(false);
   const [mailReplyError, setMailReplyError] = useState(null);
+  const [mailComposeTarget, setMailComposeTarget] = useState(null);
 
   const [friendsTab, setFriendsTab] = useState("friends");
   const [friendsData, setFriendsData] = useState(null);
@@ -696,6 +696,14 @@ export default function PlayerProfile({
     loadFriendsData();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Friends tab → "Message": jump to Mail with that player queued as the recipient.
+  // MailTab picks the target up once its conversation list has loaded.
+  const handleMessagePlayer = useCallback((player) => {
+    if (!player?.id) return;
+    setMailComposeTarget({ id: player.id, name: player.name });
+    setActiveTab("mail");
+  }, []);
+
   useEffect(() => {
     if ((activeTab !== "inventory" && activeTab !== "look") || invLoaded) return;
     setInvLoading(true);
@@ -1134,10 +1142,6 @@ export default function PlayerProfile({
                       <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
                       <BookmarkLabel $active={activeTab === "guestbook"}>Guestbook</BookmarkLabel>
                     </BookmarkTab>
-                    <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
-                      <BookmarkIconImg $active={activeTab === "club"} $src="/assets/profile-icons/club.png" />
-                      <BookmarkLabel $active={activeTab === "club"}>Club</BookmarkLabel>
-                    </BookmarkTab>
                   </>
                 ) : (
                   <>
@@ -1148,10 +1152,6 @@ export default function PlayerProfile({
                     <BookmarkTab $active={activeTab === "guestbook"} onClick={() => setActiveTab("guestbook")} title="Guestbook">
                       <BookmarkIconImg $active={activeTab === "guestbook"} $src="/assets/menus/guestbook.png" />
                       <BookmarkLabel $active={activeTab === "guestbook"}>Guestbook</BookmarkLabel>
-                    </BookmarkTab>
-                    <BookmarkTab $active={activeTab === "club"} onClick={() => setActiveTab("club")} title="Club">
-                      <BookmarkIconImg $active={activeTab === "club"} $src="/assets/profile-icons/club.png" />
-                      <BookmarkLabel $active={activeTab === "club"}>Club</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab onClick={handleLikeBtn} disabled={likeBusy || !currentUserId} title={likeState.liked ? "Liked" : "Like"}>
                       <BookmarkIcon>{likeState.liked ? "♥" : "♡"}</BookmarkIcon>
@@ -1247,10 +1247,6 @@ export default function PlayerProfile({
                   />
                 </div>
 
-                <div style={{ display: activeTab === "club" ? "contents" : "none" }}>
-                  <ClubTab />
-                </div>
-
                 {isSelfView && (
                   <div style={{ display: activeTab === "mail" ? "contents" : "none" }}>
                     <MailTab
@@ -1267,6 +1263,9 @@ export default function PlayerProfile({
                       onNewSend={handleNewMailSend}
                       onClearThread={() => setMailThread(null)}
                       onLoadMore={handleLoadMoreMessages}
+                      composeTarget={mailComposeTarget}
+                      onComposeHandled={() => setMailComposeTarget(null)}
+                      mailListsLoaded={mailListsLoaded}
                       socket={socket}
                       onOpenProfile={onOpenProfile}
                     />
@@ -1287,6 +1286,7 @@ export default function PlayerProfile({
                       declineFriend={declineFriend}
                       socket={socket}
                       onOpenProfile={onOpenProfile}
+                      onMessage={handleMessagePlayer}
                     />
                   </div>
                 )}

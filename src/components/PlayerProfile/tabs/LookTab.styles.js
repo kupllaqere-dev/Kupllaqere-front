@@ -19,6 +19,7 @@ export const LookSidebar = styled.div`
   gap: 6px;
   padding: 18px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
   ${thinScrollbar}
 `;
 
@@ -88,19 +89,12 @@ export const LookScrollArea = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   ${thinScrollbar}
-`;
-
-export const LookSectionTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: ${"var(--pp-txt3)"};
-  text-transform: uppercase;
-  letter-spacing: 0.9px;
 `;
 
 export const LookGrid = styled.div`
@@ -109,10 +103,19 @@ export const LookGrid = styled.div`
   gap: 12px;
 `;
 
+// Takes the leftover height under the item grid and centers the swatches in it.
+export const LookColorSection = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+// Fixed 10-wide grid so the 40 feature colors always land on exactly 4 rows.
 export const LookColorGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(10, 46px);
+  gap: 7px;
 `;
 
 export const LookItemCard = styled.div`
@@ -149,7 +152,7 @@ export const LookItemImg = styled.img`
 `;
 
 export const LookItemName = styled.div`
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 600;
   color: ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-txt2)"};
   text-align: center;
@@ -160,17 +163,17 @@ export const LookItemName = styled.div`
 `;
 
 export const LookColorSwatch = styled.div`
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 10px;
+  width: 46px;
+  height: 46px;
+  border-radius: 9px;
   background: ${({ $color }) => $color};
   border: 1.5px solid ${({ $selected }) => $selected ? "var(--pp-accent)" : "var(--pp-border)"};
-  box-shadow: ${({ $selected }) => $selected ? "0 0 0 2px rgba(var(--pp-accent-rgb),0.22)" : "none"};
+  box-shadow: ${({ $selected }) => $selected ? "inset 0 0 0 2px rgba(var(--pp-accent-rgb),0.5)" : "none"};
   cursor: pointer;
-  transition: border-color 0.14s, box-shadow 0.14s, transform 0.1s;
+  transition: border-color 0.14s, box-shadow 0.14s;
   &:hover {
     border-color: var(--pp-accent);
-    transform: scale(1.03);
+    box-shadow: inset 0 0 0 2px rgba(var(--pp-accent-rgb),0.35);
   }
 `;
 
