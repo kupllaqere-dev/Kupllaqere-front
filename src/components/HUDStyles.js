@@ -31,13 +31,9 @@ const dropIn = keyframes`
 const PANEL_BG = "#3b1478";
 const PANEL_BG_HOVER = "#4d1f9c";
 
-// Avatar geometry — the arc buttons are positioned from these in HUD.jsx
 export const AVATAR_SIZE = 138; // 1.5x the previous 92px thumbnail
-export const RING_SIZE = 162; // outer ring: avatar + its own background band
-export const ARC_BTN = 46; // matches the membership badge
-// Centres sit on the ring's rim, so the buttons straddle its edge and overlap
-// the avatar the same way the membership badge does.
-export const ARC_RADIUS = RING_SIZE / 2;
+const RING_SIZE = 162; // outer ring: avatar + its own background band
+const ICON_BTN = 60;
 
 export const PanelStack = styled.div`
   position: absolute;
@@ -49,6 +45,18 @@ export const PanelStack = styled.div`
   align-items: flex-start;
   gap: 10px;
   z-index: 5;
+`;
+
+export const TopRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+`;
+
+export const ButtonRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 `;
 
 export const AvatarRing = styled.div`
@@ -93,10 +101,10 @@ export const AvatarFrame = styled.div`
   flex-shrink: 0;
 `;
 
-export const ArcButton = styled.div`
-  position: absolute;
-  width: ${ARC_BTN}px;
-  height: ${ARC_BTN}px;
+export const IconButton = styled.div`
+  width: ${ICON_BTN}px;
+  height: ${ICON_BTN}px;
+  flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -112,13 +120,13 @@ export const ArcButton = styled.div`
   animation-delay: ${({ $index }) => $index * 70}ms;
 
   img {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     filter: brightness(0) invert(1);
   }
 
   .nav-emoji {
-    font-size: 21px;
+    font-size: 28px;
     line-height: 1;
   }
 
@@ -131,103 +139,74 @@ export const ArcButton = styled.div`
   }
 `;
 
-export const NameBlock = styled.div`
-  width: 112px;
+// Sits over the bottom of the avatar ring, hanging below its lower edge.
+export const NamePlate = styled.div`
+  position: absolute;
+  left: 50%;
+  bottom: -28px;
+  transform: translateX(-50%);
+  width: 152px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding-left: 6px;
+  background: ${PANEL_BG};
+  border-radius: 20px;
+  overflow: hidden;
   pointer-events: none;
 `;
 
+export const NameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 12px 7px;
+  min-width: 0;
+`;
+
 export const PlayerName = styled.div`
+  flex: 1;
   color: rgba(240, 225, 255, 0.97);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
-`;
-
-export const LevelSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 7px;
 `;
 
 export const PlayerLevel = styled.div`
   color: #f0c040;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.3px;
   white-space: nowrap;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
-`;
-
-export const LevelTrack = styled.div`
-  width: 60px;
-  height: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-  overflow: hidden;
   flex-shrink: 0;
-  box-sizing: border-box;
 `;
 
-export const LevelFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #f0c040, #f5a623);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-`;
-
-export const MembershipBadge = styled.div`
+export const CurrencyBar = styled.div`
   position: absolute;
-  left: -2px;
-  bottom: 6px;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: ${PANEL_BG};
-  border: 2px solid rgba(255, 255, 255, 0.65);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-export const MembershipIcon = styled.div`
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  background-color: ${({ $active }) => ($active ? "#3fd469" : "#8b8b99")};
-  -webkit-mask: url("/assets/membership/membership.png") center / contain no-repeat;
-  mask: url("/assets/membership/membership.png") center / contain no-repeat;
-  transition: background-color 0.25s ease, filter 0.25s ease;
-  filter: ${({ $active }) => ($active ? "drop-shadow(0 0 6px rgba(63, 212, 105, 0.75))" : "none")};
-`;
-
-export const CurrencyGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  width: 160px;
-  flex-shrink: 0;
-`;
-
-export const Currency = styled.div`
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: rgba(240, 228, 255, 0.97);
-  font-size: 19px;
+  pointer-events: all;
+  z-index: 5;
+`;
+
+export const CurrencyChip = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 142px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #7d7d89, #43434d);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 18px;
   font-weight: 700;
 
   img {
@@ -235,6 +214,37 @@ export const Currency = styled.div`
     height: 28px;
     object-fit: contain;
     flex-shrink: 0;
+  }
+
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+`;
+
+export const BuyButton = styled.button`
+  height: 56px;
+  padding: 0 28px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffb44e, #ee7107);
+  border: 1px solid rgba(255, 226, 175, 0.75);
+  color: #fff;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  text-shadow: 0 2px 3px rgba(120, 50, 0, 0.55);
+  transition: filter 0.18s ease, transform 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.09);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 `;
 
@@ -283,14 +293,14 @@ export const SettingsBtn = styled.div`
   }
 `;
 
-export const MembershipToggle = styled.button`
+export const DropdownButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.16)" : "transparent")};
-  border: 1px solid ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.55)" : "rgba(255, 255, 255, 0.18)")};
-  color: ${({ $active }) => ($active ? "#6ff09a" : "#cfc2e8")};
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cfc2e8;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -300,16 +310,13 @@ export const MembershipToggle = styled.button`
   white-space: nowrap;
   transition: all 0.18s ease;
 
-  .dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: ${({ $active }) => ($active ? "#3fd469" : "#8b8b99")};
-    flex-shrink: 0;
+  &:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
   }
 
-  &:hover {
-    background: ${({ $active }) => ($active ? "rgba(63, 212, 105, 0.24)" : "rgba(255, 255, 255, 0.08)")};
+  &:active {
+    transform: scale(0.96);
   }
 `;
 
