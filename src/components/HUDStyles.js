@@ -33,7 +33,10 @@ const PANEL_BG_HOVER = "#4d1f9c";
 
 export const AVATAR_SIZE = 138; // 1.5x the previous 92px thumbnail
 const RING_SIZE = 162; // outer ring: avatar + its own background band
-const ICON_BTN = 60;
+const ICON_BTN = 88; // hit box; leaves room around the icon for the hover outline
+const ICON_ART = 80;
+
+const HOVER_SCALE = 1.14; // how much the icon grows on hover
 
 export const PanelStack = styled.div`
   position: absolute;
@@ -105,33 +108,29 @@ export const IconButton = styled.div`
   width: ${ICON_BTN}px;
   height: ${ICON_BTN}px;
   flex-shrink: 0;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${PANEL_BG};
-  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: none;
+  border: none;
   color: #fff;
   cursor: pointer;
   pointer-events: all;
   box-sizing: border-box;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition: transform 0.15s ease;
   animation: ${dropIn} 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: ${({ $index }) => $index * 70}ms;
 
   img {
-    width: 32px;
-    height: 32px;
-    filter: brightness(0) invert(1);
+    width: ${ICON_ART}px;
+    height: ${ICON_ART}px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+    transition: transform 0.12s ease;
   }
 
-  .nav-emoji {
-    font-size: 28px;
-    line-height: 1;
-  }
-
-  &:hover {
-    background: ${PANEL_BG_HOVER};
+  &:hover img {
+    transform: scale(${HOVER_SCALE});
   }
 
   &:active {

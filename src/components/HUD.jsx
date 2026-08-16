@@ -2,6 +2,7 @@ import * as S from "./HUDStyles";
 import { useState, useCallback, useEffect, useRef } from "react";
 import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
+import SettingsPanel from "./SettingsPanel";
 import MapsModal from "./MapsModal";
 import PlayerThumbnail from "./PlayerThumbnail";
 import AngelModal from "./AngelModal";
@@ -20,14 +21,16 @@ const CHESS_IDLE = {
 };
 
 const NAV_ITEMS = [
-  { key: "store", label: "Store", icon: "/icons/shop.png" },
-  { key: "maps", label: "Maps", emoji: "🗺" },
-  { key: "quests", label: "Quests", emoji: "📜" },
+  { key: "store", label: "Store", icon: "/assets/ui-icons/Store.png" },
+  { key: "maps", label: "Maps", icon: "/assets/ui-icons/Map.png" },
+  { key: "quests", label: "Quests", icon: "/assets/ui-icons/Quests.png" },
+  { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
@@ -233,6 +236,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     store: () => setShowStore(true),
     maps: () => setShowMaps(true),
     quests: () => {},
+    news: () => {},
   };
 
   async function handleOpenProfile(user) {
@@ -294,6 +298,15 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           socket={socket}
           level={viewingProfile.level}
           popularity={viewingProfile.popularity}
+        />
+      )}
+      {showSettings && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+          playerName={playerName}
+          email={email}
+          isGuest={isGuest}
+          role={role}
         />
       )}
       {showMaps && <MapsModal onClose={() => setShowMaps(false)} />}
@@ -365,14 +378,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                 <S.IconButton
                   key={item.key}
                   $index={i}
-                  title={item.label}
                   onClick={() => menuActions[item.key]?.()}
                 >
-                  {item.icon ? (
-                    <img src={item.icon} alt={item.label} />
-                  ) : (
-                    <span className="nav-emoji">{item.emoji}</span>
-                  )}
+                  <img src={item.icon} alt={item.label} />
                 </S.IconButton>
               ))}
             </S.ButtonRow>
@@ -394,6 +402,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <S.SettingsWrapper ref={menuRef}>
           {settingsOpen && (
             <S.MenuDropdown>
+              <S.DropdownButton onClick={() => { setShowSettings(true); setSettingsOpen(false); }}>
+                <span>⚙</span>
+                Settings
+              </S.DropdownButton>
               <S.DropdownButton onClick={toggleFullscreen}>
                 <span>{isFullscreen ? "⤡" : "⤢"}</span>
                 {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}

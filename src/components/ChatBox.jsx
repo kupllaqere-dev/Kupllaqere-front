@@ -10,7 +10,7 @@ const BAR_H     = 34;
 const MIN_H     = 220;
 const DEF_H     = 400;
 const MAX_H     = 780;
-const FLASH_H   = 200;
+const FLASH_H   = 130;
 const FLASH_MS  = 10000;
 
 const THEME_BG      = "rgba(0, 0, 0, 0.38)";
@@ -50,7 +50,7 @@ const Bar = styled.button`
   background: ${THEME_BG};
   border: ${THEME_BORDER};
   border-bottom: none;
-  border-radius: 14px 14px 0 0;
+  border-radius: 0;
   color: rgba(242, 238, 255, 0.5);
   font-family: ${FONT};
   font-size: 11px;
@@ -62,22 +62,6 @@ const Bar = styled.button`
   box-shadow: ${THEME_SHADOW};
   transition: color 0.15s, background 0.15s;
   &:hover { color: ${THEME_TEXT}; background: rgba(0, 0, 0, 0.55); }
-`;
-
-const UnreadBadge = styled.span`
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: rgba(232,121,249,0.85);
-  color: #1a1030;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 `;
 
 /* ─── Flash overlay (collapsed) ─────────────────────────────── */
@@ -98,9 +82,9 @@ const FlashLayer = styled.div`
   overflow: hidden;
   background: linear-gradient(
     to top,
-    rgba(90, 96, 112, 0.55) 0%,
-    rgba(90, 96, 112, 0.32) 45%,
-    rgba(90, 96, 112, 0) 100%
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.08) 22%,
+    rgba(255, 255, 255, 0) 55%
   );
 `;
 
@@ -402,7 +386,6 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
   const [text, setText] = useState("");
   const [whisperTarget, setWhisperTarget] = useState(null);
   const [flashes, setFlashes] = useState([]);
-  const [unread, setUnread] = useState(0);
   const [localErrors, setLocalErrors] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [playerMenu, setPlayerMenu] = useState(null);
@@ -475,7 +458,6 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
     }));
 
     setFlashes(prev => [...prev, ...entries].slice(-6));
-    if (!openRef.current) setUnread(u => u + entries.length);
 
     const timer = setTimeout(() => {
       const keys = new Set(entries.map(e => e.key));
@@ -500,7 +482,6 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
   function openChat() {
     instantScrollRef.current = true;
     setOpen(true);
-    setUnread(0);
   }
 
   /* ── Scrolling ── */
@@ -796,7 +777,6 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
         <Bar type="button" onClick={openChat} title="Open chat">
           <IconChevron dir="up" size={16} />
           Chat
-          {unread > 0 && <UnreadBadge>{unread > 99 ? "99+" : unread}</UnreadBadge>}
         </Bar>
       )}
 

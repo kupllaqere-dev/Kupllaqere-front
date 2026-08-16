@@ -221,6 +221,9 @@ function App() {
           selectedBadge={user?.selectedBadge || null}
           onSaveBadge={handleSaveBadge}
           currentUserId={user?.id || null}
+          email={user?.email || ""}
+          isGuest={user?.isGuest ?? false}
+          role={user?.role || "player"}
           socket={gameSocket}
           coins={user?.coins ?? 0}
           gems={user?.gems ?? 0}
