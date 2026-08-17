@@ -32,14 +32,14 @@ export async function fetchItems() {
   return res.json(); // expects { items: [...] }
 }
 
-export async function updateOutfit(outfit) {
+export async function updateOutfit(outfit, skinColor = null) {
   const res = await fetch(`${API}/api/items/outfit`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(),
     },
-    body: JSON.stringify({ outfit }),
+    body: JSON.stringify({ outfit, skinColor }),
   });
   if (!res.ok) throw new Error("Failed to update outfit");
   return res.json();
@@ -71,5 +71,5 @@ export async function fetchOutfit() {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch outfit");
-  return res.json(); // expects { outfit: { tops: { itemId, imageUrl }, ... } }
+  return res.json(); // expects { outfit: { tops: { itemId, imageUrl }, ... }, skinColor }
 }

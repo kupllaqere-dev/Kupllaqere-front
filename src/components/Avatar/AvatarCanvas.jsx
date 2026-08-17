@@ -6,10 +6,11 @@ import { useAvatarCanvas } from "./useAvatarCanvas.js";
 //   gender    — "female" | "male"
 //   outfit    — outfit object from Game state (slot → { itemId, imageUrl })
 //   poseIndex — 0-5, which idle pose to display (default 0)
+//   skinColor — "#rrggbb" skin tint, or null for the base sprite's own tone
 //   scale     — CSS scale multiplier (default 1)
 //   style     — extra inline styles
-export default function AvatarCanvas({ gender, outfit, poseIndex = 0, scale = 1, style }) {
-  const canvasRef = useAvatarCanvas(gender, outfit, poseIndex);
+export default function AvatarCanvas({ gender, outfit, poseIndex = 0, skinColor = null, scale = 1, style }) {
+  const canvasRef = useAvatarCanvas(gender, outfit, poseIndex, skinColor);
 
   return (
     <canvas

@@ -57,8 +57,8 @@ export default class SocketManager {
     this.socket.on("player:move", callback);
   }
 
-  sendOutfitChange(outfit) {
-    this.socket.emit("player:outfit", { outfit });
+  sendOutfitChange(outfit, skinColor = null) {
+    this.socket.emit("player:outfit", { outfit, skinColor });
   }
 
   onPlayerOutfit(callback) {

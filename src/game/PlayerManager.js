@@ -37,6 +37,7 @@ export default class PlayerManager {
     sprite.setScale(initialScale);
     sprite.setDepth(data.y);
     sprite.gender       = data.gender;
+    sprite.skinColor    = data.skinColor || null;
     sprite.currentScale = initialScale;
 
     sprite.setInteractive({ pixelPerfect: true });
@@ -80,7 +81,7 @@ export default class PlayerManager {
 
     const avatarSys = this.worldAvatarSystem;
     if (avatarSys) {
-      avatarSys.rebuild(data.id, data.gender, data.outfit || {}).then(key => {
+      avatarSys.rebuild(data.id, data.gender, data.outfit || {}, sprite.skinColor).then(key => {
         if (!sprite.scene) return;
         sprite.setTexture(key);
         sprite._animKey = (name) => avatarSys.animKey(data.id, name);
@@ -88,11 +89,12 @@ export default class PlayerManager {
     }
   }
 
-  applyOutfit(id, gender, outfit) {
+  applyOutfit(id, gender, outfit, skinColor) {
     const other    = this.otherPlayers.get(id);
     const avatarSys = this.worldAvatarSystem;
     if (!other || !avatarSys) return;
-    avatarSys.rebuild(id, gender, outfit).then(key => {
+    if (skinColor !== undefined) other.sprite.skinColor = skinColor || null;
+    avatarSys.rebuild(id, gender, outfit, other.sprite.skinColor).then(key => {
       if (!other.sprite.scene) return;
       other.sprite.setTexture(key);
       other.sprite._animKey = (name) => avatarSys.animKey(id, name);

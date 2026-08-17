@@ -17,6 +17,7 @@ export default function ChessWindow({
   playerName,
   gender,
   outfit,
+  skinColor = null,
   myRating,
 }) {
   const [showPlayerList, setShowPlayerList] = useState(false);
@@ -59,6 +60,7 @@ export default function ChessWindow({
                   playerName={opponent.name}
                   gender={opponent.gender || "female"}
                   outfit={opponent.outfit || {}}
+                  skinColor={opponent.skinColor || null}
                   size={54}
                 />
               </S.CardAvatar>
@@ -89,6 +91,7 @@ export default function ChessWindow({
               playerName={playerName}
               gender={gender}
               outfit={outfit}
+              skinColor={skinColor}
               size={54}
             />
           </S.CardAvatar>

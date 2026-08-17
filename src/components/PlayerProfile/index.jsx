@@ -31,7 +31,7 @@ import {
 import ComposeMailModal from "../ComposeMailModal";
 import AvatarCanvas from "../Avatar/AvatarCanvas";
 import { avatarCompositor } from "../../game/avatar/AvatarCompositor";
-import { getSlotKey, getConflictSlots } from "../../game/avatar/LayerConfig.js";
+import { getSlotKey, getConflictSlots, BASE_SKIN_TONE } from "../../game/avatar/LayerConfig.js";
 
 import {
   BADGES,
@@ -72,6 +72,7 @@ export default function PlayerProfile({
   playerName,
   outfit,
   gender,
+  skinColor = null,
   selectedBadge = null,
   onSaveBadge,
   currentUserId = null,
@@ -132,6 +133,7 @@ export default function PlayerProfile({
   const POSE_COUNT = POSE_ORDER.length;
 
   const [lookSelectedEntries, setLookSelectedEntries] = useState({});
+  const [lookSkinColor, setLookSkinColor] = useState(skinColor || BASE_SKIN_TONE);
 
   const [invItems, setInvItems] = useState([]);
   const [invLoading, setInvLoading] = useState(false);
@@ -204,6 +206,9 @@ export default function PlayerProfile({
     }
     return outfit || {};
   }, [activeTab, outfit, equipped, invSelectedEntries, lookSelectedEntries, invLoaded]);
+
+  // Skin tint shown in the avatar stage — follows the Look tab's pending pick.
+  const displaySkinColor = activeTab === "look" ? lookSkinColor : (skinColor || BASE_SKIN_TONE);
 
   useEffect(() => { if (activeTab !== "profile") setAboutMeEditMode(false); }, [activeTab]);
 
@@ -500,6 +505,7 @@ export default function PlayerProfile({
   // Look tab: reset/init selections on tab enter; reinit once inventory loads
   useEffect(() => {
     if (activeTab !== "look") return;
+    setLookSkinColor(skinColor || BASE_SKIN_TONE);
     if (!invLoaded) { setLookSelectedEntries({}); return; }
     const initial = {};
     for (const feat of LOOK_FEATURES) {
@@ -797,7 +803,7 @@ export default function PlayerProfile({
     setLookSelectedEntries(prev => ({ ...prev, [featureKey]: entry || null }));
   };
 
-  const lookHasChanges = LOOK_FEATURES.some(feat => {
+  const lookHasChanges = lookSkinColor !== (skinColor || BASE_SKIN_TONE) || LOOK_FEATURES.some(feat => {
     const entry = lookSelectedEntries[feat.key];
     if (entry === undefined) return false;
     const equippedId = equipped?.[feat.key];
@@ -815,10 +821,11 @@ export default function PlayerProfile({
       if (entry) equippedSlots[feat.key] = entry;
       else if (entry === null) clearSlots.push(feat.key);
     }
-    onApplyLookBatch?.(equippedSlots, clearSlots);
+    onApplyLookBatch?.(equippedSlots, clearSlots, lookSkinColor);
   };
 
   const lookHandleReset = () => {
+    setLookSkinColor(skinColor || BASE_SKIN_TONE);
     const initial = {};
     for (const feat of LOOK_FEATURES) {
       const itemId = equipped?.[feat.key];
@@ -849,8 +856,8 @@ export default function PlayerProfile({
       ...(outfit || {}),
       [slotKey]: { itemId: entry.itemId ?? entry._id, imageUrl: entry.imageUrl },
     };
-    avatarCompositor.compositeIdle(gender || "female", previewOutfit).catch(() => {});
-  }, [outfit, gender]);
+    avatarCompositor.compositeIdle(gender || "female", previewOutfit, skinColor || BASE_SKIN_TONE).catch(() => {});
+  }, [outfit, gender, skinColor]);
 
   const invIsSelected = entry =>
     invSelectedEntries[getSlotKey(entry.category, entry.subcategory)]?._id?.toString() === entry._id?.toString();
@@ -1002,6 +1009,7 @@ export default function PlayerProfile({
                     gender={gender || "female"}
                     outfit={displayOutfit}
                     poseIndex={poseIndex}
+                    skinColor={displaySkinColor}
                     style={{ width: "100%", height: "100%" }}
                   />
                 </div>
@@ -1298,6 +1306,8 @@ export default function PlayerProfile({
                       invLoading={invLoading}
                       lookSelectedEntries={lookSelectedEntries}
                       onSelectItem={lookSelectEntry}
+                      skinColor={lookSkinColor}
+                      onSelectSkinColor={setLookSkinColor}
                     />
                   </div>
                 )}

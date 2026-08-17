@@ -22,7 +22,7 @@ import { getSlotKey, getConflictSlots, LAYER_ORDER } from "../game/avatar/LayerC
 const SPAWN_X = MAP_WIDTH / 2;
 const SPAWN_Y = MAP_HEIGHT * 0.65;
 
-export default function Game({ user, onEquippedChange, onOutfitChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady, onOnlinePlayersChange }) {
+export default function Game({ user, onEquippedChange, onOutfitChange, onSkinColorChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady, onOnlinePlayersChange }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const mpRef = useRef(null);
@@ -35,6 +35,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
   const [loadingReady, setLoadingReady] = useState(false);
   const equippedRef = useRef({});
   const outfitRef = useRef({});
+  const skinColorRef = useRef(null);
   const outfitSaveTimerRef = useRef(null);
   const pendingOutfitPayloadRef = useRef(null);
   const chatBoxRef = useRef(null);
@@ -59,6 +60,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
       const outfitData = await fetchOutfit().catch(() => null);
       if (cancelled) return;
       const savedOutfit = outfitData?.outfit || null;
+      skinColorRef.current = outfitData?.skinColor || null;
+      onSkinColorChange?.(skinColorRef.current);
       setLoadProgress(p => Math.max(p, 0.1));
 
       socketManager = new SocketManager();
@@ -140,7 +143,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
         localSpriteRef.current = localP.sprite;
 
         // Build composited avatar; sprite shows base character until ready.
-        avatarSys.rebuild("local", gender, outfitRef.current).then(key => {
+        avatarSys.rebuild("local", gender, outfitRef.current, skinColorRef.current).then(key => {
           if (!localP.sprite.scene) return;
           localP.sprite.setTexture(key);
           localP.sprite._animKey = name => avatarSys.animKey("local", name);
@@ -229,12 +232,15 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
-    mp?.sendOutfitChange(nextOutfit);
+    mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
     _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
-    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
+    outfitSaveTimerRef.current = setTimeout(
+      () => updateOutfit(pendingOutfitPayloadRef.current, skinColorRef.current).catch(() => {}),
+      50,
+    );
   }, []);
 
   const handleUnequip = useCallback((slotKey) => {
@@ -250,16 +256,24 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
-    mp?.sendOutfitChange(nextOutfit);
+    mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
     _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
-    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
+    outfitSaveTimerRef.current = setTimeout(
+      () => updateOutfit(pendingOutfitPayloadRef.current, skinColorRef.current).catch(() => {}),
+      50,
+    );
   }, []);
 
-  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots) => {
+  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots, skinColor) => {
     const mp = mpRef.current;
+
+    if (skinColor !== undefined) {
+      skinColorRef.current = skinColor || null;
+      onSkinColorChange?.(skinColorRef.current);
+    }
 
     const next = { ...equippedRef.current };
     for (const slotKey of clearSlots) delete next[slotKey];
@@ -277,12 +291,15 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     outfitRef.current = nextOutfit;
     onOutfitChange(nextOutfit);
 
-    mp?.sendOutfitChange(nextOutfit);
+    mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
     _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
-    outfitSaveTimerRef.current = setTimeout(() => updateOutfit(pendingOutfitPayloadRef.current).catch(() => {}), 50);
+    outfitSaveTimerRef.current = setTimeout(
+      () => updateOutfit(pendingOutfitPayloadRef.current, skinColorRef.current).catch(() => {}),
+      50,
+    );
   }, []);
 
   // Rebuilds the local player's Phaser texture whenever outfit changes.
@@ -291,7 +308,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
     const sprite    = localSpriteRef.current;
     if (!avatarSys || !sprite) return;
     const gender = user?.gender || "female";
-    avatarSys.rebuild("local", gender, outfit).then(key => {
+    avatarSys.rebuild("local", gender, outfit, skinColorRef.current).then(key => {
       if (!sprite.scene) return;
       sprite.setTexture(key);
       sprite._animKey = name => avatarSys.animKey("local", name);
@@ -417,6 +434,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, equipRef,
           playerName={viewedProfile.name}
           outfit={viewedProfile.outfit}
           gender={viewedProfile.gender}
+          skinColor={viewedProfile.skinColor ?? null}
           bio={viewedProfile.bio}
           selectedBadge={viewedProfile.selectedBadge}
           currentUserId={user?.id || null}

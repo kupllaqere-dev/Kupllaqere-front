@@ -4,7 +4,7 @@ import { FRAME_W, FRAME_H, ANIM_DEFS } from "./LayerConfig.js";
 export default class WorldAvatarSystem {
   #scene;
   #pending = new Map(); // playerId → Promise<string>
-  #queued  = new Map(); // playerId → { gender, outfit, resolve, reject }
+  #queued  = new Map(); // playerId → { gender, outfit, skinColor, resolve, reject }
 
   constructor(scene) {
     this.#scene = scene;
@@ -13,15 +13,15 @@ export default class WorldAvatarSystem {
   // Builds (or rebuilds) the composited texture for a player.
   // If a build is already in-flight, the new outfit is queued so the latest
   // outfit is always applied — rapid equip/unequip sequences won't be dropped.
-  async rebuild(playerId, gender, outfit) {
+  async rebuild(playerId, gender, outfit, skinColor = null) {
     if (this.#pending.has(playerId)) {
       return new Promise((resolve, reject) => {
-        this.#queued.set(playerId, { gender, outfit, resolve, reject });
+        this.#queued.set(playerId, { gender, outfit, skinColor, resolve, reject });
       });
     }
 
     const p = avatarCompositor
-      .composite(gender, outfit)
+      .composite(gender, outfit, skinColor)
       .then(canvas => {
         const scene = this.#scene;
         const key = `av_${playerId}`;
@@ -50,7 +50,7 @@ export default class WorldAvatarSystem {
     const q = this.#queued.get(playerId);
     if (!q) return;
     this.#queued.delete(playerId);
-    this.rebuild(playerId, q.gender, q.outfit).then(q.resolve).catch(q.reject);
+    this.rebuild(playerId, q.gender, q.outfit, q.skinColor).then(q.resolve).catch(q.reject);
   }
 
   // Returns the Phaser animation key for a given player + animation name.

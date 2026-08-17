@@ -54,6 +54,7 @@ export default class MultiplayerHandler {
             y:             p.y    ?? 700,
             gender:        p.gender || "female",
             outfit:        p.outfit || {},
+            skinColor:     p.skinColor || null,
             userId:        p.userId || null,
             selectedBadge: p.selectedBadge || null,
           });
@@ -76,6 +77,7 @@ export default class MultiplayerHandler {
           y:             data.y    ?? 700,
           gender:        data.gender || "female",
           outfit:        data.outfit || {},
+          skinColor:     data.skinColor || null,
           userId:        data.userId || null,
           selectedBadge: data.selectedBadge || null,
         });
@@ -98,7 +100,7 @@ export default class MultiplayerHandler {
     socket.onPlayerOutfit((data) => {
       const other = this.playerManager?.otherPlayers.get(data.id);
       if (!other) return;
-      this.playerManager.applyOutfit(data.id, other.sprite.gender, data.outfit || {});
+      this.playerManager.applyOutfit(data.id, other.sprite.gender, data.outfit || {}, data.skinColor ?? null);
     });
 
     socket.onPlayerBio((data) => {
@@ -135,8 +137,8 @@ export default class MultiplayerHandler {
     });
   }
 
-  sendOutfitChange(outfit) {
-    this.socket.sendOutfitChange(outfit);
+  sendOutfitChange(outfit, skinColor = null) {
+    this.socket.sendOutfitChange(outfit, skinColor);
   }
 
   sendMove(data) {

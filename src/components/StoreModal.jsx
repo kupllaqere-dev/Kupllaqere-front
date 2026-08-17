@@ -73,7 +73,7 @@ const RARITY = {
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
-function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurchaseComplete }) {
+function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, skinColor = null, onPurchaseComplete }) {
   const [view, setView] = useState("home");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
@@ -104,8 +104,8 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
     if (!item?.imageUrl) return;
     const slotKey = item.category === "appearance" ? item.subcategory : item.category;
     const outfit = { ...previewOutfitRef.current, [slotKey]: { itemId: item.itemId ?? item._id, imageUrl: item.imageUrl } };
-    avatarCompositor.compositeIdle(gender, outfit).catch(() => {});
-  }, [gender]);
+    avatarCompositor.compositeIdle(gender, outfit, skinColor).catch(() => {});
+  }, [gender, skinColor]);
 
   const previewItem = useCallback((item) => {
     clearTimeout(previewTimerRef.current);
@@ -472,6 +472,7 @@ function StoreModal({ onClose, gender, coins, gems, level, currentOutfit, onPurc
                 gender={gender || "female"}
                 outfit={previewOutfit}
                 poseIndex={pose}
+                skinColor={skinColor}
                 scale={320 / 390}
               />
             </AvatarArea>

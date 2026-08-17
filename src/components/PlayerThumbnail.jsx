@@ -11,35 +11,41 @@ const appearanceCache = new Map();
 function fetchAppearance(playerName) {
   if (appearanceCache.has(playerName)) return appearanceCache.get(playerName);
   const promise = lookupUser(playerName)
-    .then(user => ({ gender: user?.gender ?? "female", outfit: user?.outfit ?? {} }))
+    .then(user => ({
+      gender:    user?.gender ?? "female",
+      outfit:    user?.outfit ?? {},
+      skinColor: user?.skinColor ?? null,
+    }))
     .catch(() => null);
   appearanceCache.set(playerName, promise);
   return promise;
 }
 
-export default function PlayerThumbnail({ playerName, gender: genderProp, outfit: outfitProp, size = 36 }) {
+export default function PlayerThumbnail({ playerName, gender: genderProp, outfit: outfitProp, skinColor: skinColorProp = null, size = 36 }) {
   const canvasRef = useRef(null);
   // Track which key the canvas was last drawn for
   const [drawnKey, setDrawnKey] = useState(null);
-  const currentKey = `${playerName}|${genderProp}|${size}|${JSON.stringify(outfitProp)}`;
+  const currentKey = `${playerName}|${genderProp}|${skinColorProp}|${size}|${JSON.stringify(outfitProp)}`;
   const ready = drawnKey === currentKey;
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      let gender = genderProp;
-      let outfit = outfitProp;
+      let gender    = genderProp;
+      let outfit    = outfitProp;
+      let skinColor = skinColorProp;
 
       if (!gender && playerName) {
         const data = await fetchAppearance(playerName);
         if (cancelled || !data) return;
-        gender = data.gender;
-        outfit = data.outfit;
+        gender    = data.gender;
+        outfit    = data.outfit;
+        skinColor = data.skinColor;
       }
       if (!gender) return;
 
-      const baked = await avatarCompositor.compositeIdle(gender, outfit ?? {});
+      const baked = await avatarCompositor.compositeIdle(gender, outfit ?? {}, skinColor);
       if (cancelled) return;
 
       const canvas = canvasRef.current;

@@ -20,12 +20,11 @@ const NAV_ITEMS = [
 const ITEM_PAGE_SIZE = 10;
 const ITEM_PAGE_COUNT = 2;
 
-export default function LookTab({ invItems = [], invLoading, lookSelectedEntries = {}, onSelectItem }) {
+export default function LookTab({ invItems = [], invLoading, lookSelectedEntries = {}, onSelectItem, skinColor, onSelectSkinColor }) {
   const [activeKey, setActiveKey] = useState("skin");
   const [itemPage, setItemPage] = useState(0);
   const [avatarWidth, setAvatarWidth] = useState(50);
   const [avatarHeight, setAvatarHeight] = useState(50);
-  const [skinColor, setSkinColor] = useState(LOOK_SKIN_COLORS[0]);
   const [featureColors, setFeatureColors] = useState({});
 
   const handleSelectCategory = (key) => {
@@ -90,7 +89,7 @@ export default function LookTab({ invItems = [], invLoading, lookSelectedEntries
                       tabIndex={0}
                       $color={color}
                       $selected={skinColor === color}
-                      onClick={() => setSkinColor(color)}
+                      onClick={() => onSelectSkinColor(color)}
                       title={color}
                     />
                   ))}

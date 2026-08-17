@@ -5,7 +5,7 @@ import { FRAME_W, FRAME_H, ROWS, POSE_REMAP } from "../../game/avatar/LayerConfi
 // Composites an avatar onto a <canvas> ref.
 // poseIndex: 0-5, selects one of the 6 idle poses (remapped via POSE_REMAP).
 // Returns a ref to attach to a <canvas width={CROP_W} height={CROP_H}> element.
-export function useAvatarCanvas(gender, outfit, poseIndex = 0) {
+export function useAvatarCanvas(gender, outfit, poseIndex = 0, skinColor = null) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export function useAvatarCanvas(gender, outfit, poseIndex = 0) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    avatarCompositor.compositeIdle(gender, outfit).then(baked => {
+    avatarCompositor.compositeIdle(gender, outfit, skinColor).then(baked => {
       if (cancelled) return;
       const ctx = canvas.getContext("2d");
       const col = POSE_REMAP[poseIndex] ?? 0;
@@ -24,7 +24,7 @@ export function useAvatarCanvas(gender, outfit, poseIndex = 0) {
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [gender, outfit, poseIndex]);
+  }, [gender, outfit, poseIndex, skinColor]);
 
   return canvasRef;
 }

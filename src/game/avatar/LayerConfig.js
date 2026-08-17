@@ -115,6 +115,11 @@ export const BASE_SPRITES = {
   male:   "/assets/character-bases/men-test.png",
 };
 
+// The flat skin tone both character bases are painted in (~65% of their opaque
+// pixels). Skin recolouring multiplies each channel by target/BASE_SKIN_TONE,
+// so shading and outlines keep their relationship to the flat tone.
+export const BASE_SKIN_TONE = "#e5b28a";
+
 // UI crop: visible area within a single 510×900 frame
 export const CROP_X = 60;
 export const CROP_W = 390;

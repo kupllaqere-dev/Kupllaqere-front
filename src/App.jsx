@@ -50,6 +50,7 @@ function App() {
   });
   const [equipped, setEquipped] = useState({});
   const [outfit, setOutfit] = useState({});
+  const [skinColor, setSkinColor] = useState(null);
   const [gameSocket, setGameSocket] = useState(null);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [kickMessage, setKickMessage] = useState(null);
@@ -126,8 +127,8 @@ function App() {
     unequipRef.current?.(category);
   }, []);
 
-  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots) => {
-    applyLookBatchRef.current?.(equippedSlots, clearSlots);
+  const handleApplyLookBatch = useCallback((equippedSlots, clearSlots, skinColor) => {
+    applyLookBatchRef.current?.(equippedSlots, clearSlots, skinColor);
   }, []);
 
   const handleSaveBio = useCallback(async (bio) => {
@@ -213,6 +214,7 @@ function App() {
           user={user}
           onEquippedChange={setEquipped}
           onOutfitChange={setOutfit}
+          onSkinColorChange={setSkinColor}
           equipRef={equipRef}
           unequipRef={unequipRef}
           applyLookBatchRef={applyLookBatchRef}
@@ -228,6 +230,7 @@ function App() {
           playerName={user?.name}
           gender={user?.gender}
           outfit={outfit}
+          skinColor={skinColor}
           bio={user?.bio || ""}
           onSaveBio={handleSaveBio}
           selectedBadge={user?.selectedBadge || null}

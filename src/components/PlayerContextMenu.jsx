@@ -226,6 +226,7 @@ const PlayerContextMenu = forwardRef(function PlayerContextMenu({
         userId: other.userId,
         name: playerMenu.name,
         gender: other.sprite.gender,
+        skinColor: other.sprite.skinColor ?? null,
         outfit: lm?.getFullOutfit(playerMenu.id) ?? {},
         bio: other.bio || "",
         selectedBadge: other.selectedBadge || null,

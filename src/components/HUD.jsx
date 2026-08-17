@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -249,6 +249,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       name: data?.name ?? "",
       outfit: data?.outfit ?? {},
       gender: data?.gender ?? "girl",
+      skinColor: data?.skinColor ?? null,
       bio: data?.bio ?? "",
       selectedBadge: data?.selectedBadge ?? null,
       level: data?.level ?? 1,
@@ -264,6 +265,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           playerName={playerName}
           outfit={outfit}
           gender={gender}
+          skinColor={skinColor}
           bio={bio}
           onSaveBio={onSaveBio}
           selectedBadge={selectedBadge}
@@ -290,6 +292,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           playerName={viewingProfile.name}
           outfit={viewingProfile.outfit}
           gender={viewingProfile.gender}
+          skinColor={viewingProfile.skinColor ?? null}
           bio={viewingProfile.bio}
           selectedBadge={viewingProfile.selectedBadge}
           currentUserId={currentUserId}
@@ -319,6 +322,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           gems={gems ?? 0}
           level={level ?? 1}
           currentOutfit={outfit}
+          skinColor={skinColor}
           onPurchaseComplete={onPurchaseComplete}
         />
       )}
@@ -338,6 +342,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           playerName={playerName}
           gender={gender}
           outfit={outfit}
+          skinColor={skinColor}
           myRating={chessRating}
         />
       )}
@@ -353,25 +358,28 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
       <S.Container>
         <S.PanelStack>
           <S.TopRow>
-            <S.AvatarRing onClick={() => setShowProfile(true)} title="Open profile">
-              <S.AvatarFrame>
-                <PlayerThumbnail
-                  playerName={playerName}
-                  gender={gender}
-                  outfit={outfit}
-                  size={S.AVATAR_SIZE}
-                />
-              </S.AvatarFrame>
-              {unreadCount > 0 && (
-                <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
-              )}
+            <S.AvatarBlock>
+              <S.AvatarRing onClick={() => setShowProfile(true)} title="Open profile">
+                <S.AvatarFrame>
+                  <PlayerThumbnail
+                    playerName={playerName}
+                    gender={gender}
+                    outfit={outfit}
+                    skinColor={skinColor}
+                    size={S.AVATAR_SIZE}
+                  />
+                </S.AvatarFrame>
+                {unreadCount > 0 && (
+                  <S.NotifBadge>{unreadCount > 99 ? "99+" : unreadCount}</S.NotifBadge>
+                )}
+              </S.AvatarRing>
               <S.NamePlate>
                 <S.NameRow>
                   <S.PlayerName>{playerName || "Player"}</S.PlayerName>
                   <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
                 </S.NameRow>
               </S.NamePlate>
-            </S.AvatarRing>
+            </S.AvatarBlock>
 
             <S.ButtonRow>
               {NAV_ITEMS.map((item, i) => (

@@ -1,3 +1,5 @@
+import { BASE_SKIN_TONE } from "../../game/avatar/LayerConfig";
+
 export const FRAME_W = 510;
 export const FRAME_H = 900;
 export const ZOOM_LEVELS = [1, 1.2, 1.4, 1.6, 1.8];
@@ -85,8 +87,10 @@ export const LOOK_FEATURE_CATEGORY = {
   makeup:   "appearance",
 };
 
+// BASE_SKIN_TONE is the tone the character bases are painted in, so that swatch
+// renders the avatar untinted — every other one is a ratio tint against it.
 export const LOOK_SKIN_COLORS = [
-  "#ffe0bd", "#ffcd94", "#eeac81", "#e0ac69", "#c68642",
+  "#ffe0bd", "#ffcd94", BASE_SKIN_TONE, "#e0ac69", "#c68642",
   "#a56b3f", "#8d5524", "#6b4226", "#4a2c1c", "#3a2116",
 ];
 

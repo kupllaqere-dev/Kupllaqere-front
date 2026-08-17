@@ -62,6 +62,16 @@ export const ButtonRow = styled.div`
   gap: 12px;
 `;
 
+// Wraps the ring + nameplate so the ring's hover/active effects (filter and
+// transform cascade to descendants) stay off the name and level.
+export const AvatarBlock = styled.div`
+  position: relative;
+  width: ${RING_SIZE}px;
+  height: ${RING_SIZE}px;
+  flex-shrink: 0;
+  pointer-events: none;
+`;
+
 export const AvatarRing = styled.div`
   position: relative;
   pointer-events: all;
@@ -142,7 +152,7 @@ export const IconButton = styled.div`
 export const NamePlate = styled.div`
   position: absolute;
   left: 50%;
-  bottom: -28px;
+  bottom: -18px;
   transform: translateX(-50%);
   width: 152px;
   box-sizing: border-box;
