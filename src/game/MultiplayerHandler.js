@@ -5,6 +5,7 @@ export default class MultiplayerHandler {
     this.socket  = socketManager;
     this.cb      = callbacks;
     this.onlinePlayersRef = [];
+    this.onNameUpdate  = null;
     this.onBioUpdate   = null;
     this.onBadgeUpdate = null;
 
@@ -101,6 +102,19 @@ export default class MultiplayerHandler {
       const other = this.playerManager?.otherPlayers.get(data.id);
       if (!other) return;
       this.playerManager.applyOutfit(data.id, other.sprite.gender, data.outfit || {}, data.skinColor ?? null);
+    });
+
+    socket.onPlayerName((data) => {
+      const name = data.name || "";
+      this.onNameUpdate?.(data.userId, name);
+
+      cb.setOnlinePlayers(prev => {
+        const next = prev.map(p => (p.id === data.id ? { ...p, name } : p));
+        this.onlinePlayersRef = next;
+        return next;
+      });
+
+      this.playerManager?.updateName(data.id, name);
     });
 
     socket.onPlayerBio((data) => {

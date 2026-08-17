@@ -65,6 +65,10 @@ export default class SocketManager {
     this.socket.on("player:outfit", callback);
   }
 
+  onPlayerName(callback) {
+    this.socket.on("player:name", callback);
+  }
+
   onPlayerBio(callback) {
     this.socket.on("player:bio", callback);
   }

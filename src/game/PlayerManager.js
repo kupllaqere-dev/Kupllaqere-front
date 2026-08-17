@@ -45,7 +45,10 @@ export default class PlayerManager {
     sprite.on("pointerout",  () => sprite.postFX.clear());
     sprite.on("pointerdown", (pointer) => {
       if (this.onPlayerClick) {
-        this.onPlayerClick(data.id, data.name, pointer.event.clientX, pointer.event.clientY, data.userId);
+        // Read the name off the entry rather than `data` — it can be renamed
+        // after the sprite was created (see updateName).
+        const current = this.otherPlayers.get(data.id)?.name ?? data.name;
+        this.onPlayerClick(data.id, current, pointer.event.clientX, pointer.event.clientY, data.userId);
       }
     });
 
@@ -64,6 +67,7 @@ export default class PlayerManager {
       shadowImg,
       nameText,
       badgeIcon:    null,
+      name:         data.name         || "",
       userId:       data.userId       || null,
       bio:          data.bio          || "",
       selectedBadge: data.selectedBadge || null,
@@ -99,6 +103,14 @@ export default class PlayerManager {
       other.sprite.setTexture(key);
       other.sprite._animKey = (name) => avatarSys.animKey(id, name);
     }).catch(() => {});
+  }
+
+  updateName(id, name) {
+    const other = this.otherPlayers.get(id);
+    if (!other) return;
+    other.name = name;
+    other.nameText.setText(name || "???");
+    if (other.badgeIcon?.visible) layoutNameBadge(other.badgeIcon, other.nameText);
   }
 
   updateBadge(scene, id, badge) {

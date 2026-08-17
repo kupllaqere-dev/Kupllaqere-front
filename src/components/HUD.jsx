@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -307,6 +307,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <SettingsPanel
           onClose={() => setShowSettings(false)}
           playerName={playerName}
+          onSaveName={onSaveName}
           email={email}
           isGuest={isGuest}
           role={role}

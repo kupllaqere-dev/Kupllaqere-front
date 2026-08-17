@@ -59,6 +59,17 @@ export async function lookupUser(name) {
   ).then((d) => d.user);
 }
 
+export async function updateName(name) {
+  return apiFetch("/api/auth/name", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token()}`,
+    },
+    body: JSON.stringify({ name }),
+  }); // { name }
+}
+
 export async function updateBio(bio) {
   return apiFetch("/api/auth/bio", {
     method: "PATCH",

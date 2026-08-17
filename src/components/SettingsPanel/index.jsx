@@ -58,15 +58,23 @@ function currentPalette() {
   return PALETTES[0];
 }
 
+const NAME_MAX = 20;
+
 export default function SettingsPanel({
   onClose,
   playerName = "",
+  onSaveName,
   email = "",
   isGuest = false,
   role = "player",
 }) {
   const [activeTab, setActiveTab] = useState("account");
   const [privacy, setPrivacy] = useState(loadPrivacy);
+
+  const [nameFormOpen, setNameFormOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameMsg, setNameMsg] = useState(null); // { text, error }
 
   const [resetBusy, setResetBusy] = useState(false);
   const [resetMsg, setResetMsg] = useState(null); // { text, error }
@@ -84,6 +92,32 @@ export default function SettingsPanel({
       savePrivacy(next);
       return next;
     });
+  };
+
+  // Takes effect straight away — no confirmation step for now.
+  const handleChangeName = async () => {
+    const value = newName.trim();
+    if (nameBusy) return;
+    if (!value) {
+      setNameMsg({ text: "Enter a name.", error: true });
+      return;
+    }
+    if (value === playerName) {
+      setNameMsg({ text: "That is already your name.", error: true });
+      return;
+    }
+    setNameBusy(true);
+    setNameMsg(null);
+    try {
+      await onSaveName?.(value);
+      setNameMsg({ text: `Your name is now ${value}.`, error: false });
+      setNewName("");
+      setNameFormOpen(false);
+    } catch (err) {
+      setNameMsg({ text: err.message || "Could not change your name.", error: true });
+    } finally {
+      setNameBusy(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -160,10 +194,46 @@ export default function SettingsPanel({
                   <FieldRow>
                     <div>
                       <FieldLabel>In-game name</FieldLabel>
-                      <FieldHint>Your display name is permanent.</FieldHint>
+                      <FieldHint>Shown under your character and to other players.</FieldHint>
                     </div>
                     <FieldValue>{playerName || "—"}</FieldValue>
                   </FieldRow>
+
+                  <FieldRow>
+                    <div>
+                      <FieldLabel>Change name</FieldLabel>
+                      <FieldHint>Applies right away. Names have to be unique.</FieldHint>
+                      {nameMsg && <Message $error={nameMsg.error}>{nameMsg.text}</Message>}
+                    </div>
+                    <ActionBtn
+                      $primary={nameFormOpen}
+                      onClick={() => {
+                        setNameFormOpen(v => !v);
+                        setNewName("");
+                        setNameMsg(null);
+                      }}
+                    >
+                      {nameFormOpen ? "Cancel" : "Change Name"}
+                    </ActionBtn>
+                  </FieldRow>
+
+                  {nameFormOpen && (
+                    <InlineForm>
+                      <InlineFormRow>
+                        <Input
+                          type="text"
+                          value={newName}
+                          placeholder="New name"
+                          maxLength={NAME_MAX}
+                          onChange={(e) => setNewName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleChangeName(); }}
+                        />
+                        <ActionBtn $primary onClick={handleChangeName} disabled={nameBusy}>
+                          {nameBusy ? "Saving…" : "Save Name"}
+                        </ActionBtn>
+                      </InlineFormRow>
+                    </InlineForm>
+                  )}
 
                   <FieldRow>
                     <div>

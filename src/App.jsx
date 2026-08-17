@@ -5,7 +5,7 @@ import Login from "./components/Login";
 import CharacterSetup from "./components/CharacterSetup";
 import AuthFlow from "./auth/AuthFlow";
 import { readAuthParams, isAuthLink } from "./auth/authLink";
-import { updateBio, updateBadge, getMe } from "./api/auth";
+import { updateName, updateBio, updateBadge, getMe } from "./api/auth";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
 
@@ -131,6 +131,16 @@ function App() {
     applyLookBatchRef.current?.(equippedSlots, clearSlots, skinColor);
   }, []);
 
+  const handleSaveName = useCallback(async (name) => {
+    const result = await updateName(name);
+    setUser((prev) => {
+      const next = { ...prev, name: result.name };
+      localStorage.setItem("fv_user", JSON.stringify(next));
+      return next;
+    });
+    return result.name;
+  }, []);
+
   const handleSaveBio = useCallback(async (bio) => {
     const result = await updateBio(bio);
     setUser((prev) => {
@@ -228,6 +238,7 @@ function App() {
           onUnequip={handleUnequip}
           onApplyLookBatch={handleApplyLookBatch}
           playerName={user?.name}
+          onSaveName={handleSaveName}
           gender={user?.gender}
           outfit={outfit}
           skinColor={skinColor}

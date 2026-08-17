@@ -44,6 +44,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   // Phaser-side refs — written in create(), read in React callbacks.
   const worldAvatarSystemRef = useRef(null);
   const localSpriteRef = useRef(null);
+  const localPlayerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +81,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         setOnlinePlayers,
       });
 
+      mp.onNameUpdate = (userId, name) => {
+        setViewedProfile(prev =>
+          prev && String(prev.userId) === String(userId) ? { ...prev, name } : prev
+        );
+      };
       mp.onBioUpdate = (userId, bio) => {
         setViewedProfile(prev =>
           prev && String(prev.userId) === String(userId) ? { ...prev, bio } : prev
@@ -141,6 +147,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         const gender = user?.gender || "female";
         const localP = createLocalPlayer(this, SPAWN_X, SPAWN_Y, user?.name || "Player", gender);
         localSpriteRef.current = localP.sprite;
+        localPlayerRef.current = localP;
 
         // Build composited avatar; sprite shows base character until ready.
         avatarSys.rebuild("local", gender, outfitRef.current, skinColorRef.current).then(key => {
@@ -323,6 +330,12 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   useEffect(() => {
     onOnlinePlayersChange?.(onlinePlayers);
   }, [onlinePlayers, onOnlinePlayersChange]);
+
+  // Renaming from Settings only updates App's user — repaint our own nameplate.
+  // Other clients get the change over the socket (see MultiplayerHandler).
+  useEffect(() => {
+    localPlayerRef.current?.nameText?.setText(user?.name || "Player");
+  }, [user?.name]);
 
   const handleSend = useCallback((text) => {
     socketRef.current?.sendChatMessage(text);
