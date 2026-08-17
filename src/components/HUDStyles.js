@@ -224,26 +224,38 @@ export const CurrencyChip = styled.div`
 `;
 
 export const BuyButton = styled.button`
+  position: relative;
+  width: 103px;
   height: 56px;
-  padding: 0 28px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffb44e, #ee7107);
-  border: 1px solid rgba(255, 226, 175, 0.75);
-  color: #fff;
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
+  padding: 0;
+  border: none;
+  background: none;
   cursor: pointer;
-  text-shadow: 0 2px 3px rgba(120, 50, 0, 0.55);
-  transition: filter 0.18s ease, transform 0.15s ease;
 
-  &:hover {
-    filter: brightness(1.09);
+  /* Noshop.png (idle) and Shop.png (hover) are both 640x640 with the button
+     body at x 21-618, y 180-505. Scaled to 110px the body measures 103x56 and
+     the offsets seat it in the box; the hover art's glow spills outside. */
+  img {
+    position: absolute;
+    left: -3.6px;
+    top: -30.9px;
+    width: 110px;
+    height: 110px;
+    pointer-events: none;
   }
 
-  &:active {
-    transform: scale(0.96);
+  img[data-state="hover"] {
+    visibility: hidden;
+  }
+
+  &:hover img[data-state="hover"],
+  &:active img[data-state="hover"] {
+    visibility: visible;
+  }
+
+  &:hover img[data-state="idle"],
+  &:active img[data-state="idle"] {
+    visibility: hidden;
   }
 `;
 

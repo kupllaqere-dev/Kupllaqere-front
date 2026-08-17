@@ -3,6 +3,8 @@ import Game from "./components/Game";
 import HUD from "./components/HUD";
 import Login from "./components/Login";
 import CharacterSetup from "./components/CharacterSetup";
+import AuthFlow from "./auth/AuthFlow";
+import { readAuthParams, isAuthLink } from "./auth/authLink";
 import { updateBio, updateBadge, getMe } from "./api/auth";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
@@ -30,6 +32,9 @@ function gameRootStyle(scale) {
 
 function App() {
   const scale = useScaling();
+  // Read before anything else touches the URL — see src/auth/authLink.js.
+  const [authParams] = useState(readAuthParams);
+  const handlingAuthLink = isAuthLink(authParams);
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("fv_user");
     const token = localStorage.getItem("fv_token");
@@ -72,6 +77,9 @@ function App() {
   // If there's a session but no stored user, fetch the profile from the backend.
   // If there's already a user but a Supabase session exists, refresh the stored token.
   useEffect(() => {
+    // On /auth/* the AuthFlow screen owns the URL and the session it carries.
+    if (handlingAuthLink) return;
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (window.location.href.includes("#")) {
         window.history.replaceState(null, "", window.location.pathname);
@@ -185,6 +193,10 @@ function App() {
     gameSocket.socket.on("user:balance_update", handler);
     return () => gameSocket.socket.off("user:balance_update", handler);
   }, [gameSocket]);
+
+  if (handlingAuthLink) {
+    return <AuthFlow params={authParams} />;
+  }
 
   if (!user) {
     return <Login onLogin={handleLogin} kickMessage={kickMessage} onKickMessageClear={() => setKickMessage(null)} />;

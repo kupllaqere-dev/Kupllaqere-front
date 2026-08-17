@@ -396,7 +396,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
             <img src="/icons/Lis.png" alt="lis" />
             <span>{(gems ?? 0).toLocaleString()}</span>
           </S.CurrencyChip>
-          <S.BuyButton onClick={() => setShowStore(true)}>BUY</S.BuyButton>
+          <S.BuyButton onClick={() => setShowStore(true)} aria-label="Shop">
+            <img src="/assets/ui-icons/Noshop.png" alt="" data-state="idle" />
+            <img src="/assets/ui-icons/Shop.png" alt="" data-state="hover" />
+          </S.BuyButton>
         </S.CurrencyBar>
 
         <S.SettingsWrapper ref={menuRef}>

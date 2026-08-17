@@ -1,5 +1,6 @@
 import { useState } from "react";
 import supabase from "../../lib/supabase";
+import { authCallbackUrl } from "../../auth/authLink";
 import { Overlay, ProfileOuter, GlobalCloseBtn } from "../PlayerProfile/styles";
 import { PALETTES, paletteToVars } from "../PlayerProfile/themes";
 import {
@@ -91,7 +92,7 @@ export default function SettingsPanel({
     setResetMsg(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin,
+        redirectTo: authCallbackUrl("recovery"),
       });
       if (error) throw error;
       setResetMsg({ text: `Reset link sent to ${email}.`, error: false });
@@ -116,7 +117,10 @@ export default function SettingsPanel({
     setEmailBusy(true);
     setEmailMsg(null);
     try {
-      const { error } = await supabase.auth.updateUser({ email: value });
+      const { error } = await supabase.auth.updateUser(
+        { email: value },
+        { emailRedirectTo: authCallbackUrl("email_change") },
+      );
       if (error) throw error;
       setEmailMsg({ text: `Confirmation link sent to ${value}. The change applies once you confirm it.`, error: false });
       setNewEmail("");
