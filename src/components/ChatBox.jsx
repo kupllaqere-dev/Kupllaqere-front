@@ -10,8 +10,9 @@ const BAR_H     = 34;
 const MIN_H     = 220;
 const DEF_H     = 400;
 const MAX_H     = 780;
-const FLASH_H   = 130;
+const FLASH_H   = 150;
 const FLASH_MS  = 10000;
+const FLASH_MAX = 4;
 
 const THEME_BG      = "rgba(0, 0, 0, 0.38)";
 const THEME_BORDER  = "1px solid rgba(255,255,255,0.12)";
@@ -76,15 +77,17 @@ const FlashLayer = styled.div`
   flex-direction: column;
   justify-content: flex-end;
   gap: 4px;
-  padding: 0 16px 8px;
+  padding: 8px 16px;
   box-sizing: border-box;
   pointer-events: none;
   overflow: hidden;
   background: linear-gradient(
     to top,
-    rgba(255, 255, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.08) 22%,
-    rgba(255, 255, 255, 0) 55%
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.36) 20%,
+    rgba(0, 0, 0, 0.26) 45%,
+    rgba(0, 0, 0, 0.14) 72%,
+    rgba(0, 0, 0, 0) 100%
   );
 `;
 
@@ -399,7 +402,7 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
   const instantScrollRef = useRef(true);
   const openRef        = useRef(open);
   const flashIdRef     = useRef(0);
-  const flashTimersRef = useRef([]);
+  const flashTimerRef  = useRef(null);
 
   useEffect(() => { heightRef.current = height; }, [height]);
   useEffect(() => { openRef.current = open; }, [open]);
@@ -457,16 +460,15 @@ const ChatBox = forwardRef(function ChatBox({ messages, whispers, players, myId,
       whisper,
     }));
 
-    setFlashes(prev => [...prev, ...entries].slice(-6));
+    setFlashes(prev => [...prev, ...entries].slice(-FLASH_MAX));
 
-    const timer = setTimeout(() => {
-      const keys = new Set(entries.map(e => e.key));
-      setFlashes(prev => prev.filter(f => !keys.has(f.key)));
-    }, FLASH_MS);
-    flashTimersRef.current.push(timer);
+    // One shared timer for every visible flash: each new message restarts it,
+    // so the whole stack clears together FLASH_MS after the latest one.
+    clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashes([]), FLASH_MS);
   }, [messages, whispers, myId]);
 
-  useEffect(() => () => flashTimersRef.current.forEach(clearTimeout), []);
+  useEffect(() => () => clearTimeout(flashTimerRef.current), []);
 
   /* ── Imperative API ── */
 

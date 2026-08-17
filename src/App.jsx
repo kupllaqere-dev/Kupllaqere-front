@@ -8,6 +8,7 @@ import { readAuthParams, isAuthLink } from "./auth/authLink";
 import { updateName, updateBio, updateBadge, getMe } from "./api/auth";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
+import { DEFAULT_MAP } from "./game/MapManager";
 
 const viewportStyle = {
   position: "fixed",
@@ -54,9 +55,11 @@ function App() {
   const [gameSocket, setGameSocket] = useState(null);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [kickMessage, setKickMessage] = useState(null);
+  const [currentMap, setCurrentMap] = useState(DEFAULT_MAP);
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
   const applyLookBatchRef = useRef(null);
+  const changeMapRef = useRef(null);
 
   function handleLogin(userData, token, refreshToken) {
     setUser(userData);
@@ -129,6 +132,10 @@ function App() {
 
   const handleApplyLookBatch = useCallback((equippedSlots, clearSlots, skinColor) => {
     applyLookBatchRef.current?.(equippedSlots, clearSlots, skinColor);
+  }, []);
+
+  const handleChangeMap = useCallback((mapId) => {
+    changeMapRef.current?.(mapId);
   }, []);
 
   const handleSaveName = useCallback(async (name) => {
@@ -228,8 +235,10 @@ function App() {
           equipRef={equipRef}
           unequipRef={unequipRef}
           applyLookBatchRef={applyLookBatchRef}
+          changeMapRef={changeMapRef}
           onSocketReady={setGameSocket}
           onOnlinePlayersChange={setOnlinePlayers}
+          onMapChange={setCurrentMap}
         />
         <HUD
           onLogout={handleLogout}
@@ -254,8 +263,11 @@ function App() {
           coins={user?.coins ?? 0}
           gems={user?.gems ?? 0}
           level={user?.level ?? 1}
+          xpPercent={user?.xpPercent ?? 50}
           onPurchaseComplete={handlePurchaseComplete}
           onlinePlayers={onlinePlayers}
+          currentMap={currentMap}
+          onChangeMap={handleChangeMap}
         />
       </div>
     </div>

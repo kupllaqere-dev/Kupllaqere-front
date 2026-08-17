@@ -114,6 +114,112 @@ export const AvatarFrame = styled.div`
   flex-shrink: 0;
 `;
 
+// ── XP vial ──────────────────────────────────────────────────────────────
+// The art in /assets/xp is exported at 2x for a 36x180 box. TUBE is the glass
+// interior — the white area of vial-mask.png, which is traced from the vial's own
+// transparent interior — measured in that same 36x180 space.
+const VIAL_W = 36;
+const VIAL_H = 180;
+const TUBE = { left: 3.5, top: 46, width: 28.5, height: 115 };
+// vial-liquid.png is a vertically seamless tile, so it can scroll forever.
+const LIQUID_TILE_H = 84;
+
+const liquidFlow = keyframes`
+  from { background-position: center 0; }
+  to   { background-position: center -${LIQUID_TILE_H}px; }
+`;
+
+export const XpVial = styled.div`
+  position: relative;
+  width: ${VIAL_W}px;
+  height: ${VIAL_H}px;
+  flex-shrink: 0;
+  pointer-events: all;
+`;
+
+// Clips the liquid to the glass interior. No background of its own — the empty
+// part of the tube stays transparent.
+export const VialTube = styled.div`
+  position: absolute;
+  inset: 0;
+  -webkit-mask: url("/assets/xp/vial-mask.png") no-repeat center / 100% 100%;
+  mask: url("/assets/xp/vial-mask.png") no-repeat center / 100% 100%;
+`;
+
+export const VialFill = styled.div`
+  position: absolute;
+  left: ${TUBE.left}px;
+  bottom: ${VIAL_H - (TUBE.top + TUBE.height)}px;
+  width: ${TUBE.width}px;
+  height: ${({ $pct }) => (TUBE.height * $pct) / 100}px;
+  background: url("/assets/xp/vial-liquid.png") repeat-y center 0;
+  background-size: ${TUBE.width}px ${LIQUID_TILE_H}px;
+  animation: ${liquidFlow} 10s linear infinite;
+  transition: height 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* bright meniscus on the surface of the liquid */
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1.5px;
+    opacity: ${({ $pct }) => ($pct > 0 && $pct < 100 ? 1 : 0)};
+    background: rgba(216, 246, 255, 0.9);
+    box-shadow: 0 0 5px rgba(120, 220, 255, 0.95);
+  }
+`;
+
+// Manual fill control that sits beside the vial.
+export const XpInputWrap = styled.label`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: all;
+  cursor: text;
+`;
+
+export const XpInputLabel = styled.span`
+  color: rgba(230, 215, 255, 0.85);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+`;
+
+export const XpInput = styled.input`
+  width: 54px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  text-align: center;
+  background: ${PANEL_BG};
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  color: rgba(240, 225, 255, 0.97);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus {
+    border-color: rgba(235, 210, 255, 0.95);
+    box-shadow: 0 0 10px rgba(180, 120, 255, 0.6);
+  }
+`;
+
+export const VialGlass = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+`;
+
 export const IconButton = styled.div`
   width: ${ICON_BTN}px;
   height: ${ICON_BTN}px;

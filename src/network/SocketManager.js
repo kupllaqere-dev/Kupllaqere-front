@@ -5,8 +5,18 @@ export default class SocketManager {
     this.socket = io(url);
   }
 
-  join(name, userId, gender, x, y) {
-    this.socket.emit("player:join", { name, userId, gender, x, y });
+  join(name, userId, gender, x, y, map) {
+    this.socket.emit("player:join", { name, userId, gender, x, y, map });
+  }
+
+  /** Ask the server to move us into another map's room. */
+  changeMap(map, x, y) {
+    this.socket.emit("player:map", { map, x, y });
+  }
+
+  /** Server confirmation of a map switch: { map, players }. */
+  onMapChanged(callback) {
+    this.socket.on("map:changed", callback);
   }
 
   onGameState(callback) {

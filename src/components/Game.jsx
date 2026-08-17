@@ -1,7 +1,13 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import * as S from "./GameStyles";
-import { preloadMap, createMap, MAP_WIDTH, MAP_HEIGHT } from "../game/MapManager";
+import {
+  preloadMap,
+  createMap,
+  ensureMapLoaded,
+  getMap,
+  DEFAULT_MAP,
+} from "../game/MapManager";
 import SocketManager from "../network/SocketManager";
 import MultiplayerHandler from "../game/MultiplayerHandler";
 import { createPhaserGame } from "../game/PhaserConfig";
@@ -17,12 +23,11 @@ import {
   preloadLocalPlayer,
   createLocalPlayer,
   updateLocalPlayer,
+  repositionLocalPlayer,
 } from "../game/LocalPlayer";
 import { getSlotKey, getConflictSlots, LAYER_ORDER } from "../game/avatar/LayerConfig.js";
-const SPAWN_X = MAP_WIDTH / 2;
-const SPAWN_Y = MAP_HEIGHT * 0.65;
 
-export default function Game({ user, onEquippedChange, onOutfitChange, onSkinColorChange, equipRef, unequipRef, applyLookBatchRef, onSocketReady, onOnlinePlayersChange }) {
+export default function Game({ user, onEquippedChange, onOutfitChange, onSkinColorChange, equipRef, unequipRef, applyLookBatchRef, changeMapRef, onSocketReady, onOnlinePlayersChange, onMapChange }) {
   const gameRef = useRef(null);
   const socketRef = useRef(null);
   const mpRef = useRef(null);
@@ -45,6 +50,15 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const worldAvatarSystemRef = useRef(null);
   const localSpriteRef = useRef(null);
   const localPlayerRef = useRef(null);
+  const sceneRef = useRef(null);
+  const movementRef = useRef(null);
+  // Mutable holder so the Phaser update loop always reads the live zone list
+  // rather than the array captured when the scene was created.
+  const worldRef = useRef({ mapId: DEFAULT_MAP, walkableZones: [] });
+  const teleportingRef = useRef(false);
+  // Label of the map being travelled to, or null when not teleporting.
+  const [teleportTo, setTeleportTo] = useState(null);
+  const [teleportProgress, setTeleportProgress] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,11 +144,13 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       }
 
       function create() {
-        const walkableZones = createMap(this);
+        const { map, walkableZones, spawn } = createMap(this, DEFAULT_MAP);
+        worldRef.current = { mapId: map.id, walkableZones };
+        sceneRef.current = this;
 
         const avatarSys  = new WorldAvatarSystem(this);
         const playerMgr  = new PlayerManager();
-        const movement   = new MovementManager(MAP_WIDTH, MAP_HEIGHT);
+        const movement   = new MovementManager(map.width, map.height);
         const cursors    = this.input.keyboard.createCursorKeys();
         // createCursorKeys() captures Space by default, which calls preventDefault()
         // on every Space keydown page-wide (even while typing in HTML inputs/textareas
@@ -143,9 +159,10 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         this.input.keyboard.removeCapture(32);
 
         worldAvatarSystemRef.current = avatarSys;
+        movementRef.current = movement;
 
         const gender = user?.gender || "female";
-        const localP = createLocalPlayer(this, SPAWN_X, SPAWN_Y, user?.name || "Player", gender);
+        const localP = createLocalPlayer(this, spawn.x, spawn.y, user?.name || "Player", gender);
         localSpriteRef.current = localP.sprite;
         localPlayerRef.current = localP;
 
@@ -157,25 +174,30 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         }).catch(() => {});
 
         // Camera follows local player.
-        this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+        this.cameras.main.setBounds(0, 0, map.width, map.height);
         this.cameras.main.startFollow(localP.sprite, false, 1, 1);
 
         // Click-to-move.
         this.input.on("pointerdown", pointer => {
-          movement.handleClick(this, pointer, walkableZones);
+          if (teleportingRef.current) return;
+          movement.handleClick(this, pointer, worldRef.current.walkableZones);
         });
 
         mp.setGameObjects(this, avatarSys, playerMgr);
         mp.localSprite = localP.sprite;
-        mp.join(user?.name || "Player", user?.id, gender, SPAWN_X, SPAWN_Y);
+        mp.onMapChange = (mapId) => {
+          worldRef.current.mapId = mapId;
+          onMapChange?.(mapId);
+        };
+        mp.join(user?.name || "Player", user?.id, gender, spawn.x, spawn.y, map.id);
         mp.wire();
 
-        let lastSentX    = SPAWN_X;
-        let lastSentY    = SPAWN_Y;
+        let lastSentX    = spawn.x;
+        let lastSentY    = spawn.y;
         let lastSentAnim = null;
 
         this.events.on("update", (_, delta) => {
-          movement.step(localP.sprite, cursors, walkableZones, delta / 1000);
+          movement.step(localP.sprite, cursors, worldRef.current.walkableZones, delta / 1000);
 
           const lx   = localP.sprite._logicalX;
           const ly   = localP.sprite._logicalY;
@@ -183,7 +205,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
 
           localP.sprite.setPosition(lx, ly);
 
-          if (lx !== lastSentX || ly !== lastSentY || anim !== lastSentAnim) {
+          // Hold moves back mid-teleport so we don't broadcast new-map
+          // coordinates into the room we're still leaving.
+          if (!teleportingRef.current && (lx !== lastSentX || ly !== lastSentY || anim !== lastSentAnim)) {
             mp.sendMove({
               x:     lx,
               y:     ly,
@@ -218,6 +242,54 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       localSpriteRef.current = null;
     };
   }, []);
+
+  // Teleport: fetch the target map's assets, rebuild the world, reposition the
+  // avatar at its spawn, and ask the server to move us into that map's room.
+  const handleChangeMap = useCallback(async (mapId) => {
+    const scene = sceneRef.current;
+    const mp    = mpRef.current;
+    const localP = localPlayerRef.current;
+    if (!scene || !mp || !localP) return;
+    if (teleportingRef.current) return;
+    if (worldRef.current.mapId === mapId) return;
+
+    const target = getMap(mapId);
+    teleportingRef.current = true;
+    setTeleportTo(target.label);
+    setTeleportProgress(scene.textures.exists(target.texture) ? 1 : 0);
+
+    try {
+      await ensureMapLoaded(scene, target.id, setTeleportProgress);
+      if (!localP.sprite.scene) return; // scene torn down while loading
+
+      // Drop everyone from the old room before the new roster arrives.
+      mp.playerManager?.clearAll();
+      setChatMessages([]);
+
+      const { map, walkableZones, spawn } = createMap(scene, target.id);
+      worldRef.current = { mapId: map.id, walkableZones };
+
+      const movement = movementRef.current;
+      if (movement) {
+        movement.reset();
+        movement.mapWidth  = map.width;
+        movement.mapHeight = map.height;
+      }
+
+      repositionLocalPlayer(localP, spawn.x, spawn.y);
+      scene.cameras.main.setBounds(0, 0, map.width, map.height);
+      scene.cameras.main.centerOn(spawn.x, spawn.y);
+
+      onMapChange?.(map.id);
+
+      mp.changeMap(map.id, spawn.x, spawn.y);
+    } finally {
+      teleportingRef.current = false;
+      setTeleportTo(null);
+    }
+  }, []);
+
+  if (changeMapRef) changeMapRef.current = handleChangeMap;
 
   const handleEquip = useCallback((item) => {
     const mp          = mpRef.current;
@@ -430,6 +502,40 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     <S.Container>
       <S.GameWrapper ref={gameRef} />
       <LoadingOverlay progress={loadProgress} ready={loadingReady} />
+      {teleportTo && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 500,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+            background: "rgba(18, 6, 40, 0.82)",
+            backdropFilter: "blur(6px)",
+            color: "rgba(235, 220, 255, 0.9)",
+            fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
+            fontSize: 20,
+            letterSpacing: 1.4,
+            pointerEvents: "all",
+          }}
+        >
+          <div>Travelling to {teleportTo}…</div>
+          <div style={{ width: 260, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
+            <div
+              style={{
+                width: `${Math.round(Math.max(0, Math.min(1, teleportProgress)) * 100)}%`,
+                height: "100%",
+                borderRadius: 999,
+                background: "linear-gradient(90deg, #ff7eb9 0%, #7afcff 100%)",
+                transition: "width 180ms ease-out",
+              }}
+            />
+          </div>
+        </div>
+      )}
       <ChatBox
         ref={chatBoxRef}
         messages={chatMessages}

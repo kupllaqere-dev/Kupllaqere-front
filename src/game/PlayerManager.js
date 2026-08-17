@@ -209,6 +209,11 @@ export default class PlayerManager {
     other.chatTimer  = setTimeout(() => { bubble.destroy(); other.chatBubble = null; }, 5000);
   }
 
+  /** Despawns every remote player — used when leaving a map. */
+  clearAll() {
+    for (const id of [...this.otherPlayers.keys()]) this.removePlayer(id);
+  }
+
   removePlayer(id) {
     const other = this.otherPlayers.get(id);
     if (!other) return;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styled, { keyframes, css } from "styled-components";
+import { MAP_LIST } from "../game/MapManager";
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(8px); }
@@ -63,7 +64,7 @@ const ZonesColumn = styled.div`
       : css`right: 32px; align-items: flex-end;`}
 `;
 
-const Zone = styled.div`
+const Zone = styled.button`
   width: 200px;
   padding: 15px 20px;
   border-radius: 9px;
@@ -71,9 +72,15 @@ const Zone = styled.div`
   text-align: center;
   font-size: 13px;
   font-weight: 700;
+  font-family: inherit;
   letter-spacing: 0.6px;
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.8);
   transition: all 0.22s ease;
+
+  &:disabled {
+    cursor: default;
+    transform: none;
+  }
 
   ${({ $side }) =>
     $side === "day"
@@ -105,6 +112,36 @@ const Zone = styled.div`
               inset 0 0 18px rgba(160, 60, 255, 0.18);
           }
         `}
+
+  ${({ $current, $side }) =>
+    $current &&
+    ($side === "day"
+      ? css`
+          background: rgba(255, 240, 155, 0.24);
+          border-color: rgba(255, 210, 50, 0.95);
+          color: #fff8d8;
+          box-shadow:
+            0 0 28px 8px rgba(255, 190, 35, 0.45),
+            inset 0 0 18px rgba(255, 215, 60, 0.16);
+        `
+      : css`
+          background: rgba(155, 55, 240, 0.28);
+          border-color: rgba(190, 75, 255, 0.95);
+          color: #e8d5ff;
+          box-shadow:
+            0 0 28px 8px rgba(185, 40, 255, 0.5),
+            inset 0 0 18px rgba(160, 60, 255, 0.2);
+        `)}
+`;
+
+const Here = styled.span`
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  opacity: 0.7;
 `;
 
 const CloseBtn = styled.button`
@@ -128,16 +165,39 @@ const CloseBtn = styled.button`
   &:hover { background: rgba(0, 0, 0, 0.7); }
 `;
 
-const DAY_ZONES = ["Map1", "Map2", "Map3"];
-const NIGHT_ZONES = ["Map1", "Map2", "Map3"];
+const DAY_MAPS   = MAP_LIST.filter((m) => m.side === "day");
+const NIGHT_MAPS = MAP_LIST.filter((m) => m.side === "night");
 
-export default function MapsModal({ onClose }) {
+export default function MapsModal({ onClose, currentMap, onSelectMap }) {
   const [activeSide, setActiveSide] = useState(null);
 
   const trackSide = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setActiveSide(e.clientX - rect.left < rect.width / 2 ? "day" : "night");
   };
+
+  const travel = (mapId) => {
+    if (mapId === currentMap) return;
+    onSelectMap?.(mapId);
+    onClose();
+  };
+
+  const renderZones = (maps, side) =>
+    maps.map((m) => {
+      const isCurrent = m.id === currentMap;
+      return (
+        <Zone
+          key={m.id}
+          $side={side}
+          $current={isCurrent}
+          disabled={isCurrent}
+          onClick={() => travel(m.id)}
+        >
+          {m.label}
+          {isCurrent && <Here>You are here</Here>}
+        </Zone>
+      );
+    });
 
   return (
     <Overlay onClick={onClose}>
@@ -167,17 +227,9 @@ export default function MapsModal({ onClose }) {
           }}
         />
 
-        <ZonesColumn $side="day">
-          {DAY_ZONES.map((label) => (
-            <Zone key={label} $side="day">{label}</Zone>
-          ))}
-        </ZonesColumn>
+        <ZonesColumn $side="day">{renderZones(DAY_MAPS, "day")}</ZonesColumn>
 
-        <ZonesColumn $side="night">
-          {NIGHT_ZONES.map((label) => (
-            <Zone key={label} $side="night">{label}</Zone>
-          ))}
-        </ZonesColumn>
+        <ZonesColumn $side="night">{renderZones(NIGHT_MAPS, "night")}</ZonesColumn>
 
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </Modal>

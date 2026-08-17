@@ -8,6 +8,7 @@ export default class MultiplayerHandler {
     this.onNameUpdate  = null;
     this.onBioUpdate   = null;
     this.onBadgeUpdate = null;
+    this.onMapChange   = null;
 
     // Set via setGameObjects() in Phaser create()
     this.scene             = null;
@@ -30,37 +31,55 @@ export default class MultiplayerHandler {
     };
   }
 
-  join(name, userId, gender, x, y) {
-    this.socket.join(name, userId, gender, x, y);
+  join(name, userId, gender, x, y, map) {
+    this.socket.join(name, userId, gender, x, y, map);
+  }
+
+  /** Tell the server we're switching map rooms. */
+  changeMap(map, x, y) {
+    this.socket.changeMap(map, x, y);
+  }
+
+  // Replaces the roster and sprite set with the occupants of the map we're in.
+  // Used both on initial join and on every map switch.
+  _populate(players) {
+    const { socket, cb } = this;
+    const others = (players || [])
+      .filter(p => p.id !== socket.id)
+      .map(p => ({ id: p.id, name: p.name, userId: p.userId || null }));
+    this.onlinePlayersRef = others;
+    cb.setOnlinePlayers(others);
+
+    if (!this.scene || !this.playerManager) return;
+    for (const p of (players || [])) {
+      if (p.id === socket.id) continue;
+      this.playerManager.addPlayer(this.scene, {
+        id:            p.id,
+        name:          p.name,
+        x:             p.x    ?? 1500,
+        y:             p.y    ?? 700,
+        gender:        p.gender || "female",
+        outfit:        p.outfit || {},
+        skinColor:     p.skinColor || null,
+        userId:        p.userId || null,
+        selectedBadge: p.selectedBadge || null,
+      });
+    }
   }
 
   wire() {
     const { socket, cb } = this;
 
     socket.onGameState((data) => {
-      const others = (data.players || [])
-        .filter(p => p.id !== socket.id)
-        .map(p => ({ id: p.id, name: p.name, userId: p.userId || null }));
-      this.onlinePlayersRef = others;
-      cb.setOnlinePlayers(others);
+      this._populate(data.players);
+    });
 
-      // Spawn sprites for players already in the world.
-      if (this.scene && this.playerManager) {
-        for (const p of (data.players || [])) {
-          if (p.id === socket.id) continue;
-          this.playerManager.addPlayer(this.scene, {
-            id:            p.id,
-            name:          p.name,
-            x:             p.x    ?? 1500,
-            y:             p.y    ?? 700,
-            gender:        p.gender || "female",
-            outfit:        p.outfit || {},
-            skinColor:     p.skinColor || null,
-            userId:        p.userId || null,
-            selectedBadge: p.selectedBadge || null,
-          });
-        }
-      }
+    // Server finished moving us into the new room — the roster it sends is the
+    // authoritative occupant list for that map.
+    socket.onMapChanged((data) => {
+      this.playerManager?.clearAll();
+      this._populate(data.players);
+      this.onMapChange?.(data.map);
     });
 
     socket.onPlayerJoined((data) => {

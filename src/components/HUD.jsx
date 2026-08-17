@@ -27,7 +27,16 @@ const NAV_ITEMS = [
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, onPurchaseComplete, onlinePlayers }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap }) {
+  // The vial follows the input box, which starts from whatever the server sent
+  // and re-syncs if that value later changes.
+  const [xpInput, setXpInput] = useState(String(Math.round(xpPercent ?? 0)));
+  const [syncedXp, setSyncedXp] = useState(xpPercent);
+  if (xpPercent !== syncedXp) {
+    setSyncedXp(xpPercent);
+    setXpInput(String(Math.round(xpPercent ?? 0)));
+  }
+  const xpPct = Math.max(0, Math.min(100, Number(xpInput) || 0));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -46,6 +55,11 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [pendingInvite, setPendingInvite] = useState(null); // { inviterSocketId, inviter }
   const [declineMsg, setDeclineMsg] = useState(null);
   const declineDismissRef = useRef(null);
+
+  function handleXpInput(e) {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
+    setXpInput(digits === "" ? "" : String(Math.min(100, Number(digits))));
+  }
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -313,7 +327,13 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           role={role}
         />
       )}
-      {showMaps && <MapsModal onClose={() => setShowMaps(false)} />}
+      {showMaps && (
+        <MapsModal
+          onClose={() => setShowMaps(false)}
+          currentMap={currentMap}
+          onSelectMap={onChangeMap}
+        />
+      )}
       {showAngel && <AngelModal onClose={() => setShowAngel(false)} />}
       {showStore && (
         <StoreModal
@@ -381,6 +401,25 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                 </S.NameRow>
               </S.NamePlate>
             </S.AvatarBlock>
+
+            <S.XpVial title={`XP ${xpPct}%`}>
+              <S.VialTube>
+                <S.VialFill $pct={xpPct} />
+              </S.VialTube>
+              <S.VialGlass src="/assets/xp/vial.png" alt="" />
+            </S.XpVial>
+
+            <S.XpInputWrap>
+              <S.XpInputLabel>XP %</S.XpInputLabel>
+              <S.XpInput
+                type="text"
+                inputMode="numeric"
+                value={xpInput}
+                onChange={handleXpInput}
+                placeholder="0"
+                aria-label="XP percent"
+              />
+            </S.XpInputWrap>
 
             <S.ButtonRow>
               {NAV_ITEMS.map((item, i) => (
