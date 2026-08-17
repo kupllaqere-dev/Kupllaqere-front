@@ -20,6 +20,13 @@ const CHESS_IDLE = {
   externalResult: null,
 };
 
+// Bottom-left vials, left to right. All three share the same glass sprite.
+const VIALS = [
+  { key: "xp", label: "XP", texture: "/assets/xp/vial-liquid-xp.png" },
+  { key: "nectar", label: "Nectar", texture: "/assets/xp/vial-liquid-nectar.png" },
+  { key: "lis", label: "Lis", texture: "/assets/xp/vial-liquid-lis.png" },
+];
+
 const NAV_ITEMS = [
   { key: "store", label: "Store", icon: "/assets/ui-icons/Store.png" },
   { key: "maps", label: "Maps", icon: "/assets/ui-icons/Map.png" },
@@ -28,15 +35,18 @@ const NAV_ITEMS = [
 ];
 
 function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap }) {
-  // The vial follows the input box, which starts from whatever the server sent
+  // Each vial follows its own input box. XP starts from whatever the server sent
   // and re-syncs if that value later changes.
-  const [xpInput, setXpInput] = useState(String(Math.round(xpPercent ?? 0)));
+  const [vialInputs, setVialInputs] = useState(() => ({
+    xp: String(Math.round(xpPercent ?? 0)),
+    nectar: "0",
+    lis: "0",
+  }));
   const [syncedXp, setSyncedXp] = useState(xpPercent);
   if (xpPercent !== syncedXp) {
     setSyncedXp(xpPercent);
-    setXpInput(String(Math.round(xpPercent ?? 0)));
+    setVialInputs((prev) => ({ ...prev, xp: String(Math.round(xpPercent ?? 0)) }));
   }
-  const xpPct = Math.max(0, Math.min(100, Number(xpInput) || 0));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -56,9 +66,12 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [declineMsg, setDeclineMsg] = useState(null);
   const declineDismissRef = useRef(null);
 
-  function handleXpInput(e) {
+  function handleVialInput(key, e) {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
-    setXpInput(digits === "" ? "" : String(Math.min(100, Number(digits))));
+    setVialInputs((prev) => ({
+      ...prev,
+      [key]: digits === "" ? "" : String(Math.min(100, Number(digits))),
+    }));
   }
 
   useEffect(() => {
@@ -402,25 +415,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
               </S.NamePlate>
             </S.AvatarBlock>
 
-            <S.XpVial title={`XP ${xpPct}%`}>
-              <S.VialTube>
-                <S.VialFill $pct={xpPct} />
-              </S.VialTube>
-              <S.VialGlass src="/assets/xp/vial.png" alt="" />
-            </S.XpVial>
-
-            <S.XpInputWrap>
-              <S.XpInputLabel>XP %</S.XpInputLabel>
-              <S.XpInput
-                type="text"
-                inputMode="numeric"
-                value={xpInput}
-                onChange={handleXpInput}
-                placeholder="0"
-                aria-label="XP percent"
-              />
-            </S.XpInputWrap>
-
             <S.ButtonRow>
               {NAV_ITEMS.map((item, i) => (
                 <S.IconButton
@@ -449,6 +443,33 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
             <img src="/assets/ui-icons/Shop.png" alt="" data-state="hover" />
           </S.BuyButton>
         </S.CurrencyBar>
+
+        <S.VialDock>
+          {VIALS.map(({ key, label, texture }) => {
+            const pct = Math.max(0, Math.min(100, Number(vialInputs[key]) || 0));
+            return (
+              <S.VialColumn key={key}>
+                <S.Vial title={`${label} ${pct}%`}>
+                  <S.VialTube>
+                    <S.VialFill $pct={pct} $texture={texture} />
+                  </S.VialTube>
+                  <S.VialGlass src="/assets/xp/vial.png" alt="" />
+                </S.Vial>
+                <S.VialInputWrap>
+                  <S.VialInputLabel>{label}</S.VialInputLabel>
+                  <S.VialInput
+                    type="text"
+                    inputMode="numeric"
+                    value={vialInputs[key]}
+                    onChange={(e) => handleVialInput(key, e)}
+                    placeholder="0"
+                    aria-label={`${label} percent`}
+                  />
+                </S.VialInputWrap>
+              </S.VialColumn>
+            );
+          })}
+        </S.VialDock>
 
         <S.SettingsWrapper ref={menuRef}>
           {settingsOpen && (

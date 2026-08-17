@@ -114,14 +114,15 @@ export const AvatarFrame = styled.div`
   flex-shrink: 0;
 `;
 
-// ── XP vial ──────────────────────────────────────────────────────────────
+// ── Vials ────────────────────────────────────────────────────────────────
+// One glass sprite shared by all three vials; only the liquid texture differs.
 // The art in /assets/xp is exported at 2x for a 36x180 box. TUBE is the glass
 // interior — the white area of vial-mask.png, which is traced from the vial's own
 // transparent interior — measured in that same 36x180 space.
 const VIAL_W = 36;
 const VIAL_H = 180;
 const TUBE = { left: 3.5, top: 46, width: 28.5, height: 115 };
-// vial-liquid.png is a vertically seamless tile, so it can scroll forever.
+// Every vial-liquid-*.png is a vertically seamless tile, so it can scroll forever.
 const LIQUID_TILE_H = 84;
 
 const liquidFlow = keyframes`
@@ -129,7 +130,25 @@ const liquidFlow = keyframes`
   to   { background-position: center -${LIQUID_TILE_H}px; }
 `;
 
-export const XpVial = styled.div`
+export const VialDock = styled.div`
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  pointer-events: none;
+  z-index: 5;
+`;
+
+export const VialColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+`;
+
+export const Vial = styled.div`
   position: relative;
   width: ${VIAL_W}px;
   height: ${VIAL_H}px;
@@ -152,7 +171,7 @@ export const VialFill = styled.div`
   bottom: ${VIAL_H - (TUBE.top + TUBE.height)}px;
   width: ${TUBE.width}px;
   height: ${({ $pct }) => (TUBE.height * $pct) / 100}px;
-  background: url("/assets/xp/vial-liquid.png") repeat-y center 0;
+  background: url(${({ $texture }) => $texture}) repeat-y center 0;
   background-size: ${TUBE.width}px ${LIQUID_TILE_H}px;
   animation: ${liquidFlow} 10s linear infinite;
   transition: height 0.7s cubic-bezier(0.4, 0, 0.2, 1);
@@ -171,8 +190,8 @@ export const VialFill = styled.div`
   }
 `;
 
-// Manual fill control that sits beside the vial.
-export const XpInputWrap = styled.label`
+// Manual fill control that sits under each vial.
+export const VialInputWrap = styled.label`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -181,7 +200,7 @@ export const XpInputWrap = styled.label`
   cursor: text;
 `;
 
-export const XpInputLabel = styled.span`
+export const VialInputLabel = styled.span`
   color: rgba(230, 215, 255, 0.85);
   font-size: 10px;
   font-weight: 700;
@@ -189,7 +208,7 @@ export const XpInputLabel = styled.span`
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 `;
 
-export const XpInput = styled.input`
+export const VialInput = styled.input`
   width: 54px;
   height: 30px;
   box-sizing: border-box;
