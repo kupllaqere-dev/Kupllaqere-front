@@ -37,7 +37,7 @@ export const MAPS = {
     side:    "day",
     texture: "map-plaza",
     path:    "/assets/maps/Plaza/Plaza.png",
-    width:   worldWidth(3840, 506), // 8197
+    width:   worldWidth(10297, 1357), // 8196
     height:  WORLD_HEIGHT,
     colliders:    null,
     collidersKey: null,
@@ -55,6 +55,18 @@ export const MAPS = {
     collidersKey: null,
     spawn:   { x: 0.5, y: 0.72 },
   },
+  pool: {
+    id:      "pool",
+    label:   "Pool",
+    side:    "day",
+    texture: "map-pool",
+    path:    "/assets/maps/Pool/Pool.png",
+    width:   worldWidth(10297, 1774), // 6272
+    height:  WORLD_HEIGHT,
+    colliders:    null,
+    collidersKey: null,
+    spawn:   { x: 0.5, y: 0.93 },
+  },
   ruins: {
     id:      "ruins",
     label:   "Ruins",
@@ -66,6 +78,30 @@ export const MAPS = {
     colliders:    null,
     collidersKey: null,
     spawn:   { x: 0.5, y: 0.78 },
+  },
+  castle: {
+    id:      "castle",
+    label:   "Castle",
+    side:    "night",
+    texture: "map-castle",
+    path:    "/assets/maps/Castle/Castle.png",
+    width:   worldWidth(3000, 1440), // 2250
+    height:  WORLD_HEIGHT,
+    colliders:    null,
+    collidersKey: null,
+    spawn:   { x: 0.5, y: 0.88 },
+  },
+  graveyard: {
+    id:      "graveyard",
+    label:   "Graveyard",
+    side:    "night",
+    texture: "map-graveyard",
+    path:    "/assets/maps/Graveyard/Graveyard.png",
+    width:   worldWidth(10297, 1774), // 6272
+    height:  WORLD_HEIGHT,
+    colliders:    null,
+    collidersKey: null,
+    spawn:   { x: 0.5, y: 0.85 },
   },
 };
 
