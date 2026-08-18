@@ -263,7 +263,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     store: () => setShowStore(true),
     maps: () => setShowMaps(true),
     quests: () => {},
-    news: () => {},
+    news: () => window.open("https://platform.neclisworld.com", "_blank", "noopener,noreferrer"),
   };
 
   async function handleOpenProfile(user) {

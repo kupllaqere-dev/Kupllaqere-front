@@ -1,5 +1,5 @@
 export function setPerspectiveFromColliders() {}
 
 export function perspectiveScale() {
-  return 0.5;
+  return 0.55;
 }
