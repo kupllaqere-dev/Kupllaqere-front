@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "generator": "atlas.py",
+    "source": "shirt pngs",
+    "canvas": {
+      "w": 600,
+      "h": 900
+    },
+    "padding": 2,
+    "image": "shirt.png",
+    "size": {
+      "w": 194,
+      "h": 156
+    },
+    "occupancy": 0.774
+  },
+  "frames": {
+    "shirt_torso_front_fem": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 108,
+        "h": 154
+      },
+      "spriteSourceSize": {
+        "x": 242,
+        "y": 236,
+        "w": 108,
+        "h": 154
+      },
+      "sourceSize": {
+        "w": 600,
+        "h": 900
+      },
+      "trimmed": true
+    },
+    "left_sleeve": {
+      "frame": {
+        "x": 110,
+        "y": 0,
+        "w": 40,
+        "h": 85
+      },
+      "spriteSourceSize": {
+        "x": 229,
+        "y": 235,
+        "w": 40,
+        "h": 85
+      },
+      "sourceSize": {
+        "w": 600,
+        "h": 900
+      },
+      "trimmed": true
+    },
+    "right_sleeve": {
+      "frame": {
+        "x": 152,
+        "y": 0,
+        "w": 40,
+        "h": 85
+      },
+      "spriteSourceSize": {
+        "x": 324,
+        "y": 235,
+        "w": 40,
+        "h": 85
+      },
+      "sourceSize": {
+        "w": 600,
+        "h": 900
+      },
+      "trimmed": true
+    }
+  }
+}

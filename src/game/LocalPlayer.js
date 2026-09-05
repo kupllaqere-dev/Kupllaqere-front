@@ -1,22 +1,15 @@
-import { FRAME } from "./PlayerManager";
 import { perspectiveScale } from "./perspective";
-
-export const BASE_SPRITE_URLS = {
-  female: "/assets/character-bases/females_new.png",
-  male:   "/assets/character-bases/men-test.png",
-};
+import RigAvatar, { preloadRig } from "./avatar/RigAvatar.js";
 
 export const BADGE_NAMES = ["diamond", "flame", "medal", "paint", "verified"];
 export const BADGE_DISPLAY_SIZE = 18;
 const NAME_BADGE_GAP = 4;
 
 export function badgeTextureKey(name) { return `badge-${name}`; }
-export function baseTextureKey(gender) { return gender === "male" ? "player-male" : "player-female"; }
 export function genderScale(gender) { return gender === "male" ? 1.2 : 1; }
 
 export function preloadLocalPlayer(scene) {
-  scene.load.spritesheet("player-female", BASE_SPRITE_URLS.female, { frameWidth: 510, frameHeight: 900 });
-  scene.load.spritesheet("player-male",   BASE_SPRITE_URLS.male,   { frameWidth: 510, frameHeight: 900 });
+  preloadRig(scene);
   scene.load.image("shadow", "/assets/character-bases/shadow.png");
   for (const name of BADGE_NAMES) {
     scene.load.image(badgeTextureKey(name), `/assets/badges/${name}.png`);
@@ -51,8 +44,7 @@ export function setNameBadge(scene, badgeIcon, nameText, badge) {
 
 const SCALE_LERP_RATE = 18;
 
-// Creates the local player's shadow, sprite, and name label.
-// The avatar texture is a placeholder until WorldAvatarSystem finishes compositing.
+// Creates the local player's shadow, avatar rig, and name label.
 export function createLocalPlayer(scene, x, y, name, gender) {
   const gScale       = genderScale(gender);
   const initialScale = perspectiveScale(y) * gScale;
@@ -62,8 +54,7 @@ export function createLocalPlayer(scene, x, y, name, gender) {
   shadow.setScale(initialScale * 0.375);
   shadow.setAlpha(0.2);
 
-  const sprite = scene.add.sprite(x, y, baseTextureKey(gender), FRAME.FRONT);
-  sprite.setOrigin(0.5, 1);
+  const sprite = new RigAvatar(scene, x, y);
   sprite.setScale(initialScale);
   sprite.gender        = gender;
   sprite.currentScale  = initialScale;

@@ -16,7 +16,6 @@ import ChatBox from "./ChatBox";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
 import PlayerContextMenu from "./PlayerContextMenu";
-import WorldAvatarSystem from "../game/avatar/WorldAvatarSystem";
 import PlayerManager from "../game/PlayerManager";
 import MovementManager from "../game/MovementManager";
 import {
@@ -47,8 +46,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const worldMenuRef = useRef(null);
 
   // Phaser-side refs — written in create(), read in React callbacks.
-  const worldAvatarSystemRef = useRef(null);
-  const localSpriteRef = useRef(null);
   const localPlayerRef = useRef(null);
   const sceneRef = useRef(null);
   const movementRef = useRef(null);
@@ -148,7 +145,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         worldRef.current = { mapId: map.id, walkableZones };
         sceneRef.current = this;
 
-        const avatarSys  = new WorldAvatarSystem(this);
         const playerMgr  = new PlayerManager();
         const movement   = new MovementManager(map.width, map.height);
         const cursors    = this.input.keyboard.createCursorKeys();
@@ -158,20 +154,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         // so release the capture.
         this.input.keyboard.removeCapture(32);
 
-        worldAvatarSystemRef.current = avatarSys;
         movementRef.current = movement;
 
         const gender = user?.gender || "female";
         const localP = createLocalPlayer(this, spawn.x, spawn.y, user?.name || "Player", gender);
-        localSpriteRef.current = localP.sprite;
         localPlayerRef.current = localP;
-
-        // Build composited avatar; sprite shows base character until ready.
-        avatarSys.rebuild("local", gender, outfitRef.current, skinColorRef.current).then(key => {
-          if (!localP.sprite.scene) return;
-          localP.sprite.setTexture(key);
-          localP.sprite._animKey = name => avatarSys.animKey("local", name);
-        }).catch(() => {});
 
         // Camera follows local player.
         this.cameras.main.setBounds(0, 0, map.width, map.height);
@@ -183,7 +170,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           movement.handleClick(this, pointer, worldRef.current.walkableZones);
         });
 
-        mp.setGameObjects(this, avatarSys, playerMgr);
+        mp.setGameObjects(this, playerMgr);
         mp.localSprite = localP.sprite;
         mp.onMapChange = (mapId) => {
           worldRef.current.mapId = mapId;
@@ -238,8 +225,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       cancelled = true;
       socketManager?.disconnect();
       game?.destroy(true);
-      worldAvatarSystemRef.current = null;
-      localSpriteRef.current = null;
     };
   }, []);
 
@@ -312,7 +297,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     onOutfitChange(nextOutfit);
 
     mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
-    _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
@@ -336,7 +320,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     onOutfitChange(nextOutfit);
 
     mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
-    _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
@@ -371,7 +354,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     onOutfitChange(nextOutfit);
 
     mp?.sendOutfitChange(nextOutfit, skinColorRef.current);
-    _rebuildLocalAvatar(nextOutfit);
 
     pendingOutfitPayloadRef.current = nextOutfit;
     clearTimeout(outfitSaveTimerRef.current);
@@ -380,19 +362,6 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       50,
     );
   }, []);
-
-  // Rebuilds the local player's Phaser texture whenever outfit changes.
-  function _rebuildLocalAvatar(outfit) {
-    const avatarSys = worldAvatarSystemRef.current;
-    const sprite    = localSpriteRef.current;
-    if (!avatarSys || !sprite) return;
-    const gender = user?.gender || "female";
-    avatarSys.rebuild("local", gender, outfit, skinColorRef.current).then(key => {
-      if (!sprite.scene) return;
-      sprite.setTexture(key);
-      sprite._animKey = name => avatarSys.animKey("local", name);
-    }).catch(() => {});
-  }
 
   equipRef.current = handleEquip;
   unequipRef.current = handleUnequip;

@@ -1,5 +1,6 @@
 import { perspectiveScale } from "./perspective";
-import { baseTextureKey, genderScale, setNameBadge, layoutNameBadge } from "./LocalPlayer";
+import { genderScale, setNameBadge, layoutNameBadge } from "./LocalPlayer";
+import RigAvatar from "./avatar/RigAvatar.js";
 import makeChatBubble from "./makeChatBubble.js";
 
 export const FRAME = {
@@ -18,7 +19,6 @@ const MAX_SPEED       = 450; // px/s — clamp extrapolated velocity to prevent 
 export default class PlayerManager {
   constructor() {
     this.otherPlayers = new Map();
-    this.worldAvatarSystem = null;
   }
 
   addPlayer(scene, data) {
@@ -32,8 +32,7 @@ export default class PlayerManager {
     shadowImg.setAlpha(0.2);
     shadowImg.setDepth(data.y - 1);
 
-    const sprite = scene.add.sprite(data.x, data.y, baseTextureKey(data.gender), FRAME.FRONT);
-    sprite.setOrigin(0.5, 1);
+    const sprite = new RigAvatar(scene, data.x, data.y);
     sprite.setScale(initialScale);
     sprite.setDepth(data.y);
     sprite.gender       = data.gender;
@@ -69,6 +68,7 @@ export default class PlayerManager {
       badgeIcon:    null,
       name:         data.name         || "",
       userId:       data.userId       || null,
+      outfit:       data.outfit       || {},
       bio:          data.bio          || "",
       selectedBadge: data.selectedBadge || null,
       targetX:      data.x,
@@ -82,27 +82,15 @@ export default class PlayerManager {
     });
 
     if (data.selectedBadge) this.updateBadge(scene, data.id, data.selectedBadge);
-
-    const avatarSys = this.worldAvatarSystem;
-    if (avatarSys) {
-      avatarSys.rebuild(data.id, data.gender, data.outfit || {}, sprite.skinColor).then(key => {
-        if (!sprite.scene) return;
-        sprite.setTexture(key);
-        sprite._animKey = (name) => avatarSys.animKey(data.id, name);
-      }).catch(() => {});
-    }
   }
 
+  // The world avatar is a fixed rig, so an outfit change only has to be
+  // remembered for the profile popup — nothing on screen changes.
   applyOutfit(id, gender, outfit, skinColor) {
-    const other    = this.otherPlayers.get(id);
-    const avatarSys = this.worldAvatarSystem;
-    if (!other || !avatarSys) return;
+    const other = this.otherPlayers.get(id);
+    if (!other) return;
     if (skinColor !== undefined) other.sprite.skinColor = skinColor || null;
-    avatarSys.rebuild(id, gender, outfit, other.sprite.skinColor).then(key => {
-      if (!other.sprite.scene) return;
-      other.sprite.setTexture(key);
-      other.sprite._animKey = (name) => avatarSys.animKey(id, name);
-    }).catch(() => {});
+    other.outfit = outfit || {};
   }
 
   updateName(id, name) {
@@ -223,7 +211,6 @@ export default class PlayerManager {
     if (other.badgeIcon)  other.badgeIcon.destroy();
     if (other.chatBubble) other.chatBubble.destroy();
     if (other.chatTimer)  clearTimeout(other.chatTimer);
-    this.worldAvatarSystem?.destroy(id);
     this.otherPlayers.delete(id);
   }
 }

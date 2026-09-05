@@ -2,10 +2,10 @@ import Phaser from "phaser";
 import { FRAME } from "./PlayerManager";
 import { pointInPolygon } from "./collision";
 
-const SPEED = 300;
+const SPEED = 200; // px/s
 const ARRIVE_THRESHOLD = 5;
 
-// Maps walk direction → normalized animation name used by WorldAvatarSystem.
+// Maps walk direction → normalized animation name played on the avatar rig.
 const DIR_ANIM = {
   left:  "walkLeft",
   right: "walkRight",
@@ -139,10 +139,7 @@ export default class MovementManager {
       const animName = DIR_ANIM[walkDir];
       this.currentAnimName = animName;
 
-      // Prefer the avatar-system key if set, fall back to base-texture key.
-      const animKey = player._animKey
-        ? player._animKey(animName)
-        : `walk-${walkDir}-${player.texture.key}`;
+      const animKey = player._animKey(animName);
 
       if (!this.wasWalking || player.anims.currentAnim?.key !== animKey) {
         player.play(animKey);

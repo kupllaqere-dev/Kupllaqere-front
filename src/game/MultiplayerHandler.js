@@ -12,18 +12,15 @@ export default class MultiplayerHandler {
 
     // Set via setGameObjects() in Phaser create()
     this.scene             = null;
-    this.worldAvatarSystem = null;
     this.playerManager     = null;
     this.localSprite       = null;
     this.localChatBubble   = new ChatBubbleManager();
   }
 
   // Called from Phaser create() once the scene is ready.
-  setGameObjects(scene, worldAvatarSystem, playerManager) {
-    this.scene             = scene;
-    this.worldAvatarSystem = worldAvatarSystem;
-    this.playerManager     = playerManager;
-    this.playerManager.worldAvatarSystem = worldAvatarSystem;
+  setGameObjects(scene, playerManager) {
+    this.scene         = scene;
+    this.playerManager = playerManager;
 
     // Forward click on a remote player to the profile viewer.
     this.playerManager.onPlayerClick = (id, name, clientX, clientY, userId) => {
