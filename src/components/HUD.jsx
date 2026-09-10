@@ -4,6 +4,7 @@ import StoreModal from "./StoreModal";
 import PlayerProfile from "./PlayerProfile";
 import SettingsPanel from "./SettingsPanel";
 import MapsModal from "./MapsModal";
+import CollectiblesModal from "./CollectiblesModal";
 import PlayerThumbnail from "./PlayerThumbnail";
 import AngelModal from "./AngelModal";
 import ChessWindow from "./ChessWindow";
@@ -21,38 +22,44 @@ const CHESS_IDLE = {
 };
 
 // Bottom-left vials, left to right. All three share the same glass sprite.
+// XP is filled from the server's levelling curve (fv-game-back/lib/xp.js);
+// nectar and lis have no curve of their own yet, so they stay hand-set.
 const VIALS = [
   { key: "xp", label: "XP", texture: "/assets/xp/vial-liquid-xp.png" },
   { key: "nectar", label: "Nectar", texture: "/assets/xp/vial-liquid-nectar.png" },
   { key: "lis", label: "Lis", texture: "/assets/xp/vial-liquid-lis.png" },
 ];
 
+// The curve runs to nine figures by level 100, which will not fit under a 36px
+// vial — the readout is compact ("8.4K / 10K") and the tooltip carries the
+// exact numbers.
+const compactXp = new Intl.NumberFormat(undefined, {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+// Destination for the Farm nav button below.
+const FARM_MAP_ID = "farm";
+
 const NAV_ITEMS = [
   { key: "store", label: "Store", icon: "/assets/ui-icons/Store.png" },
   { key: "maps", label: "Maps", icon: "/assets/ui-icons/Map.png" },
   { key: "quests", label: "Quests", icon: "/assets/ui-icons/Quests.png" },
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
+  { key: "farm", label: "Farm", icon: "/assets/ui-icons/Farm.png" },
+  { key: "collectibles", label: "Collectibles", icon: "/assets/ui-icons/Collectibles.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap }) {
-  // Each vial follows its own input box. XP starts from whatever the server sent
-  // and re-syncs if that value later changes.
-  const [vialInputs, setVialInputs] = useState(() => ({
-    xp: String(Math.round(xpPercent ?? 0)),
-    nectar: "0",
-    lis: "0",
-  }));
-  const [syncedXp, setSyncedXp] = useState(xpPercent);
-  if (xpPercent !== syncedXp) {
-    setSyncedXp(xpPercent);
-    setVialInputs((prev) => ({ ...prev, xp: String(Math.round(xpPercent ?? 0)) }));
-  }
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap, seedInventory }) {
+  // Only the hand-set vials need state — XP comes down as a prop.
+  const [vialInputs, setVialInputs] = useState({ nectar: "0", lis: "0" });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
+  const [showCollectibles, setShowCollectibles] = useState(false);
   const [showAngel, setShowAngel] = useState(false);
   const [showChess, setShowChess] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -264,7 +271,17 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     maps: () => setShowMaps(true),
     quests: () => {},
     news: () => window.open("https://platform.neclisworld.com", "_blank", "noopener,noreferrer"),
+    farm: () => onChangeMap?.(FARM_MAP_ID),
+    collectibles: () => setShowCollectibles(true),
   };
+
+  // Only the Farm button has state worth spelling out in its tooltip.
+  const navTitle = (key, label) =>
+    key === "farm"
+      ? currentMap === FARM_MAP_ID
+        ? "You are at the Farm"
+        : "Travel to the Farm"
+      : label;
 
   async function handleOpenProfile(user) {
     let data = user;
@@ -347,6 +364,12 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           onSelectMap={onChangeMap}
         />
       )}
+      {showCollectibles && (
+        <CollectiblesModal
+          onClose={() => setShowCollectibles(false)}
+          seeds={seedInventory}
+        />
+      )}
       {showAngel && <AngelModal onClose={() => setShowAngel(false)} />}
       {showStore && (
         <StoreModal
@@ -421,6 +444,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                   key={item.key}
                   $index={i}
                   onClick={() => menuActions[item.key]?.()}
+                  title={navTitle(item.key, item.label)}
                 >
                   <img src={item.icon} alt={item.label} />
                 </S.IconButton>
@@ -446,26 +470,55 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
 
         <S.VialDock>
           {VIALS.map(({ key, label, texture }) => {
-            const pct = Math.max(0, Math.min(100, Number(vialInputs[key]) || 0));
+            const isXp = key === "xp";
+            // The server sends the next level's cost, null once the cap is
+            // reached — and nothing at all until the first payload lands, which
+            // is the case a cached fv_user from before the curve falls into.
+            const cost = isXp && typeof xpForNextLevel === "number" && xpForNextLevel > 0
+              ? xpForNextLevel
+              : null;
+            const capped = isXp && xpForNextLevel === null;
+            const pct = isXp
+              ? Math.max(0, Math.min(100, xpPercent ?? 0))
+              : Math.max(0, Math.min(100, Number(vialInputs[key]) || 0));
+            let title = `${label} ${Math.round(pct)}%`;
+            if (cost) {
+              title = `${label} ${Math.round(xp ?? 0).toLocaleString()} / ${cost.toLocaleString()} to level ${(level ?? 1) + 1}`;
+            } else if (capped) {
+              title = `${label} — level ${level ?? 1}, fully levelled`;
+            }
             return (
               <S.VialColumn key={key}>
-                <S.Vial title={`${label} ${pct}%`}>
+                <S.Vial title={title}>
                   <S.VialTube>
                     <S.VialFill $pct={pct} $texture={texture} />
                   </S.VialTube>
                   <S.VialGlass src="/assets/xp/vial.png" alt="" />
                 </S.Vial>
-                <S.VialInputWrap>
-                  <S.VialInputLabel>{label}</S.VialInputLabel>
-                  <S.VialInput
-                    type="text"
-                    inputMode="numeric"
-                    value={vialInputs[key]}
-                    onChange={(e) => handleVialInput(key, e)}
-                    placeholder="0"
-                    aria-label={`${label} percent`}
-                  />
-                </S.VialInputWrap>
+                {isXp ? (
+                  <S.VialReadoutWrap>
+                    <S.VialInputLabel>{label}</S.VialInputLabel>
+                    <S.VialReadout title={title}>
+                      {cost
+                        ? `${compactXp.format(Math.round(xp ?? 0))}/${compactXp.format(cost)}`
+                        : capped
+                          ? "MAX"
+                          : `${Math.round(pct)}%`}
+                    </S.VialReadout>
+                  </S.VialReadoutWrap>
+                ) : (
+                  <S.VialInputWrap>
+                    <S.VialInputLabel>{label}</S.VialInputLabel>
+                    <S.VialInput
+                      type="text"
+                      inputMode="numeric"
+                      value={vialInputs[key]}
+                      onChange={(e) => handleVialInput(key, e)}
+                      placeholder="0"
+                      aria-label={`${label} percent`}
+                    />
+                  </S.VialInputWrap>
+                )}
               </S.VialColumn>
             );
           })}

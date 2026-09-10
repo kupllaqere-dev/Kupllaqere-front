@@ -6,6 +6,7 @@ import CharacterSetup from "./components/CharacterSetup";
 import AuthFlow from "./auth/AuthFlow";
 import { readAuthParams, isAuthLink } from "./auth/authLink";
 import { updateName, updateBio, updateBadge, getMe } from "./api/auth";
+import { fetchSeeds } from "./api/seeds";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
 import { DEFAULT_MAP } from "./game/MapManager";
@@ -56,6 +57,10 @@ function App() {
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [kickMessage, setKickMessage] = useState(null);
   const [currentMap, setCurrentMap] = useState(DEFAULT_MAP);
+  // Seeds picked up in the Garden, as { seedId: count }. The server is the
+  // authority; this mirrors it so the HUD and the planter can read it without
+  // a round trip.
+  const [seedInventory, setSeedInventory] = useState({});
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
   const applyLookBatchRef = useRef(null);
@@ -99,6 +104,16 @@ function App() {
               ...prev,
               coins: data.user.coins ?? prev.coins,
               gems:  data.user.gems  ?? prev.gems,
+              level: data.user.level ?? prev.level,
+              // Progression is server-side now, so the stored copy follows it.
+              xp: data.user.xp ?? prev.xp,
+              // Legitimately null at the cap, so this one can't lean on ??.
+              xpForNextLevel:
+                data.user.xpForNextLevel !== undefined
+                  ? data.user.xpForNextLevel
+                  : prev.xpForNextLevel,
+              maxLevel: data.user.maxLevel ?? prev.maxLevel,
+              xpPercent: data.user.xpPercent ?? prev.xpPercent,
             };
             localStorage.setItem("fv_user", JSON.stringify(next));
             return next;
@@ -166,6 +181,67 @@ function App() {
     });
   }, []);
 
+  // Progression lives on the server (fv-game-back/lib/xp.js). Every payload that
+  // touches XP carries `xp` — what has been banked into the current level — and
+  // `xpForNextLevel`, what the curve charges for the next one, null once
+  // maxLevel is reached. The front end never reproduces the table; the two
+  // handlers below just carry those numbers through to the HUD's vial.
+  //
+  // Tree fruit, front-end only: bumps the in-memory balance so the HUD reflects
+  // the payout. Deliberately not persisted — the planter's harvests go through
+  // the server instead (see handleBalancesChanged).
+  const handleCoinsEarned = useCallback((amount) => {
+    setUser((prev) => (prev ? { ...prev, coins: (prev.coins ?? 0) + amount } : prev));
+  }, []);
+
+  // Likewise for XP fruit. It fills the current level's share of the curve and
+  // stops there: the client doesn't carry the XP table, so it can't know what
+  // the level after this one costs, and this payout was never banked anyway.
+  // The next authoritative payload (getMe, or a planter harvest) settles the
+  // real level and XP — see handleBalancesChanged.
+  const handleXpEarned = useCallback((amount) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const needed = prev.xpForNextLevel;
+      // Null at the level cap, undefined until the server has said otherwise —
+      // either way there is no room on the curve to advance into.
+      if (!needed) return prev;
+      const xp = Math.min((prev.xp ?? 0) + amount, needed);
+      return { ...prev, xp, xpPercent: (xp / needed) * 100 };
+    });
+  }, []);
+
+  // Both pickups and sowings report the new total for that one seed, so the
+  // mirror never has to guess at a delta.
+  const handleSeedCountChange = useCallback((seedId, count) => {
+    setSeedInventory((prev) => {
+      const next = { ...prev };
+      if (count > 0) next[seedId] = count;
+      else delete next[seedId];
+      return next;
+    });
+  }, []);
+
+  // A planter harvest is banked server-side, so the numbers it sends back are
+  // the real ones — they replace the local balance rather than adding to it.
+  const handleBalancesChanged = useCallback(({ coins, gems, level, xp, xpForNextLevel, maxLevel, xpPercent }) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = {
+        ...prev,
+        ...(coins !== undefined ? { coins } : {}),
+        ...(gems !== undefined ? { gems } : {}),
+        ...(level !== undefined ? { level } : {}),
+        ...(xp !== undefined ? { xp } : {}),
+        ...(xpForNextLevel !== undefined ? { xpForNextLevel } : {}),
+        ...(maxLevel !== undefined ? { maxLevel } : {}),
+        ...(xpPercent !== undefined ? { xpPercent } : {}),
+      };
+      localStorage.setItem("fv_user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const handlePurchaseComplete = useCallback(({ coins, gems }) => {
     setUser((prev) => {
       const next = { ...prev, coins, gems };
@@ -173,6 +249,13 @@ function App() {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    if (!user || user.needsSetup) return;
+    fetchSeeds()
+      .then(({ seeds }) => setSeedInventory(seeds || {}))
+      .catch(() => {});
+  }, [user?.id, user?.needsSetup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     localStorage.removeItem("fv_user");
@@ -239,6 +322,11 @@ function App() {
           onSocketReady={setGameSocket}
           onOnlinePlayersChange={setOnlinePlayers}
           onMapChange={setCurrentMap}
+          onCoinsEarned={handleCoinsEarned}
+          onXpEarned={handleXpEarned}
+          seedInventory={seedInventory}
+          onSeedCountChange={handleSeedCountChange}
+          onBalancesChanged={handleBalancesChanged}
         />
         <HUD
           onLogout={handleLogout}
@@ -263,11 +351,14 @@ function App() {
           coins={user?.coins ?? 0}
           gems={user?.gems ?? 0}
           level={user?.level ?? 1}
-          xpPercent={user?.xpPercent ?? 50}
+          xp={user?.xp ?? 0}
+          xpForNextLevel={user?.xpForNextLevel}
+          xpPercent={user?.xpPercent ?? 0}
           onPurchaseComplete={handlePurchaseComplete}
           onlinePlayers={onlinePlayers}
           currentMap={currentMap}
           onChangeMap={handleChangeMap}
+          seedInventory={seedInventory}
         />
       </div>
     </div>

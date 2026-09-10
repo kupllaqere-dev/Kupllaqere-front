@@ -172,6 +172,41 @@ export default class SocketManager {
     this.socket.on("chess:resign:received", callback);
   }
 
+  // ── Garden seed drops ──────────────────────────────
+  /** Ask for the seeds currently on the ground in the map we're standing in. */
+  requestSeeds() {
+    this.socket.emit("seeds:sync");
+  }
+
+  /** Claim a seed by drop id. The server decides who actually gets it. */
+  pickupSeed(id) {
+    this.socket.emit("seeds:pickup", { id });
+  }
+
+  /** Full replacement of the visible drops: { seeds }. */
+  onSeedsState(callback) {
+    this.socket.on("seeds:state", callback);
+  }
+
+  /** A new drop landed: { id, seedId, rarity, x, y }. */
+  onSeedSpawned(callback) {
+    this.socket.on("seeds:spawned", callback);
+  }
+
+  /** A drop is gone — picked up by `by`, or expired when `by` is null. */
+  onSeedRemoved(callback) {
+    this.socket.on("seeds:removed", callback);
+  }
+
+  /** We won a seed: { seedId, rarity, count } — count is the new total held. */
+  onSeedGranted(callback) {
+    this.socket.on("seeds:granted", callback);
+  }
+
+  onSeedError(callback) {
+    this.socket.on("seeds:error", callback);
+  }
+
   // ── Guestbook stickers ─────────────────────────────────────────
   /**
    * Join the realtime room for a profile's guestbook.

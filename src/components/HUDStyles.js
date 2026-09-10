@@ -230,6 +230,35 @@ export const VialInput = styled.input`
   }
 `;
 
+// The XP vial is server-driven, so it gets a readout where the others get an
+// input. Same chip, but it sizes to its text — the curve's numbers are longer
+// than a percentage.
+export const VialReadoutWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+`;
+
+export const VialReadout = styled.span`
+  min-width: 54px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${PANEL_BG};
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  color: rgba(240, 225, 255, 0.97);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  pointer-events: all;
+`;
+
 export const VialGlass = styled.img`
   position: absolute;
   inset: 0;
@@ -273,6 +302,8 @@ export const IconButton = styled.div`
   }
 `;
 
+// Nav button for destinations that have no icon art yet — same footprint as
+// IconButton, with a glyph + caption instead of an image.
 // Sits over the bottom of the avatar ring, hanging below its lower edge.
 export const NamePlate = styled.div`
   position: absolute;

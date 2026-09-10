@@ -30,6 +30,9 @@ export const MAPS = {
     colliders:    "/assets/maps/mainmap/colliders.json",
     collidersKey: "colliders-garden",
     spawn:   { x: 0.5, y: 0.65 },
+    // Seeds drop here for the Farm's planter — the server owns the drops and
+    // Game.jsx mounts a SeedField on any map carrying this flag.
+    seeds:   true,
   },
   plaza: {
     id:      "plaza",
@@ -103,6 +106,23 @@ export const MAPS = {
     collidersKey: null,
     spawn:   { x: 0.5, y: 0.85 },
   },
+  farm: {
+    id:      "farm",
+    label:   "Farm",
+    side:    "day",
+    texture: "map-farm",
+    // No artwork yet. `path: null` makes createMap() paint the `scenery`
+    // colours instead of loading a background image.
+    path:    null,
+    scenery: { sky: 0x9fd9f6, horizon: 0x8ec97a, ground: 0x74bf63 },
+    width:   worldWidth(3000, 1440), // 2250 — same footprint as Ruins
+    height:  WORLD_HEIGHT,
+    colliders:    null,
+    collidersKey: null,
+    spawn:   { x: 0.5, y: 0.93 },
+    // Drives the 5x5 planter built by PlanterSystem (see Game.jsx).
+    planter: true,
+  },
 };
 
 export const MAP_LIST = Object.values(MAPS);
@@ -123,7 +143,7 @@ let currentMapObjects = [];
  */
 export function preloadMap(scene, mapId = DEFAULT_MAP) {
   const map = getMap(mapId);
-  scene.load.image(map.texture, map.path);
+  if (map.path) scene.load.image(map.texture, map.path);
   if (map.colliders) scene.load.json(map.collidersKey, map.colliders);
 }
 
@@ -133,7 +153,7 @@ export function preloadMap(scene, mapId = DEFAULT_MAP) {
  */
 export function ensureMapLoaded(scene, mapId, onProgress) {
   const map = getMap(mapId);
-  const needsTexture   = !scene.textures.exists(map.texture);
+  const needsTexture   = !!map.path && !scene.textures.exists(map.texture);
   const needsColliders = !!map.collidersKey && !scene.cache.json.exists(map.collidersKey);
 
   if (!needsTexture && !needsColliders) return Promise.resolve(map);
@@ -156,6 +176,29 @@ export function ensureMapLoaded(scene, mapId, onProgress) {
 }
 
 /**
+ * Stand-in backdrop for maps that have no artwork yet (`path: null`): a flat
+ * sky band, a grassy ground band, and a soft horizon strip between them.
+ * Returns the objects it created so createMap() can track them for teardown.
+ */
+function paintScenery(scene, map) {
+  const { sky, horizon, ground } = map.scenery;
+  const horizonY = Math.round(map.height * 0.24);
+  const bandH    = Math.round(map.height * 0.06);
+
+  return [
+    scene.add.rectangle(map.width / 2, horizonY / 2, map.width, horizonY, sky),
+    scene.add.rectangle(map.width / 2, horizonY + bandH / 2, map.width, bandH, horizon),
+    scene.add.rectangle(
+      map.width / 2,
+      horizonY + bandH + (map.height - horizonY - bandH) / 2,
+      map.width,
+      map.height - horizonY - bandH,
+      ground,
+    ),
+  ].map((obj) => obj.setScrollFactor(1).setDepth(-10));
+}
+
+/**
  * Tears down the previous map's display objects and builds `mapId`.
  * Returns { map, walkableZones, spawn }.
  */
@@ -172,6 +215,8 @@ export function createMap(scene, mapId = DEFAULT_MAP) {
       .setScrollFactor(1)
       .setDepth(-10);
     currentMapObjects.push(bg);
+  } else if (map.scenery) {
+    currentMapObjects.push(...paintScenery(scene, map));
   } else {
     const fill = scene.add
       .rectangle(map.width / 2, map.height / 2, map.width, map.height, 0x1a1030)
