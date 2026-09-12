@@ -63,7 +63,7 @@ export default function Online() {
               <PlayerCard key={p.socketId}>
                 <PName>{p.name}</PName>
                 <PMeta>
-                  {p.userId ? `ID: ${p.userId.slice(-6)}` : "guest"}
+                  {p.userId ? `ID: ${p.userId.slice(-6)}` : "signed out"}
                 </PMeta>
                 <PMeta>x:{p.x} y:{p.y}</PMeta>
               </PlayerCard>

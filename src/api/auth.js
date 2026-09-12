@@ -40,10 +40,6 @@ export async function setupCharacter(name, gender) {
   }); // { user }
 }
 
-export async function loginAsGuest() {
-  return apiFetch("/api/auth/guest", { method: "POST" }); // { user, token }
-}
-
 // Returns the current user's profile using a Supabase session token.
 // Called after Google OAuth redirect to exchange the session for a profile.
 export async function getMe(accessToken) {

@@ -24,54 +24,6 @@ const SORT_OPTIONS = [
   { key: "alpha",  label: "Alphabetical" },
 ];
 
-/* ──────────────────────────────────────────────────────────────────────────
-   TEMPORARY layout placeholders. Appended to the real lists in dev builds so
-   the grid, dividers and scrolling can be eyeballed on an empty account.
-   Delete this block plus the two `...PLACEHOLDER_*` spreads below to remove.
-   ────────────────────────────────────────────────────────────────────────── */
-const SHOW_PLACEHOLDERS = import.meta.env.DEV;
-
-const PLACEHOLDER_FRIENDS = [
-  ["Lunaria",  82, "online",  "female", "Neclis Plaza"],
-  ["Hikari",   75, "online",  "female", "Celestial Garden"],
-  ["Cloudy",   69, "online",  "female", "Neclis Plaza"],
-  ["Momo",     63, "online",  "female", "Dreaming Shore"],
-  ["Stella",   58, "online",  "female", "Neclis Plaza"],
-  ["Raven",    55, "online",  "male",   "Eternal Heights"],
-  ["Miyu",     54, "away",    "female", "Neclis Plaza"],
-  ["Kai",      51, "away",    "male",   "Dreaming Shore"],
-  ["Yuna",     47, "online",  "female", "Celestial Garden"],
-  ["Sakura",   44, "away",    "female", "Moonlit Market"],
-  ["Noctis",   41, "offline", "male",   ""],
-  ["Aria",     38, "offline", "female", ""],
-  ["Rin",      36, "offline", "female", ""],
-  ["Kazu",     33, "offline", "male",   ""],
-  ["Vespera",  29, "offline", "female", ""],
-  ["Tsuki",    25, "offline", "female", ""],
-  ["Orion",    22, "offline", "male",   ""],
-  ["Nami",     18, "offline", "female", ""],
-  ["Elias",    12, "offline", "male",   ""],
-  ["Poppy",     6, "offline", "female", ""],
-].map(([name, level, status, gender, location]) => ({
-  id: `mock-${name}`, name, level, status, gender, location, mock: true,
-}));
-
-const PLACEHOLDER_SOULMATES = [
-  ["Aurelia", 77, "online",  "female"],
-  ["Nyx",     64, "away",    "male"],
-  ["Lilium",  52, "offline", "female"],
-].map(([name, level, status, gender]) => ({
-  id: `mock-soul-${name}`, name, level, status, gender, mock: true,
-}));
-
-const PLACEHOLDER_REQUESTS = [
-  ["Seraphine", 61, "female"],
-  ["Dante",     40, "male"],
-  ["Wisteria",  27, "female"],
-].map(([name, level, gender]) => ({
-  id: `mock-req-${name}`, name, level, gender, mock: true,
-}));
-
 function IconChevron() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -184,9 +136,9 @@ export default function FriendsTab({
     setPlayerMenu({ ...player, x: rect.right, y: rect.top });
   }
 
-  const friends = [...(friendsData?.friends || []), ...(SHOW_PLACEHOLDERS ? PLACEHOLDER_FRIENDS : [])];
-  const received = [...(friendsData?.received || []), ...(SHOW_PLACEHOLDERS ? PLACEHOLDER_REQUESTS : [])];
-  const soulmates = SHOW_PLACEHOLDERS ? PLACEHOLDER_SOULMATES : [];
+  const friends = friendsData?.friends || [];
+  const received = friendsData?.received || [];
+  const soulmates = friendsData?.soulmates || [];
 
   useEffect(() => {
     if (!socket?.socket) return;
@@ -264,19 +216,17 @@ export default function FriendsTab({
   const renderCard = (f, { request = false, soulmate = false } = {}) => {
     const status = request ? null : getFriendStatus(f);
     const menuData = { id: f.id, userId: f.id, name: f.name };
-    // Placeholder rows are inert: no lookups, no requests to the API.
-    const act = (fn) => (f.mock ? undefined : fn);
     return (
       <FriendCard key={f.id} $soulmate={soulmate} $dim={!request && !soulmate && status === "offline"}>
         <FriendCardTop>
-          <FriendAvatarWrap onClick={act((e) => openPlayerMenu(menuData, e))} title={f.name}>
+          <FriendAvatarWrap onClick={(e) => openPlayerMenu(menuData, e)} title={f.name}>
             <FriendAvatarCircle>
-              <PlayerThumbnail playerName={f.name} size={46} gender={f.mock ? f.gender : undefined} />
+              <PlayerThumbnail playerName={f.name} size={46} />
             </FriendAvatarCircle>
             {!request && <FriendStatusDot $status={status} />}
           </FriendAvatarWrap>
           <FriendCardInfo>
-            <FriendCardName onClick={act(() => onOpenProfile?.({ id: f.id, userId: f.id, name: f.name }))}>
+            <FriendCardName onClick={() => onOpenProfile?.({ id: f.id, userId: f.id, name: f.name })}>
               {f.name}
             </FriendCardName>
             <FriendMetaRow>
@@ -309,23 +259,23 @@ export default function FriendsTab({
             <>
               <FriendAcceptBtn
                 disabled={!!friendBusy}
-                onClick={act(() => runAction(() => acceptFriend(f.id), f.id))}
+                onClick={() => runAction(() => acceptFriend(f.id), f.id)}
               >
                 Accept
               </FriendAcceptBtn>
               <FriendDeclineBtn
                 disabled={!!friendBusy}
-                onClick={act(() => runAction(() => declineFriend(f.id), f.id))}
+                onClick={() => runAction(() => declineFriend(f.id), f.id)}
               >
                 Decline
               </FriendDeclineBtn>
             </>
           ) : (
             <>
-              <FriendActionBtn title={`Message ${f.name}`} onClick={act(() => onMessage?.({ id: f.id, name: f.name }))}>
+              <FriendActionBtn title={`Message ${f.name}`} onClick={() => onMessage?.({ id: f.id, name: f.name })}>
                 <IconMessage /> Message
               </FriendActionBtn>
-              <FriendActionBtn title="Options" onClick={act((e) => openPlayerMenu(menuData, e))}>
+              <FriendActionBtn title="Options" onClick={(e) => openPlayerMenu(menuData, e)}>
                 <IconSettings /> Options
               </FriendActionBtn>
             </>

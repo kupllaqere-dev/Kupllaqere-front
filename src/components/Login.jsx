@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styled from "styled-components";
-import { loginWithEmail, register, loginAsGuest } from "../api/auth";
+import { loginWithEmail, register } from "../api/auth";
 import supabase from "../lib/supabase";
 
 // ── Styled Components ──
@@ -152,23 +152,6 @@ const Divider = styled.div`
     flex: 1;
     height: 1px;
     background: rgba(255, 255, 255, 0.08);
-  }
-`;
-
-const GuestBtn = styled.button`
-  width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.15);
   }
 `;
 
@@ -333,19 +316,6 @@ export default function Login({ onLogin, kickMessage, onKickMessageClear }) {
     }
   }
 
-  async function handleGuest() {
-    setError("");
-    setLoading(true);
-    try {
-      const data = await loginAsGuest();
-      onLogin(data.user, data.token, data.refreshToken);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleGoogleLogin() {
     setError("");
     setLoading(true);
@@ -425,15 +395,6 @@ export default function Login({ onLogin, kickMessage, onKickMessageClear }) {
           <GoogleIcon />
           Continue with Google
         </GoogleBtn>
-
-        <GuestBtn
-          type="button"
-          onClick={handleGuest}
-          disabled={loading}
-          style={{ marginTop: 10 }}
-        >
-          Play as Guest
-        </GuestBtn>
 
         <BottomLink>
           Don't have an account?

@@ -21,6 +21,41 @@ export async function fetchInventory() {
   return res.json(); // { items }
 }
 
+/**
+ * The shop's real-money catalogue: { currency, lisPacks, membership }.
+ * Prices are integer cents of `currency` and are owned by the server
+ * (fv-game-back/lib/shopCatalogue.js) — never re-price these client-side.
+ */
+export async function fetchShopCatalogue() {
+  const res = await fetch(`${API}/api/store/catalogue`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to load the shop catalogue");
+  return res.json();
+}
+
+/**
+ * Clothing-inventory capacity: { slots, used, available, max, expansion }.
+ * `expansion` is what the shop's Account tab sells — { amount, cost, currency }.
+ * Seeds and crops are a separate bag and are not counted here.
+ */
+export async function fetchInventorySlots() {
+  const res = await fetch(`${API}/api/store/inventory/slots`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to load inventory slots");
+  return res.json();
+}
+
+/** Buys one expansion pack. Resolves to the same shape plus the new gem balance. */
+export async function purchaseInventorySlots() {
+  const res = await fetch(`${API}/api/store/inventory/slots/purchase`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Purchase failed");
+  }
+  return res.json();
+}
+
 export async function sellItem({ inventoryId }) {
   const res = await fetch(`${API}/api/store/sell`, {
     method: "POST",

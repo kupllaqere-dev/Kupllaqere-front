@@ -470,6 +470,32 @@ export const SettingsBtn = styled.div`
   }
 `;
 
+// Dev-only: fires the LEVEL UP banner on demand. Sits directly above the
+// settings button, deliberately unstyled-like-the-rest so it reads as a tool.
+export const DevButton = styled.button`
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px dashed rgba(255, 214, 90, 0.8);
+  color: #ffd65a;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: rgba(255, 214, 90, 0.16);
+    color: #fff;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 export const DropdownButton = styled.button`
   display: flex;
   align-items: center;
@@ -614,4 +640,98 @@ export const AngelStrip = styled.button`
   &:active {
     background: linear-gradient(90deg, rgba(220, 160, 40, 0.85), rgba(255, 195, 50, 0.9));
   }
+`;
+
+// ── Friend-online toasts ─────────────────────────────────────────────────
+// Stacked under the avatar nameplate. The nameplate hangs 18px below the ring
+// and is ~30px tall, so the stack starts clear of it. Left-aligned rather than
+// centred: the panel sits 10px from the viewport edge and a centred card wider
+// than the 162px ring would run off screen.
+// The card rests translucent so it reads as an overlay, not a second HUD panel.
+const FRIEND_TOAST_OPACITY = 0.88;
+
+const FRIEND_TOAST_IN = keyframes`
+  from { opacity: 0; transform: translateY(-22px) scale(0.94); }
+  60%  { opacity: ${FRIEND_TOAST_OPACITY}; transform: translateY(3px) scale(1.01); }
+  to   { opacity: ${FRIEND_TOAST_OPACITY}; transform: translateY(0) scale(1); }
+`;
+
+const FRIEND_TOAST_OUT = keyframes`
+  from { opacity: ${FRIEND_TOAST_OPACITY}; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-10px) scale(0.95); }
+`;
+
+export const FriendToastStack = styled.div`
+  position: absolute;
+  top: calc(100% + 26px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 6;
+`;
+
+export const FriendToast = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 186px;
+  max-width: 252px;
+  box-sizing: border-box;
+  padding: 7px 14px 7px 8px;
+  border-radius: 24px;
+  background: rgba(59, 20, 120, 0.55);
+  backdrop-filter: blur(6px);
+  border: 2px solid rgba(180, 120, 255, 0.45);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 0 14px rgba(140, 70, 245, 0.18);
+  opacity: ${FRIEND_TOAST_OPACITY};
+  animation: ${({ $leaving }) => ($leaving ? FRIEND_TOAST_OUT : FRIEND_TOAST_IN)}
+    ${({ $leaving }) => ($leaving ? "0.28s" : "0.34s")} ease forwards;
+`;
+
+export const FriendToastAvatar = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(180, 120, 255, 0.75);
+  background: rgba(0, 0, 0, 0.22);
+  display: flex;
+  line-height: 0;
+`;
+
+export const FriendToastDot = styled.span`
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #4ade80;
+  border: 2px solid rgba(40, 12, 84, 0.85);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
+`;
+
+export const FriendToastText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+`;
+
+export const FriendToastName = styled.div`
+  color: rgba(240, 225, 255, 0.97);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const FriendToastSub = styled.div`
+  color: #7ee8a6;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 `;

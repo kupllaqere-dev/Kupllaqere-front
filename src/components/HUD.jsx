@@ -1,11 +1,14 @@
 import * as S from "./HUDStyles";
 import { useState, useCallback, useEffect, useRef } from "react";
 import StoreModal from "./StoreModal";
+import ShopModal from "./ShopModal";
 import PlayerProfile from "./PlayerProfile";
 import SettingsPanel from "./SettingsPanel";
 import MapsModal from "./MapsModal";
 import CollectiblesModal from "./CollectiblesModal";
+import NameChangeModal from "./NameChangeModal";
 import PlayerThumbnail from "./PlayerThumbnail";
+import FriendOnlineToasts from "./FriendOnlineToasts";
 import AngelModal from "./AngelModal";
 import ChessWindow from "./ChessWindow";
 import ChessInviteNotification from "./ChessInviteNotification";
@@ -42,7 +45,7 @@ const compactXp = new Intl.NumberFormat(undefined, {
 const FARM_MAP_ID = "farm";
 
 const NAV_ITEMS = [
-  { key: "store", label: "Store", icon: "/assets/ui-icons/Store.png" },
+  { key: "shop", label: "Shop", icon: "/assets/ui-icons/Store.png" },
   { key: "maps", label: "Maps", icon: "/assets/ui-icons/Map.png" },
   { key: "quests", label: "Quests", icon: "/assets/ui-icons/Quests.png" },
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
@@ -50,7 +53,7 @@ const NAV_ITEMS = [
   { key: "collectibles", label: "Collectibles", icon: "/assets/ui-icons/Collectibles.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, isGuest, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap, seedInventory }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap, seedInventory, consumables, onConsumablesChange, onDevLevelUp }) {
   // Only the hand-set vials need state — XP comes down as a prop.
   const [vialInputs, setVialInputs] = useState({ nectar: "0", lis: "0" });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -58,6 +61,8 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showStore, setShowStore] = useState(false);
+  const [showShop, setShowShop] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
   const [showCollectibles, setShowCollectibles] = useState(false);
   const [showAngel, setShowAngel] = useState(false);
@@ -266,8 +271,16 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     setShowChess(false);
   }, []);
 
+  // Spending an item from the Collectibles bag. Each consumable's effect is
+  // implemented here, keyed by the id in fv-game-back/lib/consumables.js.
+  const handleUseConsumable = useCallback((itemId) => {
+    if (itemId !== "name_change") return;
+    setShowCollectibles(false);
+    setRenaming(true);
+  }, []);
+
   const menuActions = {
-    store: () => setShowStore(true),
+    shop: () => setShowShop(true),
     maps: () => setShowMaps(true),
     quests: () => {},
     news: () => window.open("https://platform.neclisworld.com", "_blank", "noopener,noreferrer"),
@@ -351,9 +364,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <SettingsPanel
           onClose={() => setShowSettings(false)}
           playerName={playerName}
-          onSaveName={onSaveName}
           email={email}
-          isGuest={isGuest}
           role={role}
         />
       )}
@@ -368,9 +379,26 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <CollectiblesModal
           onClose={() => setShowCollectibles(false)}
           seeds={seedInventory}
+          consumables={consumables}
+          onUseConsumable={handleUseConsumable}
+        />
+      )}
+      {renaming && (
+        <NameChangeModal
+          currentName={playerName || ""}
+          onConfirm={onSaveName}
+          onClose={() => setRenaming(false)}
         />
       )}
       {showAngel && <AngelModal onClose={() => setShowAngel(false)} />}
+      {showShop && (
+        <ShopModal
+          onClose={() => setShowShop(false)}
+          gems={gems ?? 0}
+          onPurchaseComplete={onPurchaseComplete}
+          onConsumablesChange={onConsumablesChange}
+        />
+      )}
       {showStore && (
         <StoreModal
           onClose={() => setShowStore(false)}
@@ -436,6 +464,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                   <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
                 </S.NameRow>
               </S.NamePlate>
+              <FriendOnlineToasts socket={socket} />
             </S.AvatarBlock>
 
             <S.ButtonRow>
@@ -462,7 +491,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
             <img src="/icons/Lis.png" alt="lis" />
             <span>{(gems ?? 0).toLocaleString()}</span>
           </S.CurrencyChip>
-          <S.BuyButton onClick={() => setShowStore(true)} aria-label="Shop">
+          <S.BuyButton onClick={() => setShowShop(true)} aria-label="Shop">
             <img src="/assets/ui-icons/Noshop.png" alt="" data-state="idle" />
             <img src="/assets/ui-icons/Shop.png" alt="" data-state="hover" />
           </S.BuyButton>
@@ -525,6 +554,11 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         </S.VialDock>
 
         <S.SettingsWrapper ref={menuRef}>
+          {import.meta.env.DEV && onDevLevelUp && (
+            <S.DevButton onClick={onDevLevelUp} title="Dev: play the level-up banner">
+              DEV: LEVEL UP
+            </S.DevButton>
+          )}
           {settingsOpen && (
             <S.MenuDropdown>
               <S.DropdownButton onClick={() => { setShowSettings(true); setSettingsOpen(false); }}>

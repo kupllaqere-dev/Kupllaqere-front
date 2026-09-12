@@ -149,6 +149,25 @@ const Footer = styled.div`
   color: rgba(210, 175, 255, 0.75);
 `;
 
+/* Consumables sit in the same bag as seeds but can be acted on, so the footer
+   grows a button when one is selected. */
+const UseBtn = styled.button`
+  margin-left: auto;
+  padding: 7px 18px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #fff;
+  background: linear-gradient(180deg, #9b37f0, #6d21c0);
+  border: 1.5px solid rgba(220, 170, 255, 0.55);
+  transition: all 0.15s ease;
+
+  &:hover { background: linear-gradient(180deg, #ad4fff, #7c2ada); }
+`;
+
 const CloseBtn = styled.button`
   position: absolute;
   top: 14px;
@@ -170,22 +189,35 @@ const CloseBtn = styled.button`
   &:hover { background: rgba(0, 0, 0, 0.7); }
 `;
 
-export default function CollectiblesModal({ onClose, seeds = {} }) {
+export default function CollectiblesModal({
+  onClose,
+  seeds = {},
+  consumables = { catalogue: [], owned: {} },
+  onUseConsumable,
+}) {
   const [selected, setSelected] = useState(null);
 
   // One slot per kind held, stacked — a bagful of Sunflower seeds is one slot
-  // reading "x12", not twelve slots.
-  const held = SEEDS.filter((seed) => (seeds[seed.id] ?? 0) > 0).map((seed) => ({
+  // reading "x12", not twelve slots. Consumables come first: they are bought
+  // rather than found, and they are the only things here that can be acted on.
+  const heldConsumables = (consumables.catalogue || [])
+    .filter((item) => (consumables.owned?.[item.id] ?? 0) > 0)
+    .map((item) => ({ ...item, kind: "consumable", count: consumables.owned[item.id] }));
+
+  const heldSeeds = SEEDS.filter((seed) => (seeds[seed.id] ?? 0) > 0).map((seed) => ({
     ...seed,
+    kind: "seed",
     count: seeds[seed.id],
   }));
+
+  const held = [...heldConsumables, ...heldSeeds];
 
   const slots = Array(SLOT_COUNT).fill(null);
   held.slice(0, SLOT_COUNT).forEach((item, i) => { slots[i] = item; });
 
   const filled = held.length;
   const selectedItem = selected == null ? null : slots[selected];
-  const tier = selectedItem ? getRarity(selectedItem.rarity) : null;
+  const tier = selectedItem?.kind === "seed" ? getRarity(selectedItem.rarity) : null;
 
   return (
     <Overlay onClick={onClose}>
@@ -200,9 +232,21 @@ export default function CollectiblesModal({ onClose, seeds = {} }) {
             <Slot
               key={i}
               $selected={selected === i}
-              $rarity={item ? getRarity(item.rarity).color : null}
+              $rarity={
+                item?.kind === "seed"
+                  ? getRarity(item.rarity).color
+                  : item
+                    ? "rgba(255, 205, 60, 0.7)"
+                    : null
+              }
               onClick={() => setSelected(i)}
-              title={item ? `${item.name} seed x${item.count}` : `Empty slot ${i + 1}`}
+              title={
+                item
+                  ? item.kind === "seed"
+                    ? `${item.name} seed x${item.count}`
+                    : `${item.name} x${item.count} — click, then Use`
+                  : `Empty slot ${i + 1}`
+              }
             >
               {item?.icon}
               {item && item.count > 1 && <Stack>{item.count}</Stack>}
@@ -211,7 +255,7 @@ export default function CollectiblesModal({ onClose, seeds = {} }) {
         </Grid>
 
         <Footer>
-          {selectedItem ? (
+          {selectedItem?.kind === "seed" ? (
             <>
               <FooterName>{selectedItem.name} seed</FooterName>
               <FooterTag $color={tier.color}>{tier.label}</FooterTag>
@@ -219,8 +263,16 @@ export default function CollectiblesModal({ onClose, seeds = {} }) {
                 x{selectedItem.count} · sow it in the Farm planter
               </FooterTag>
             </>
+          ) : selectedItem ? (
+            <>
+              <FooterName>{selectedItem.name}</FooterName>
+              <FooterTag $color="rgba(200, 180, 235, 0.75)">
+                x{selectedItem.count} · {selectedItem.description}
+              </FooterTag>
+              <UseBtn onClick={() => onUseConsumable?.(selectedItem.id)}>USE</UseBtn>
+            </>
           ) : filled === 0 ? (
-            "Nothing collected yet — seeds drop in the Garden."
+            "Nothing collected yet — seeds drop in the Garden, items come from the shop."
           ) : (
             "Select a slot to inspect it."
           )}

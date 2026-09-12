@@ -101,7 +101,6 @@ export default function Players() {
                   <NameCell>
                     {p.isOnline && <OnlineDot title="Online" />}
                     <strong>{p.name || <Gray>—</Gray>}</strong>
-                    {p.isGuest && <Badge $color="#666">guest</Badge>}
                   </NameCell>
                 </Td>
                 <Td><Gray>{p.email || "—"}</Gray></Td>

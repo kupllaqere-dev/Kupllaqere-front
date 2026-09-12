@@ -58,23 +58,15 @@ function currentPalette() {
   return PALETTES[0];
 }
 
-const NAME_MAX = 20;
 
 export default function SettingsPanel({
   onClose,
   playerName = "",
-  onSaveName,
   email = "",
-  isGuest = false,
   role = "player",
 }) {
   const [activeTab, setActiveTab] = useState("account");
   const [privacy, setPrivacy] = useState(loadPrivacy);
-
-  const [nameFormOpen, setNameFormOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [nameBusy, setNameBusy] = useState(false);
-  const [nameMsg, setNameMsg] = useState(null); // { text, error }
 
   const [resetBusy, setResetBusy] = useState(false);
   const [resetMsg, setResetMsg] = useState(null); // { text, error }
@@ -84,7 +76,7 @@ export default function SettingsPanel({
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMsg, setEmailMsg] = useState(null); // { text, error }
 
-  const membership = isGuest ? "Guest" : role === "admin" ? "Admin" : "Standard";
+  const membership = role === "admin" ? "Admin" : "Standard";
 
   const setVisibility = (rowKey, value) => {
     setPrivacy(prev => {
@@ -92,32 +84,6 @@ export default function SettingsPanel({
       savePrivacy(next);
       return next;
     });
-  };
-
-  // Takes effect straight away — no confirmation step for now.
-  const handleChangeName = async () => {
-    const value = newName.trim();
-    if (nameBusy) return;
-    if (!value) {
-      setNameMsg({ text: "Enter a name.", error: true });
-      return;
-    }
-    if (value === playerName) {
-      setNameMsg({ text: "That is already your name.", error: true });
-      return;
-    }
-    setNameBusy(true);
-    setNameMsg(null);
-    try {
-      await onSaveName?.(value);
-      setNameMsg({ text: `Your name is now ${value}.`, error: false });
-      setNewName("");
-      setNameFormOpen(false);
-    } catch (err) {
-      setNameMsg({ text: err.message || "Could not change your name.", error: true });
-    } finally {
-      setNameBusy(false);
-    }
   };
 
   const handleResetPassword = async () => {
@@ -194,55 +160,19 @@ export default function SettingsPanel({
                   <FieldRow>
                     <div>
                       <FieldLabel>In-game name</FieldLabel>
-                      <FieldHint>Shown under your character and to other players.</FieldHint>
+                      <FieldHint>
+                        Shown under your character and to other players. To change it,
+                        buy a Name Change in the shop's Account tab and use it from
+                        your Collectibles bag.
+                      </FieldHint>
                     </div>
                     <FieldValue>{playerName || "—"}</FieldValue>
                   </FieldRow>
 
                   <FieldRow>
                     <div>
-                      <FieldLabel>Change name</FieldLabel>
-                      <FieldHint>Applies right away. Names have to be unique.</FieldHint>
-                      {nameMsg && <Message $error={nameMsg.error}>{nameMsg.text}</Message>}
-                    </div>
-                    <ActionBtn
-                      $primary={nameFormOpen}
-                      onClick={() => {
-                        setNameFormOpen(v => !v);
-                        setNewName("");
-                        setNameMsg(null);
-                      }}
-                    >
-                      {nameFormOpen ? "Cancel" : "Change Name"}
-                    </ActionBtn>
-                  </FieldRow>
-
-                  {nameFormOpen && (
-                    <InlineForm>
-                      <InlineFormRow>
-                        <Input
-                          type="text"
-                          value={newName}
-                          placeholder="New name"
-                          maxLength={NAME_MAX}
-                          onChange={(e) => setNewName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleChangeName(); }}
-                        />
-                        <ActionBtn $primary onClick={handleChangeName} disabled={nameBusy}>
-                          {nameBusy ? "Saving…" : "Save Name"}
-                        </ActionBtn>
-                      </InlineFormRow>
-                    </InlineForm>
-                  )}
-
-                  <FieldRow>
-                    <div>
                       <FieldLabel>Membership</FieldLabel>
-                      <FieldHint>
-                        {isGuest
-                          ? "Guest accounts lose progress when the session ends."
-                          : "Your current account tier."}
-                      </FieldHint>
+                      <FieldHint>Your current account tier.</FieldHint>
                     </div>
                     <MembershipBadge $tone={membership === "Admin" ? "gold" : "accent"}>
                       {membership}
@@ -254,20 +184,16 @@ export default function SettingsPanel({
                       <FieldLabel>Email</FieldLabel>
                       <FieldHint>Used to sign in and to recover your account.</FieldHint>
                     </div>
-                    <FieldValue>{isGuest ? "—" : (email || "—")}</FieldValue>
+                    <FieldValue>{email || "—"}</FieldValue>
                   </FieldRow>
 
                   <FieldRow>
                     <div>
                       <FieldLabel>Password</FieldLabel>
-                      <FieldHint>
-                        {isGuest
-                          ? "Not available on guest accounts."
-                          : "We email you a link to set a new one."}
-                      </FieldHint>
+                      <FieldHint>We email you a link to set a new one.</FieldHint>
                       {resetMsg && <Message $error={resetMsg.error}>{resetMsg.text}</Message>}
                     </div>
-                    <ActionBtn onClick={handleResetPassword} disabled={isGuest || !email || resetBusy}>
+                    <ActionBtn onClick={handleResetPassword} disabled={!email || resetBusy}>
                       {resetBusy ? "Sending…" : "Reset Password"}
                     </ActionBtn>
                   </FieldRow>
@@ -276,9 +202,7 @@ export default function SettingsPanel({
                     <div>
                       <FieldLabel>Change email</FieldLabel>
                       <FieldHint>
-                        {isGuest
-                          ? "Not available on guest accounts."
-                          : "The new address has to be confirmed before it takes effect."}
+                        The new address has to be confirmed before it takes effect.
                       </FieldHint>
                     </div>
                     <ActionBtn
@@ -287,13 +211,12 @@ export default function SettingsPanel({
                         setEmailFormOpen(v => !v);
                         setEmailMsg(null);
                       }}
-                      disabled={isGuest}
                     >
                       {emailFormOpen ? "Cancel" : "Change Email"}
                     </ActionBtn>
                   </FieldRow>
 
-                  {emailFormOpen && !isGuest && (
+                  {emailFormOpen && (
                     <InlineForm>
                       <InlineFormRow>
                         <Input

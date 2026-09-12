@@ -2,11 +2,13 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Game from "./components/Game";
 import HUD from "./components/HUD";
 import Login from "./components/Login";
+import LevelUpNotification from "./components/LevelUpNotification";
 import CharacterSetup from "./components/CharacterSetup";
 import AuthFlow from "./auth/AuthFlow";
 import { readAuthParams, isAuthLink } from "./auth/authLink";
 import { updateName, updateBio, updateBadge, getMe } from "./api/auth";
 import { fetchSeeds } from "./api/seeds";
+import { fetchConsumables } from "./api/consumables";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
 import { DEFAULT_MAP } from "./game/MapManager";
@@ -61,6 +63,27 @@ function App() {
   // authority; this mirrors it so the HUD and the planter can read it without
   // a round trip.
   const [seedInventory, setSeedInventory] = useState({});
+  // Bought one-shot items, sharing the Collectibles bag with seeds:
+  // { catalogue, owned: { itemId: count } }.
+  const [consumables, setConsumables] = useState({ catalogue: [], owned: {} });
+  // Bumped once per level gained; LevelUpNotification replays on every change.
+  const [levelUpTick, setLevelUpTick] = useState(0);
+  const triggerLevelUp = useCallback(() => setLevelUpTick((n) => n + 1), []);
+  // Every payload that can move progression funnels through `user.level`, so
+  // watching it here catches a level gained from a harvest, a getMe sync or a
+  // socket update without each of those having to fire the banner itself.
+  // Compared during render rather than in an effect so the banner starts on the
+  // same commit that shows the new level.
+  const [seenLevel, setSeenLevel] = useState(() => user?.level ?? null);
+  const currentLevel = user?.level ?? null;
+  if (currentLevel !== seenLevel) {
+    setSeenLevel(currentLevel);
+    // The first reading only seeds the baseline — a page load at level 7 is not
+    // a level-up. A drop (admin edit, account switch) just re-seeds as well.
+    if (seenLevel !== null && currentLevel !== null && currentLevel > seenLevel) {
+      triggerLevelUp();
+    }
+  }
   const equipRef = useRef(null);
   const unequipRef = useRef(null);
   const applyLookBatchRef = useRef(null);
@@ -105,6 +128,7 @@ function App() {
               coins: data.user.coins ?? prev.coins,
               gems:  data.user.gems  ?? prev.gems,
               level: data.user.level ?? prev.level,
+              inventorySlots: data.user.inventorySlots ?? prev.inventorySlots,
               // Progression is server-side now, so the stored copy follows it.
               xp: data.user.xp ?? prev.xp,
               // Legitimately null at the cap, so this one can't lean on ??.
@@ -153,6 +177,8 @@ function App() {
     changeMapRef.current?.(mapId);
   }, []);
 
+  // Renaming consumes a "name_change" item (see fv-game-back/routes/auth.js),
+  // so the count the server reports back replaces what the bag was showing.
   const handleSaveName = useCallback(async (name) => {
     const result = await updateName(name);
     setUser((prev) => {
@@ -160,6 +186,10 @@ function App() {
       localStorage.setItem("fv_user", JSON.stringify(next));
       return next;
     });
+    setConsumables((prev) => ({
+      ...prev,
+      owned: { ...prev.owned, name_change: result.nameChangesLeft ?? 0 },
+    }));
     return result.name;
   }, []);
 
@@ -242,9 +272,17 @@ function App() {
     });
   }, []);
 
-  const handlePurchaseComplete = useCallback(({ coins, gems }) => {
+  // Buying clothes moves both balances; buying a shop upgrade moves only one,
+  // and the inventory expansion also changes the wardrobe's capacity — so each
+  // field is applied only when the caller actually sent it.
+  const handlePurchaseComplete = useCallback(({ coins, gems, inventorySlots }) => {
     setUser((prev) => {
-      const next = { ...prev, coins, gems };
+      const next = {
+        ...prev,
+        ...(coins !== undefined ? { coins } : {}),
+        ...(gems !== undefined ? { gems } : {}),
+        ...(inventorySlots !== undefined ? { inventorySlots } : {}),
+      };
       localStorage.setItem("fv_user", JSON.stringify(next));
       return next;
     });
@@ -255,7 +293,16 @@ function App() {
     fetchSeeds()
       .then(({ seeds }) => setSeedInventory(seeds || {}))
       .catch(() => {});
+    fetchConsumables()
+      .then((data) => setConsumables(data))
+      .catch(() => {});
   }, [user?.id, user?.needsSetup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The shop hands back the new counts after a purchase; the bag mirrors them
+  // rather than refetching.
+  const handleConsumablesChange = useCallback((owned) => {
+    setConsumables((prev) => ({ ...prev, owned }));
+  }, []);
 
   async function handleLogout() {
     localStorage.removeItem("fv_user");
@@ -345,7 +392,6 @@ function App() {
           onSaveBadge={handleSaveBadge}
           currentUserId={user?.id || null}
           email={user?.email || ""}
-          isGuest={user?.isGuest ?? false}
           role={user?.role || "player"}
           socket={gameSocket}
           coins={user?.coins ?? 0}
@@ -359,7 +405,11 @@ function App() {
           currentMap={currentMap}
           onChangeMap={handleChangeMap}
           seedInventory={seedInventory}
+          consumables={consumables}
+          onConsumablesChange={handleConsumablesChange}
+          onDevLevelUp={triggerLevelUp}
         />
+        <LevelUpNotification trigger={levelUpTick} level={user?.level ?? 1} />
       </div>
     </div>
   );
