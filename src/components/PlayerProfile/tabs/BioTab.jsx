@@ -10,7 +10,8 @@ import {
   CompanionInfoBlock, CompanionNameRow, CompanionNameText, CompanionMoodText,
   CompanionLevelText, CompanionXPWrap, XPBarOuter, XPBarFill, XPLabelsRow,
   BioSectionsWrap, BioSection, BioSectionHeaderRow, BioSectionDragHandle,
-  BioSectionTitle, BioSectionSeparator, BioSectionText, QuoteText,
+  BioSectionTitle, BioSectionSeparator, BioSectionText,
+  GiftShelfRow, GiftShelfItem, GiftShelfIcon, GiftShelfName, GiftShelfFrom, GiftShelfEmpty,
   EditableRow, InfoRowDeleteBtn,
   InfoColumnsRow, InfoColumn, InfoColumnTitle, InfoColumnSeparator, InfoColumnLine,
   InfoColumnSettingsBtn, InfoColumnSettingsMenu, InfoColumnSettingsOption,
@@ -216,10 +217,11 @@ function InfoColumnBlock({
 
 // Relative height keyed by section type (not by position), so a section
 // keeps its own size as it's dragged to a different spot in the list.
-const HEIGHT_RATIOS = { welcome: 20, info: 40, quote: 20, badges: 20 };
+const HEIGHT_RATIOS = { welcome: 20, info: 40, gifts: 20, badges: 20 };
 
 function BioSections({
   sections = [], editable = false,
+  receivedGifts = [], giftsLoading = false,
   onReorder,
   onUpdateTitle, onUpdateText,
   onUpdateInfoColumnTitle, onUpdateInfoColumnLine, onUpdateInfoColumnStyle,
@@ -330,19 +332,25 @@ function BioSections({
                 <BadgeSlot key={si} />
               ))}
             </BadgeSlotsRow>
-          ) : section.type === "quote" ? (
-            <EditableRow $editable={editable}>
-              <EditableField
-                as={QuoteText}
-                editable={editable}
-                value={section.text}
-                onCommit={(v) => onUpdateText?.(section.id, v)}
-                data-placeholder="Add a favorite quote…"
-              />
-              {editable && (
-                <InfoRowDeleteBtn onClick={() => onUpdateText?.(section.id, "")} title="Clear text">×</InfoRowDeleteBtn>
+          ) : section.type === "gifts" ? (
+            <GiftShelfRow $empty={!receivedGifts.length}>
+              {giftsLoading ? (
+                <GiftShelfEmpty>Loading gifts…</GiftShelfEmpty>
+              ) : receivedGifts.length === 0 ? (
+                <GiftShelfEmpty>No gifts yet.</GiftShelfEmpty>
+              ) : (
+                receivedGifts.map((gift) => (
+                  <GiftShelfItem
+                    key={gift.id}
+                    title={`${gift.name} from ${gift.sender?.name || "someone"}`}
+                  >
+                    <GiftShelfIcon>{gift.icon || "🎁"}</GiftShelfIcon>
+                    <GiftShelfName>{gift.name}</GiftShelfName>
+                    <GiftShelfFrom>{gift.sender?.name || "Someone"}</GiftShelfFrom>
+                  </GiftShelfItem>
+                ))
               )}
-            </EditableRow>
+            </GiftShelfRow>
           ) : (
             <EditableRow $editable={editable}>
               <EditableField
@@ -365,6 +373,7 @@ function BioSections({
 export default function BioTab({
   canvasEditable = false,
   bioSections = [], onReorderBioSections,
+  receivedGifts = [], giftsLoading = false,
   onUpdateSectionTitle, onUpdateSectionText,
   onUpdateInfoColumnTitle, onUpdateInfoColumnLine, onUpdateInfoColumnStyle,
   onUpdateInfoColumnRowKey, onUpdateInfoColumnRowValue, onDeleteInfoColumnSlot,
@@ -377,6 +386,8 @@ export default function BioTab({
         <BioSections
           sections={bioSections}
           editable={canvasEditable}
+          receivedGifts={receivedGifts}
+          giftsLoading={giftsLoading}
           onReorder={onReorderBioSections}
           onUpdateTitle={onUpdateSectionTitle}
           onUpdateText={onUpdateSectionText}

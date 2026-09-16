@@ -40,6 +40,9 @@ import {
   MailBubbleCol, MailBubble, MailBubbleTime, MailBubbleGifWrap, MailBubbleGifImg, MailBubbleGifTime,
   MailReplyBox, MailComposerBar, MailComposerIconBtn, MailComposerInput, MailComposerSendBtn,
   MailEmojiPickerWrap, MailGifPickerWrap, MailGifSearchInput, MailGifStatus,
+  SysMailRow, SysMailIcon, SysMailUnclaimedTag, SysMailBody, SysMailHeadline,
+  SysMailRewardsLabel, SysMailRewardGrid, SysMailRewardBox, SysMailRewardAmount,
+  SysMailRewardLabel, SysMailFooter, SysMailClaimBtn, SysMailHint,
 } from "./MailTab.styles";
 
 const KLIPY_KEY = "REEXWlCMkIFXqQdJQBzTBCsS8QNdShFb7dUCYfZSPknZA2vSlDJlJ8CpwswaPKry";
@@ -48,10 +51,17 @@ const GIF_URL_PREFIX = "https://static.klipy.com";
 const MAIL_FILTERS = [
   { key: "all", label: "All" },
   { key: "friends", label: "Friends" },
-  { key: "system", label: "System", disabled: true },
+  { key: "system", label: "System" },
   { key: "trades", label: "Trades", disabled: true },
   { key: "event", label: "Event", disabled: true },
 ];
+
+// The server pays rewards out in profile columns; these are the names and
+// icons the player knows them by.
+const REWARD_META = {
+  coins: { label: "Nectar", icon: "/icons/Nectar.png" },
+  gems:  { label: "Lis",    icon: "/icons/Lis.png" },
+};
 
 function formatDateDivider(dateString) {
   if (!dateString) return "";
@@ -102,6 +112,14 @@ function IconAttach() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
     </svg>
   );
 }
@@ -162,16 +180,111 @@ function GifPicker({ onSelect, style, wrapRef }) {
   );
 }
 
+/**
+ * The reading pane for one system mail.
+ *
+ * There is no reply — the only thing to do with it is take the rewards, and
+ * until that happens the mail can't be deleted, so the payout can't be lost.
+ */
+function SystemMailPanel({ mail, onClaim, onDelete }) {
+  // Keyed on the mail id by its parent, so switching mails resets both of these.
+  const [claiming, setClaiming] = useState(false);
+  const [error, setError] = useState(null);
+
+  const hasRewards = mail.rewards.length > 0;
+  const locked = hasRewards && !mail.claimed;
+
+  async function handleClaim() {
+    if (claiming || mail.claimed) return;
+    setClaiming(true);
+    setError(null);
+    try {
+      await onClaim(mail.id);
+    } catch (err) {
+      setError(err.message || "Could not claim those rewards.");
+    } finally {
+      setClaiming(false);
+    }
+  }
+
+  async function handleDelete() {
+    setError(null);
+    try {
+      await onDelete(mail.id);
+    } catch (err) {
+      setError(err.message || "Could not delete this mail.");
+    }
+  }
+
+  return (
+    <>
+      <MailDetailHeader>
+        <SysMailIcon>✦</SysMailIcon>
+        <MailHeaderNameCol>
+          <MailDetailWith>{mail.subject}</MailDetailWith>
+          <MailHeaderStatusText>
+            {mail.sender} · {formatRelativeTime(mail.createdAt)}
+          </MailHeaderStatusText>
+        </MailHeaderNameCol>
+        <MailHeaderActions>
+          <MailHeaderIconBtn
+            onClick={handleDelete}
+            disabled={locked}
+            title={locked ? "Claim the rewards before deleting this mail" : "Delete"}
+          >
+            <IconTrash />
+          </MailHeaderIconBtn>
+        </MailHeaderActions>
+      </MailDetailHeader>
+      <SysMailBody>
+        <SysMailHeadline>{mail.body}</SysMailHeadline>
+        {hasRewards && (
+          <>
+            <SysMailRewardsLabel>Rewards:</SysMailRewardsLabel>
+            <SysMailRewardGrid>
+              {mail.rewards.map((reward, i) => {
+                const meta = REWARD_META[reward.type] || { label: reward.type };
+                return (
+                  <SysMailRewardBox key={`${reward.type}-${i}`}>
+                    {meta.icon && <img src={meta.icon} alt={meta.label} />}
+                    <SysMailRewardAmount>{reward.amount.toLocaleString()}</SysMailRewardAmount>
+                    <SysMailRewardLabel>{meta.label}</SysMailRewardLabel>
+                  </SysMailRewardBox>
+                );
+              })}
+            </SysMailRewardGrid>
+          </>
+        )}
+      </SysMailBody>
+      {hasRewards && (
+        <SysMailFooter>
+          <SysMailClaimBtn onClick={handleClaim} disabled={mail.claimed || claiming}>
+            {mail.claimed ? "Claimed" : claiming ? "Claiming…" : "Claim"}
+          </SysMailClaimBtn>
+          {error
+            ? <SysMailHint $error>{error}</SysMailHint>
+            : locked && <SysMailHint>Claim these rewards to be able to delete this mail.</SysMailHint>}
+        </SysMailFooter>
+      )}
+    </>
+  );
+}
+
 export default function MailTab({
   mailConversations, mailLoading,
   mailThread, mailThreadLoading, mailReplyBody, setMailReplyBody,
   mailReplySending, mailReplyError, openMailThread, handleMailReply,
   onNewSend, onClearThread, onLoadMore, socket, onOpenProfile,
   composeTarget, onComposeHandled, mailListsLoaded,
+  systemMails = [], onOpenSystemMail, onClaimSystemMail, onDeleteSystemMail,
 }) {
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
   const [isNew, setIsNew] = useState(false);
+  // Which system mail the detail pane is showing, if it's showing one at all.
+  // Player threads and system mails share the list, so only one of
+  // `mailThread` / `selectedSystemId` is ever set.
+  const [selectedSystemId, setSelectedSystemId] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [onlineMap, setOnlineMap] = useState(() => new Map());
   const [playerMenu, setPlayerMenu] = useState(null);
@@ -296,10 +409,10 @@ export default function MailTab({
       (c) => String(c.otherParticipant.id) === String(composeTarget.id)
     );
     if (existing) {
-      setIsNew(false);
-      openMailThread(existing.threadId);
+      openThread(existing.threadId);
     } else {
       onClearThread();
+      setSelectedSystemId(null);
       setIsNew(true);
       setNewToInput(composeTarget.name || "");
       setNewResolved({ id: composeTarget.id, name: composeTarget.name });
@@ -333,15 +446,48 @@ export default function MailTab({
     return () => el.removeEventListener("scroll", onScroll);
   }, [mailThread, loadingMore, onLoadMore]);
 
-  const totalUnread = mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+  const totalUnread =
+    mailConversations.reduce((s, c) => s + (c.unreadCount || 0), 0) +
+    systemMails.filter((m) => !m.read).length;
   const activeThreadId = isNew ? null : mailThread?.threadId;
+  const selectedSystemMail = selectedSystemId
+    ? systemMails.find((m) => m.id === selectedSystemId) || null
+    : null;
 
   const searchLower = search.trim().toLowerCase();
-  const filteredConversations = mailConversations.filter((c) => {
-    if (searchLower && !c.otherParticipant.name.toLowerCase().includes(searchLower)) return false;
-    if (activeFilter === "friends" && !friendIds.has(String(c.otherParticipant.id))) return false;
-    return true;
-  });
+  // Threads and system mails interleave by recency, so a level-up that landed
+  // a minute ago sits above a conversation from yesterday. "Friends" is about
+  // people, so system mail drops out of it entirely.
+  const listItems = [
+    ...(activeFilter === "system" ? [] : mailConversations
+      .filter((c) => {
+        if (searchLower && !c.otherParticipant.name.toLowerCase().includes(searchLower)) return false;
+        if (activeFilter === "friends" && !friendIds.has(String(c.otherParticipant.id))) return false;
+        return true;
+      })
+      .map((c) => ({ kind: "thread", key: c.threadId, at: c.lastMessage.createdAt, convo: c }))),
+    ...(activeFilter === "friends" ? [] : systemMails
+      .filter((m) => {
+        if (!searchLower) return true;
+        return `${m.sender} ${m.subject}`.toLowerCase().includes(searchLower);
+      })
+      .map((m) => ({ kind: "system", key: m.id, at: m.createdAt, mail: m }))),
+  ].sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  const hasAnyMail = mailConversations.length > 0 || systemMails.length > 0;
+
+  function openSystemMail(mail) {
+    setIsNew(false);
+    onClearThread();
+    setSelectedSystemId(mail.id);
+    onOpenSystemMail?.(mail);
+  }
+
+  function openThread(threadId) {
+    setIsNew(false);
+    setSelectedSystemId(null);
+    openMailThread(threadId);
+  }
 
   function handleViewProfile() {
     if (!mailThread) return;
@@ -372,6 +518,7 @@ export default function MailTab({
 
   function startNew() {
     setIsNew(true);
+    setSelectedSystemId(null);
     onClearThread();
     setNewToInput("");
     setNewResolved(null);
@@ -390,7 +537,7 @@ export default function MailTab({
       const user = await lookupUser(name);
       if (!user) { setLookupStatus("notfound"); return; }
       const existing = mailConversations.find((c) => c.otherParticipant.id === user.id);
-      if (existing) { setIsNew(false); openMailThread(existing.threadId); return; }
+      if (existing) { openThread(existing.threadId); return; }
       setNewResolved({ id: user.id, name: user.name });
       setLookupStatus("found");
     } catch {
@@ -459,45 +606,83 @@ export default function MailTab({
                 </div>
               </MailThreadRow>
             ))
-          ) : mailConversations.length === 0 ? (
-            <PanelEmpty>No conversations yet.</PanelEmpty>
-          ) : filteredConversations.length === 0 ? (
-            <PanelEmpty>No matching conversations.</PanelEmpty>
+          ) : !hasAnyMail ? (
+            <PanelEmpty>No mail yet.</PanelEmpty>
+          ) : listItems.length === 0 ? (
+            <PanelEmpty>No matching mail.</PanelEmpty>
           ) : (
-            filteredConversations.map((c) => (
-              <MailThreadRow
-                key={c.threadId}
-                $unread={c.unreadCount > 0}
-                $active={activeThreadId === c.threadId}
-                onClick={() => { setIsNew(false); openMailThread(c.threadId); }}
-              >
-                <MailRowThumbWrap>
-                  <MailRowThreadThumb>
-                    <PlayerThumbnail playerName={c.otherParticipant.name} size={56} />
-                  </MailRowThreadThumb>
-                  <MailStatusDot $status={onlineMap.get(String(c.otherParticipant.id)) || "offline"} />
-                  {c.unreadCount > 0 && <MailUnreadDot />}
-                </MailRowThumbWrap>
-                <MailThreadMeta>
-                  <MailThreadMetaTop>
-                    <MailThreadName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</MailThreadName>
-                    <MailThreadTime>{formatRelativeTime(c.lastMessage.createdAt)}</MailThreadTime>
-                  </MailThreadMetaTop>
-                  <MailThreadPreview $unread={c.unreadCount > 0}>
-                    {c.lastMessage.isFromMe ? "You: " : ""}
-                    {c.lastMessage.body?.startsWith(GIF_URL_PREFIX) ? "GIF" : c.lastMessage.body}
-                  </MailThreadPreview>
-                </MailThreadMeta>
-                {c.unreadCount > 0 && <MailUnreadBadge>{c.unreadCount}</MailUnreadBadge>}
-              </MailThreadRow>
-            ))
+            listItems.map((item) => {
+              if (item.kind === "system") {
+                const m = item.mail;
+                const unclaimed = m.rewards.length > 0 && !m.claimed;
+                return (
+                  <SysMailRow
+                    key={item.key}
+                    $read={m.read}
+                    $active={selectedSystemId === m.id}
+                    onClick={() => openSystemMail(m)}
+                  >
+                    <MailRowThumbWrap>
+                      <SysMailIcon $read={m.read}>✦</SysMailIcon>
+                      {!m.read && <MailUnreadDot />}
+                    </MailRowThumbWrap>
+                    <MailThreadMeta>
+                      <MailThreadMetaTop>
+                        <MailThreadName $unread={!m.read}>{m.sender}</MailThreadName>
+                        <MailThreadTime>{formatRelativeTime(m.createdAt)}</MailThreadTime>
+                      </MailThreadMetaTop>
+                      <MailThreadPreview $unread={!m.read}>{m.subject}</MailThreadPreview>
+                    </MailThreadMeta>
+                    {unclaimed && <SysMailUnclaimedTag>Unclaimed</SysMailUnclaimedTag>}
+                  </SysMailRow>
+                );
+              }
+              const c = item.convo;
+              return (
+                <MailThreadRow
+                  key={item.key}
+                  $unread={c.unreadCount > 0}
+                  $active={activeThreadId === c.threadId}
+                  onClick={() => openThread(c.threadId)}
+                >
+                  <MailRowThumbWrap>
+                    <MailRowThreadThumb>
+                      <PlayerThumbnail playerName={c.otherParticipant.name} size={56} />
+                    </MailRowThreadThumb>
+                    <MailStatusDot $status={onlineMap.get(String(c.otherParticipant.id)) || "offline"} />
+                    {c.unreadCount > 0 && <MailUnreadDot />}
+                  </MailRowThumbWrap>
+                  <MailThreadMeta>
+                    <MailThreadMetaTop>
+                      <MailThreadName $unread={c.unreadCount > 0}>{c.otherParticipant.name}</MailThreadName>
+                      <MailThreadTime>{formatRelativeTime(c.lastMessage.createdAt)}</MailThreadTime>
+                    </MailThreadMetaTop>
+                    <MailThreadPreview $unread={c.unreadCount > 0}>
+                      {c.lastMessage.isFromMe ? "You: " : ""}
+                      {c.lastMessage.body?.startsWith(GIF_URL_PREFIX) ? "GIF" : c.lastMessage.body}
+                    </MailThreadPreview>
+                  </MailThreadMeta>
+                  {c.unreadCount > 0 && <MailUnreadBadge>{c.unreadCount}</MailUnreadBadge>}
+                </MailThreadRow>
+              );
+            })
           )}
         </MailThreadList>
       </MailListCol>
 
       {/* ── Right: thread or new conversation ── */}
       <MailDetailCol>
-        {isNew ? (
+        {selectedSystemMail ? (
+          <SystemMailPanel
+            key={selectedSystemMail.id}
+            mail={selectedSystemMail}
+            onClaim={onClaimSystemMail}
+            onDelete={async (id) => {
+              await onDeleteSystemMail(id);
+              setSelectedSystemId(null);
+            }}
+          />
+        ) : isNew ? (
           <MailNewPanel>
             <MailNewTitle>New Conversation</MailNewTitle>
             <MailToRow>
@@ -543,7 +728,7 @@ export default function MailTab({
         ) : !mailThread ? (
           <MailPlaceholder>
             <MailPlaceholderIcon>✉</MailPlaceholderIcon>
-            <MailPlaceholderText>Select a conversation or start a new one.</MailPlaceholderText>
+            <MailPlaceholderText>Select a message or start a new conversation.</MailPlaceholderText>
           </MailPlaceholder>
         ) : (
           <>

@@ -8,6 +8,7 @@ import MapsModal from "./MapsModal";
 import CollectiblesModal from "./CollectiblesModal";
 import NameChangeModal from "./NameChangeModal";
 import PlayerThumbnail from "./PlayerThumbnail";
+import GameClock from "./GameClock";
 import FriendOnlineToasts from "./FriendOnlineToasts";
 import AngelModal from "./AngelModal";
 import ChessWindow from "./ChessWindow";
@@ -45,7 +46,7 @@ const compactXp = new Intl.NumberFormat(undefined, {
 const FARM_MAP_ID = "farm";
 
 const NAV_ITEMS = [
-  { key: "shop", label: "Shop", icon: "/assets/ui-icons/Store.png" },
+  { key: "store", label: "Store", icon: "/assets/ui-icons/Store.png" },
   { key: "maps", label: "Maps", icon: "/assets/ui-icons/Map.png" },
   { key: "quests", label: "Quests", icon: "/assets/ui-icons/Quests.png" },
   { key: "news", label: "News", icon: "/assets/ui-icons/News.png" },
@@ -53,7 +54,7 @@ const NAV_ITEMS = [
   { key: "collectibles", label: "Collectibles", icon: "/assets/ui-icons/Collectibles.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onlinePlayers, currentMap, onChangeMap, seedInventory, consumables, onConsumablesChange, onDevLevelUp }) {
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onBalancesChanged, onlinePlayers, currentMap, onChangeMap, seedInventory, consumables, onConsumablesChange, onDevLevelUp }) {
   // Only the hand-set vials need state — XP comes down as a prop.
   const [vialInputs, setVialInputs] = useState({ nectar: "0", lis: "0" });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -127,9 +128,14 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
 
   useEffect(() => {
     if (!socket?.socket) return;
+    // Player mail and system mail share one badge.
     const handler = () => setUnreadCount((c) => c + 1);
     socket.socket.on("mail:new", handler);
-    return () => socket.socket.off("mail:new", handler);
+    socket.socket.on("systemMail:new", handler);
+    return () => {
+      socket.socket.off("mail:new", handler);
+      socket.socket.off("systemMail:new", handler);
+    };
   }, [socket]);
 
   // ── Chess socket events ──────────────────────────────
@@ -280,7 +286,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   }, []);
 
   const menuActions = {
-    shop: () => setShowShop(true),
+    store: () => setShowStore(true),
     maps: () => setShowMaps(true),
     quests: () => {},
     news: () => window.open("https://platform.neclisworld.com", "_blank", "noopener,noreferrer"),
@@ -340,7 +346,9 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           onApplyLookBatch={onApplyLookBatch}
           equipped={equipped}
           level={level}
+          gems={gems}
           onOpenProfile={handleOpenProfile}
+          onBalancesChanged={onBalancesChanged}
         />
       )}
       {viewingProfile && (
@@ -357,7 +365,10 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           targetUserId={viewingProfile.userId}
           socket={socket}
           level={viewingProfile.level}
+          gems={gems}
           popularity={viewingProfile.popularity}
+          onOpenProfile={handleOpenProfile}
+          onBalancesChanged={onBalancesChanged}
         />
       )}
       {showSettings && (
@@ -463,6 +474,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                   <S.PlayerName>{playerName || "Player"}</S.PlayerName>
                   <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
                 </S.NameRow>
+                <GameClock />
               </S.NamePlate>
               <FriendOnlineToasts socket={socket} />
             </S.AvatarBlock>

@@ -58,6 +58,8 @@ export function getRarity(rarity) {
 export const SEEDS = [
   { id: "sunflower", name: "Sunflower", rarity: "common",     sprout: "🌱", icon: "🌻", reward: { type: "coins", amount: 500 } },
   { id: "tulip",     name: "Tulip",     rarity: "common",     sprout: "🌱", icon: "🌷", reward: { type: "coins", amount: 500 } },
+  { id: "mint",      name: "Mint",      rarity: "common",     sprout: "🌱", icon: "🍃", reward: { type: "xp",    amount: 5000 } },
+  { id: "chamomile", name: "Chamomile", rarity: "common",     sprout: "🌱", icon: "🌼", reward: { type: "xp",    amount: 5000 } },
   { id: "rose",      name: "Rose",      rarity: "uncommon",   sprout: "🌱", icon: "🌹", reward: { type: "coins", amount: 1200 } },
   { id: "sage",      name: "Sage",      rarity: "rare",       sprout: "🌱", icon: "🌿", reward: { type: "xp",    amount: 400 } },
   { id: "mandrake",  name: "Mandrake",  rarity: "legendary",  sprout: "🌱", icon: "🍀", reward: { type: "xp",    amount: 1500 } },

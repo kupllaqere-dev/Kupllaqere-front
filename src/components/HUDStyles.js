@@ -314,9 +314,7 @@ export const NamePlate = styled.div`
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: ${PANEL_BG};
-  border-radius: 20px;
-  overflow: hidden;
+  align-items: stretch;
   pointer-events: none;
 `;
 
@@ -326,6 +324,8 @@ export const NameRow = styled.div`
   gap: 9px;
   padding: 3px 12px 7px;
   min-width: 0;
+  background: ${PANEL_BG};
+  border-radius: 20px;
 `;
 
 export const PlayerName = styled.div`
@@ -345,6 +345,33 @@ export const PlayerLevel = styled.div`
   letter-spacing: 0.3px;
   white-space: nowrap;
   flex-shrink: 0;
+`;
+
+// Game clock, sitting under the name/level pill with no plate of its own.
+export const ClockRow = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 6px;
+  pointer-events: all;
+  cursor: default;
+`;
+
+export const ClockTime = styled.span`
+  color: rgba(240, 228, 255, 0.97);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  /* Steadies the digits across the minute rollover. */
+  font-variant-numeric: tabular-nums;
+  /* Stands in for the removed panel — the clock now reads against the scene. */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 8px rgba(0, 0, 0, 0.6);
 `;
 
 export const CurrencyBar = styled.div`

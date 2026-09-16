@@ -156,10 +156,13 @@ export const DEFAULT_BIO_SECTIONS = [
     ],
   },
   {
-    id: "quote",
-    type: "quote",
-    title: "Quote",
-    text: "Placeholder quote goes here.",
+    // Gifts other players have sent. Unlike every other section this one has no
+    // editable text of its own — its contents come from the gift shelf the
+    // profile loads (src/api/gifts.js), so the owner can move it but not write
+    // into it.
+    id: "gifts",
+    type: "gifts",
+    title: "Gifts",
   },
   {
     id: "badges",

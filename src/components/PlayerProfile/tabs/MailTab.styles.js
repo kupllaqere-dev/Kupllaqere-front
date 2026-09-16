@@ -674,3 +674,154 @@ export const MailNewTextarea = styled.textarea`
   &::placeholder { color: ${"var(--pp-txt3)"}; }
   &:disabled { opacity: 0.5; }
 `;
+
+/* ── System mail ─────────────────────────────────────────
+   Mail the game sends, with a reward bundle to claim. It shares the
+   conversation list with player threads but has its own row and its own
+   detail panel — there is nothing to reply to.                          */
+
+export const SysMailRow = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Read mail sinks into the darker card tone; unread stays on the bright
+     surface with an accent edge so it still pulls the eye. */
+  background: ${p => p.$active
+    ? "rgba(var(--pp-accent-rgb),0.12)"
+    : p.$read ? "var(--pp-card)" : "var(--pp-surface)"};
+  border: 1px solid ${p => p.$active || !p.$read ? "var(--pp-border2)" : "var(--pp-border)"};
+  border-radius: 12px;
+  /* Room along the bottom for the Unclaimed tag. */
+  padding: 8px 12px 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { border-color: ${"var(--pp-accent)"}; }
+`;
+
+export const SysMailIcon = styled.div`
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border: 1.5px solid ${"var(--pp-border2)"};
+  background: rgba(var(--pp-accent-rgb),0.1);
+  opacity: ${p => p.$read ? 0.7 : 1};
+`;
+
+export const SysMailUnclaimedTag = styled.div`
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #b45309;
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 6px;
+  padding: 1.5px 6px;
+`;
+
+export const SysMailBody = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  ${thinScrollbar}
+`;
+
+export const SysMailHeadline = styled.div`
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: ${"var(--pp-txt)"};
+`;
+
+export const SysMailRewardsLabel = styled.div`
+  margin: 26px 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: ${"var(--pp-txt2)"};
+`;
+
+export const SysMailRewardGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
+export const SysMailRewardBox = styled.div`
+  width: 96px;
+  height: 96px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 14px;
+  border: 1px solid ${"var(--pp-border2)"};
+  background: ${"var(--pp-gradInner)"};
+  padding: 8px;
+  img { width: 34px; height: 34px; object-fit: contain; }
+`;
+
+export const SysMailRewardAmount = styled.div`
+  font-size: 14px;
+  font-weight: 800;
+  color: ${"var(--pp-txt)"};
+  line-height: 1;
+`;
+
+export const SysMailRewardLabel = styled.div`
+  font-size: 11px;
+  color: ${"var(--pp-txt3)"};
+  text-align: center;
+  line-height: 1;
+`;
+
+export const SysMailFooter = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid ${"var(--pp-border)"};
+  flex-shrink: 0;
+`;
+
+export const SysMailClaimBtn = styled.button`
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  background: ${"var(--pp-accent)"};
+  border: 1px solid ${"var(--pp-accent)"};
+  border-radius: 10px;
+  padding: 9px 26px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: filter 0.15s, opacity 0.15s;
+  &::before { content:''; position:absolute; top:-20%; left:-60%; width:32%; height:140%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent); transform:skewX(-18deg) translateX(-100%); pointer-events:none; }
+  &:hover:not(:disabled) { filter: brightness(1.1); }
+  &:hover:not(:disabled)::before { animation: ${glassShine} 0.52s ease-out forwards; }
+  &:disabled {
+    cursor: default;
+    background: ${"var(--pp-card)"};
+    border-color: ${"var(--pp-border)"};
+    color: ${"var(--pp-txt3)"};
+  }
+`;
+
+export const SysMailHint = styled.div`
+  font-size: 12.5px;
+  color: ${p => p.$error ? "#e03131" : "var(--pp-txt3)"};
+`;

@@ -28,6 +28,8 @@ import PlanterSystem, {
 } from "../game/PlanterSystem";
 import SeedField from "../game/SeedField";
 import TreeSystem, { FRUITS, FRUIT_GROW_MS } from "../game/TreeSystem";
+import ShellSystem from "../game/ShellSystem";
+import ShellMatchGame from "./ShellMatchGame";
 import PlayerManager from "../game/PlayerManager";
 import MovementManager from "../game/MovementManager";
 import {
@@ -75,6 +77,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const treeRef = useRef(null);
   // Seeds lying on the ground, on maps that drop them (the Garden).
   const seedFieldRef = useRef(null);
+  // Decorative shell on the Beach — clicking it opens the match-3 minigame.
+  const shellRef = useRef(null);
+  const [shellGameOpen, setShellGameOpen] = useState(false);
   // { kind: "seed" | "fruit", index, x, y }
   const [plantMenu, setPlantMenu] = useState(null);
   const plantMenuRef = useRef(null);
@@ -143,8 +148,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   }, [showToast]);
 
   // Rebuilds (or tears down) a map's props for whichever map just became
-  // active: the Farm's planter and tree, and the Garden's seed drops. Each one
-  // lives only as long as the map that declares it.
+  // active: the Farm's planter and tree, the Garden's seed drops, and the
+  // Beach's shell. Each one lives only as long as the map that declares it.
   const mountMapProps = useCallback((scene, map) => {
     planterRef.current?.destroy();
     planterRef.current = null;
@@ -152,6 +157,9 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     treeRef.current = null;
     seedFieldRef.current?.destroy();
     seedFieldRef.current = null;
+    shellRef.current?.destroy();
+    shellRef.current = null;
+    setShellGameOpen(false);
     setPlantMenu(null);
     setRenameTarget(null);
 
@@ -163,6 +171,14 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         onPickup: (dropId) => socketRef.current?.pickupSeed(dropId),
       });
       socketRef.current?.requestSeeds();
+    }
+
+    if (map.shell) {
+      shellRef.current = new ShellSystem(scene, {
+        x: Math.round(map.width * 0.5) + 600,
+        y: Math.round(map.height * 0.8),
+        onClick: () => setShellGameOpen(true),
+      });
     }
 
     if (!map.planter) return;
@@ -302,6 +318,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         this.load.on("progress", value => setLoadProgress(0.1 + value * 0.75));
         preloadMap(this);
         preloadLocalPlayer(this);
+        this.load.image("shell", "/assets/shell/shell.png");
       }
 
       function create() {
@@ -399,6 +416,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       planterRef.current = null;
       treeRef.current = null;
       seedFieldRef.current = null;
+      shellRef.current = null;
       socketManager?.disconnect();
       game?.destroy(true);
     };
@@ -756,6 +774,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           currentUserName={user?.name || ""}
           targetUserId={viewedProfile.userId || null}
           socket={socketRef.current}
+          gems={user?.gems ?? 0}
+          onBalancesChanged={onBalancesChanged}
         />
       )}
       {harvestToast && (
@@ -840,6 +860,16 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
               : treeRef.current?.plantFruit(plantMenu.index, id)
           }
           onClose={() => setPlantMenu(null)}
+        />,
+        document.body
+      )}
+      {shellGameOpen && createPortal(
+        <ShellMatchGame
+          onClose={() => setShellGameOpen(false)}
+          onNectarEarned={(amount) => {
+            onCoinsEarnedRef.current?.(amount);
+            showToast({ type: "coins", amount });
+          }}
         />,
         document.body
       )}

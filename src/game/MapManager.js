@@ -57,6 +57,8 @@ export const MAPS = {
     colliders:    null,
     collidersKey: null,
     spawn:   { x: 0.5, y: 0.72 },
+    // A clickable shell decoration — see ShellSystem (mounted in Game.jsx).
+    shell:   true,
   },
   pool: {
     id:      "pool",

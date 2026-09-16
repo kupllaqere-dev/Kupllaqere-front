@@ -173,13 +173,17 @@ export default class RigAvatar extends Phaser.GameObjects.Container {
   setOrigin()  { return this; }
 
   // Containers need an explicit hit area; pixel-perfect testing isn't available.
+  // Phaser normalises the hit test by the object's display origin, and a
+  // Container reports that as half its size() — so the rectangle is measured
+  // from the top-left of that box, not from the container's own origin.
   setInteractive() {
     const { aabb } = this.#armature;
     const width  = aabb.width * RIG_SCALE * HIT_WIDTH_RATIO;
     const height = aabb.height * RIG_SCALE;
-    const top    = aabb.y * RIG_SCALE - FOOT_LIFT;
+    const left   = this.displayOriginX - width / 2;
+    const top    = this.displayOriginY + aabb.y * RIG_SCALE - FOOT_LIFT;
     return super.setInteractive(
-      new Phaser.Geom.Rectangle(-width / 2, top, width, height),
+      new Phaser.Geom.Rectangle(left, top, width, height),
       Phaser.Geom.Rectangle.Contains,
     );
   }

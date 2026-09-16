@@ -401,6 +401,7 @@ function App() {
           xpForNextLevel={user?.xpForNextLevel}
           xpPercent={user?.xpPercent ?? 0}
           onPurchaseComplete={handlePurchaseComplete}
+          onBalancesChanged={handleBalancesChanged}
           onlinePlayers={onlinePlayers}
           currentMap={currentMap}
           onChangeMap={handleChangeMap}

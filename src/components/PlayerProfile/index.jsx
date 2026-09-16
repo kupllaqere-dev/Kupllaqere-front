@@ -22,11 +22,18 @@ import {
   replyToThread,
   sendMail,
 } from "../../api/mail";
+import {
+  fetchSystemMail,
+  markSystemMailRead,
+  claimSystemMail,
+  deleteSystemMail,
+} from "../../api/systemMail";
+import { fetchReceivedGifts } from "../../api/gifts";
 import { fetchInventory, sellItem, fetchWishlist, removeFromWishlist } from "../../api/store";
 import {
   saveTheme, fetchUserStatus, updatePresence,
   fetchProfileView, saveProfileView, clearProfileView, invalidateProfileViewCache,
-  fetchLikeState, toggleLike,
+  fetchLikeState, toggleLike, recordProfileVisit,
 } from "../../api/users";
 import ComposeMailModal from "../ComposeMailModal";
 import AvatarCanvas from "../Avatar/AvatarCanvas";
@@ -49,6 +56,7 @@ import LookTab from "./tabs/LookTab";
 import WishlistTab from "./tabs/WishlistTab";
 import ThemesTab from "./tabs/ThemesTab";
 import GuestbookTab from "./tabs/GuestbookTab";
+import GiftTab from "./tabs/GiftTab";
 import { InvItemsArea } from "./tabs/InventoryTab";
 
 import {
@@ -88,8 +96,10 @@ export default function PlayerProfile({
   onApplyLookBatch = null,
   equipped = null,
   level = 1,
+  gems = 0,
   popularity = 0,
   onOpenProfile = null,
+  onBalancesChanged = null,
 }) {
   const isSelfView = !!(
     currentUserId && targetUserId &&
@@ -169,12 +179,18 @@ export default function PlayerProfile({
   const [mailReplySending, setMailReplySending] = useState(false);
   const [mailReplyError, setMailReplyError] = useState(null);
   const [mailComposeTarget, setMailComposeTarget] = useState(null);
+  const [systemMails, setSystemMails] = useState([]);
 
   const [friendsTab, setFriendsTab] = useState("friends");
   const [friendsData, setFriendsData] = useState(null);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendsLoaded, setFriendsLoaded] = useState(false);
   const [friendsSearch, setFriendsSearch] = useState("");
+
+  // The gift shelf shown in the Profile tab. Belongs to whoever's profile is
+  // open, so it reloads with targetUserId, not with the signed-in user.
+  const [receivedGifts, setReceivedGifts] = useState([]);
+  const [giftsLoading, setGiftsLoading] = useState(false);
 
   const [userStatus, setUserStatus] = useState(null);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
@@ -344,6 +360,33 @@ export default function PlayerProfile({
   }, [targetUserId]);
 
   useEffect(() => {
+    if (!targetUserId) { setReceivedGifts([]); return; }
+    let cancelled = false;
+    setGiftsLoading(true);
+    fetchReceivedGifts(targetUserId)
+      .then(({ gifts }) => { if (!cancelled) setReceivedGifts(gifts || []); })
+      .catch(() => { if (!cancelled) setReceivedGifts([]); })
+      .finally(() => { if (!cancelled) setGiftsLoading(false); });
+    return () => { cancelled = true; };
+  }, [targetUserId]);
+
+  // A gift that lands while your own profile is open goes straight onto the
+  // shelf — the server pushes it (routes/gifts.js), so there's nothing to poll.
+  useEffect(() => {
+    if (!socket?.socket || !isSelfView) return;
+    const onGift = (gift) => setReceivedGifts(prev => [gift, ...prev]);
+    socket.socket.on("gift:received", onGift);
+    return () => socket.socket.off("gift:received", onGift);
+  }, [socket, isSelfView]);
+
+  // Sending a gift is paid for out of the sender's Lis, and the server hands
+  // back the balance it left behind rather than the client subtracting it.
+  const handleGiftSent = useCallback(({ gems: nextGems, gift }) => {
+    if (nextGems !== undefined) onBalancesChanged?.({ gems: nextGems });
+    if (gift) setReceivedGifts(prev => [gift, ...prev]);
+  }, [onBalancesChanged]);
+
+  useEffect(() => {
     if (!socket?.socket) return;
     const onFriendStatus = (payload) => {
       if (String(payload.userId) === String(targetUserId))
@@ -448,11 +491,22 @@ export default function PlayerProfile({
 
   useEffect(() => { loadFriendStatus(); }, [loadFriendStatus]);
 
+  // Opening someone else's profile is worth a point to them, once a day — so
+  // the visit is logged before the total is read, or the header would show the
+  // number from just before the visit landed.
+  //
+  // The read runs for your own profile too: `liked` is meaningless there and
+  // the Like tab isn't rendered, but the popularity total is the same number
+  // either way and the header has to print it.
   useEffect(() => {
-    if (!currentUserId || isSelfView || !targetUserId) return;
-    fetchLikeState(targetUserId)
-      .then(setLikeState)
-      .catch(() => {});
+    if (!currentUserId || !targetUserId) return;
+    let cancelled = false;
+    (async () => {
+      if (!isSelfView) await recordProfileVisit(targetUserId).catch(() => {});
+      const state = await fetchLikeState(targetUserId).catch(() => null);
+      if (state && !cancelled) setLikeState(state);
+    })();
+    return () => { cancelled = true; };
   }, [currentUserId, isSelfView, targetUserId]);
 
   const runFriend = useCallback(async (fn) => {
@@ -591,6 +645,7 @@ export default function PlayerProfile({
   const loadMailLists = useCallback(async () => {
     if (!isSelfView) return;
     setMailLoading(true);
+    fetchSystemMail().then(setSystemMails).catch(() => {});
     try {
       const convos = await fetchConversations();
       setMailConversations(convos);
@@ -682,6 +737,44 @@ export default function PlayerProfile({
       });
     } catch { /* ignore */ }
   }, []);
+
+  // Every system-mail action answers with the mail's new state, so the list is
+  // patched in place rather than refetched.
+  const patchSystemMail = useCallback((mail) => {
+    setSystemMails((prev) => prev.map((m) => (m.id === mail.id ? mail : m)));
+  }, []);
+
+  const handleOpenSystemMail = useCallback(async (mail) => {
+    if (mail.read) return;
+    // Show it read straight away; the badge catches up when the server agrees.
+    patchSystemMail({ ...mail, read: true });
+    try {
+      patchSystemMail(await markSystemMailRead(mail.id));
+      onUnreadChange?.();
+    } catch { /* the optimistic read stands until the next load */ }
+  }, [patchSystemMail, onUnreadChange]);
+
+  const handleClaimSystemMail = useCallback(async (mailId) => {
+    const { mail, coins, gems } = await claimSystemMail(mailId);
+    patchSystemMail(mail);
+    onBalancesChanged?.({ coins, gems });
+  }, [patchSystemMail, onBalancesChanged]);
+
+  const handleDeleteSystemMail = useCallback(async (mailId) => {
+    await deleteSystemMail(mailId);
+    setSystemMails((prev) => prev.filter((m) => m.id !== mailId));
+    onUnreadChange?.();
+  }, [onUnreadChange]);
+
+  // A level-up banked while the profile is open pushes its mail down the socket.
+  useEffect(() => {
+    if (!socket?.socket || !isSelfView) return;
+    const onNew = (mail) => {
+      setSystemMails((prev) => (prev.some((m) => m.id === mail.id) ? prev : [mail, ...prev]));
+    };
+    socket.socket.on("systemMail:new", onNew);
+    return () => socket.socket.off("systemMail:new", onNew);
+  }, [socket, isSelfView]);
 
   const loadFriendsData = useCallback(async () => {
     if (!isSelfView) return;
@@ -1177,9 +1270,9 @@ export default function PlayerProfile({
                       <BookmarkIconImg $src="/assets/profile-icons/wishlist.png" />
                       <BookmarkLabel>Wishlist</BookmarkLabel>
                     </BookmarkTab>
-                    <BookmarkTab title="Gift">
-                      <BookmarkIcon>🎁</BookmarkIcon>
-                      <BookmarkLabel>Gift</BookmarkLabel>
+                    <BookmarkTab $active={activeTab === "gift"} onClick={() => setActiveTab("gift")} title="Gift">
+                      <BookmarkIcon $active={activeTab === "gift"}>🎁</BookmarkIcon>
+                      <BookmarkLabel $active={activeTab === "gift"}>Gift</BookmarkLabel>
                     </BookmarkTab>
                     <BookmarkTab title="Trade">
                       <BookmarkIcon>⇄</BookmarkIcon>
@@ -1215,6 +1308,8 @@ export default function PlayerProfile({
                     badgeSaving={badgeSaving}
                     canvasEditable={aboutMeEditMode}
                     bioSections={bioSections}
+                    receivedGifts={receivedGifts}
+                    giftsLoading={giftsLoading}
                     onReorderBioSections={reorderBioSections}
                     onUpdateSectionTitle={updateSectionTitle}
                     onUpdateSectionText={updateSectionText}
@@ -1255,6 +1350,15 @@ export default function PlayerProfile({
                   />
                 </div>
 
+                {!isSelfView && activeTab === "gift" && (
+                  <GiftTab
+                    targetUserId={targetUserId}
+                    targetName={playerName}
+                    gems={gems}
+                    onSent={handleGiftSent}
+                  />
+                )}
+
                 {isSelfView && (
                   <div style={{ display: activeTab === "mail" ? "contents" : "none" }}>
                     <MailTab
@@ -1276,6 +1380,10 @@ export default function PlayerProfile({
                       mailListsLoaded={mailListsLoaded}
                       socket={socket}
                       onOpenProfile={onOpenProfile}
+                      systemMails={systemMails}
+                      onOpenSystemMail={handleOpenSystemMail}
+                      onClaimSystemMail={handleClaimSystemMail}
+                      onDeleteSystemMail={handleDeleteSystemMail}
                     />
                   </div>
                 )}

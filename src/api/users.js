@@ -78,6 +78,21 @@ export async function fetchLikeState(targetUserId) {
   return res.json();
 }
 
+/**
+ * Tells the server this profile was opened. The award is capped at one a day
+ * per viewer server-side, so this can fire on every open. Best-effort: a
+ * failure here must never stop the profile rendering.
+ */
+export async function recordProfileVisit(targetUserId) {
+  const token = localStorage.getItem("fv_token");
+  const res = await fetch(`${API}/api/users/${encodeURIComponent(targetUserId)}/visit`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return { popularity: null };
+  return res.json();
+}
+
 export async function toggleLike(targetUserId) {
   const token = localStorage.getItem("fv_token");
   const res = await fetch(`${API}/api/users/${encodeURIComponent(targetUserId)}/like`, {

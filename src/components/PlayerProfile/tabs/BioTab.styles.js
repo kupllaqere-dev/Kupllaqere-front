@@ -625,3 +625,66 @@ export const BadgeSlot = styled.div`
   border: 1.5px dashed ${"var(--pp-border2)"};
   background: rgba(255,255,255,0.04);
 `;
+
+/* ── Gift shelf ──────────────────────────────────────────────
+   What other players have sent this profile. The section it sits in has a
+   fixed share of the panel's height, so the shelf is one row that scrolls
+   sideways once there are more gifts than fit rather than growing taller. */
+
+export const GiftShelfRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: ${p => p.$empty ? "center" : "flex-start"};
+  gap: 10px;
+  min-height: 0;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  ${thinScrollbar}
+  &::-webkit-scrollbar { height: 4px; }
+`;
+
+export const GiftShelfItem = styled.div`
+  flex-shrink: 0;
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid ${"var(--pp-border)"};
+`;
+
+export const GiftShelfIcon = styled.span`
+  font-size: 24px;
+  line-height: 1;
+`;
+
+export const GiftShelfName = styled.span`
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const GiftShelfFrom = styled.span`
+  font-size: 8px;
+  color: ${"var(--pp-txt3)"};
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const GiftShelfEmpty = styled.p`
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  text-align: center;
+  color: ${"var(--pp-txt3)"};
+`;
