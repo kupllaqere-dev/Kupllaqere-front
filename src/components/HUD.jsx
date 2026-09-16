@@ -472,7 +472,6 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
               <S.NamePlate>
                 <S.NameRow>
                   <S.PlayerName>{playerName || "Player"}</S.PlayerName>
-                  <S.PlayerLevel>Lv {level ?? 1}</S.PlayerLevel>
                 </S.NameRow>
                 <GameClock />
               </S.NamePlate>

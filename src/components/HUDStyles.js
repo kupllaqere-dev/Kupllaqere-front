@@ -308,7 +308,7 @@ export const IconButton = styled.div`
 export const NamePlate = styled.div`
   position: absolute;
   left: 50%;
-  bottom: -18px;
+  bottom: -10px;
   transform: translateX(-50%);
   width: 152px;
   box-sizing: border-box;
@@ -333,21 +333,13 @@ export const PlayerName = styled.div`
   color: rgba(240, 225, 255, 0.97);
   font-size: 15px;
   font-weight: 700;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
-export const PlayerLevel = styled.div`
-  color: #f0c040;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  flex-shrink: 0;
-`;
-
-// Game clock, sitting under the name/level pill with no plate of its own.
+// Game clock, sitting under the name pill with no plate of its own.
 export const ClockRow = styled.div`
   position: absolute;
   top: 100%;
