@@ -15,6 +15,10 @@ import styled, { keyframes, css } from "styled-components";
 // actually leaves the grid) lives in the component.
 const CLEAR_ANIM_MS = 220;
 
+// Matches GAP in ShellMatchGame.jsx — the space between two cells, which each
+// neighbouring tile claims half of as grip (see Tile).
+const GAP = 6;
+
 // A quick fade-in for a tile landing at the very top of its column, which
 // has no room to visually drop from (see MAX_DROP_OFFSET in the component) —
 // gives it something rather than just materializing outright.
@@ -23,7 +27,21 @@ const popIn = keyframes`
   100% { opacity: 1; transform: scale(1); }
 `;
 
-// Hot core + a shockwave ring for a tile that actually breaks.
+// The impact at the end of a fall: the shell squashes against what it lands
+// on, rebounds a touch past its resting height, then settles. Anchored to the
+// bottom of the tile so it compresses onto the floor rather than around its
+// own middle. Runs on the shell image, never the tile, because the tile's own
+// transform is carrying its board position.
+const landSquash = keyframes`
+  0%   { transform: scale(1, 1); }
+  32%  { transform: scale(1.13, 0.83); }
+  64%  { transform: scale(0.97, 1.04); }
+  100% { transform: scale(1, 1); }
+`;
+
+// The break itself, in ocean blue: a bright foam-white core going straight out
+// through shallow water to deep sea, so a shatter reads as something bursting
+// underwater rather than catching fire.
 const burstPop = keyframes`
   0%   { opacity: 0.95; transform: scale(0.15); }
   35%  { opacity: 0.8;  transform: scale(1.15); }
@@ -57,20 +75,44 @@ const selectPulse = keyframes`
   }
 `;
 
+// A shatter's word: punched in oversized, snapped back to its own size, then
+// carried up off the board as it fades. The centring translate has to be part
+// of every frame — the element is positioned by its own centre, and a keyframe
+// that set only scale would drop that and fling the word to the corner.
+const praisePop = keyframes`
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.35) rotate(-8deg); }
+  16%  { opacity: 1; transform: translate(-50%, -52%) scale(1.22) rotate(3deg); }
+  30%  { opacity: 1; transform: translate(-50%, -52%) scale(0.96) rotate(-1deg); }
+  42%  { opacity: 1; transform: translate(-50%, -54%) scale(1.04) rotate(0deg); }
+  70%  { opacity: 1; transform: translate(-50%, -78%) scale(1.02); }
+  100% { opacity: 0; transform: translate(-50%, -128%) scale(0.9); }
+`;
+
 const bob = keyframes`
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-3px); }
 `;
 
-const fillShimmer = keyframes`
-  0%   { background-position: 0 0; }
-  100% { background-position: 40px 0; }
+// A single highlight travelling the length of the filled part and away, with a
+// long dead gap before it comes round again — a glass-and-sugar catch of the
+// light, not the old barber's pole of stripes crawling nonstop.
+const barSheen = keyframes`
+  0%, 62%  { transform: translateX(-120%) skewX(-18deg); }
+  86%, 100% { transform: translateX(520%) skewX(-18deg); }
+`;
+
+// The bar's leading edge, breathing. Gives the fill a live end even when the
+// player hasn't scored for a while.
+const capPulse = keyframes`
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.95; }
+  50%      { transform: translate(-50%, -50%) scale(1.22); opacity: 1; }
 `;
 
 const dotPop = keyframes`
-  0%   { transform: scale(0.6); }
-  60%  { transform: scale(1.25); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(0.5) rotate(-25deg); }
+  55%  { transform: scale(1.35) rotate(8deg); }
+  78%  { transform: scale(0.94) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
 `;
 
 export const Overlay = styled.div`
@@ -216,27 +258,78 @@ export const MovesPill = styled.span`
 
 export const BarTrack = styled.div`
   position: relative;
-  height: 16px;
+  box-sizing: border-box;
+  height: 24px;
   border-radius: 999px;
-  background: rgba(18, 60, 74, 0.18);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
-  margin-top: 4px;
-  margin-bottom: 26px;
+  background: linear-gradient(180deg, rgba(12, 48, 62, 0.3) 0%, rgba(12, 48, 62, 0.16) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.3),
+    0 2px 0 rgba(255, 255, 255, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+  margin-top: 6px;
+  margin-bottom: 34px;
 `;
 
 export const BarFill = styled.div`
-  height: 100%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
   border-radius: 999px;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.25) 0 8px,
-      rgba(255, 255, 255, 0) 8px 16px
-    ),
-    linear-gradient(90deg, #ffcf6b 0%, #ff8a5c 100%);
-  background-size: 40px 100%, 100% 100%;
-  animation: ${fillShimmer} 1.1s linear infinite;
-  transition: width 320ms ease-out;
+  overflow: hidden;
+  /* Sized to the track, not to itself, so the sweet-shop gradient stays put as
+     the bar grows instead of dragging its own colours along behind the head. */
+  background-image: linear-gradient(
+    90deg,
+    #ff8fd0 0%,
+    #ff5fa2 30%,
+    #ff8a45 62%,
+    #ffc93f 84%,
+    #ffe96b 100%
+  );
+  background-repeat: no-repeat;
+  /* Slow enough to be watchable and eased so it arrives rather than stops —
+     the old 320ms linear-ish slide was over before it read as anything. */
+  transition: width 560ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Sugar-glass: a bright band across the top half, a shadow along the floor. */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.12) 46%, rgba(255, 255, 255, 0) 58%),
+      linear-gradient(0deg, rgba(120, 20, 60, 0.28) 0%, rgba(120, 20, 60, 0) 40%);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 22%;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%);
+    animation: ${barSheen} 3.4s ease-in-out infinite;
+  }
+`;
+
+// The fill's head: a bright bead sitting on the leading edge, pulsing. Hidden
+// at zero, where there's no edge for it to sit on.
+export const BarCap = styled.div`
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, #fff 26%, #ffe9a8 58%, rgba(255, 233, 168, 0) 78%);
+  box-shadow: 0 0 14px rgba(255, 214, 120, 0.95);
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  transition: left 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease;
+  animation: ${capPulse} 1.4s ease-in-out infinite;
 `;
 
 export const CheckpointMark = styled.div`
@@ -249,38 +342,84 @@ export const CheckpointMark = styled.div`
   gap: 4px;
 `;
 
+// A gumdrop on the rail rather than a numbered stop: unreached it's a pale
+// sweet waiting to be taken, reached it's a glossy filled one with a tick. The
+// last checkpoint is the jackpot, so it sits a size up.
 export const CheckpointDot = styled.div`
-  width: 20px;
-  height: 20px;
+  box-sizing: border-box;
+  width: ${({ $final }) => ($final ? 28 : 22)}px;
+  height: ${({ $final }) => ($final ? 28 : 22)}px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 800;
-  color: ${({ $reached }) => ($reached ? "#123c4a" : "#fff8e8")};
-  background: ${({ $reached }) => ($reached ? "#ffe1a8" : "#1f7a8c")};
-  border: 2px solid #fdf1d6;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  ${({ $reached }) => $reached && css`animation: ${dotPop} 320ms ease-out;`}
+  font-size: ${({ $final }) => ($final ? 14 : 11)}px;
+  font-weight: 900;
+  color: #b3541e;
+  border: 3px solid #fff;
+  background: ${({ $reached }) =>
+    $reached
+      ? "radial-gradient(circle at 34% 28%, #fff6cf 0%, #ffd45e 52%, #ffab2e 100%)"
+      : "radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.42) 60%, rgba(255, 255, 255, 0.25) 100%)"};
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.3),
+    ${({ $reached }) => ($reached ? "0 0 14px rgba(255, 196, 80, 0.85)" : "none")};
+  transition: background 260ms ease, box-shadow 260ms ease;
+  ${({ $reached }) => $reached && css`animation: ${dotPop} 420ms cubic-bezier(0.22, 1, 0.36, 1);`}
 `;
 
 export const CheckpointReward = styled.div`
   position: absolute;
   top: 100%;
-  margin-top: 2px;
+  margin-top: 4px;
   display: flex;
   align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #123c4a;
+  gap: 3px;
+  font-size: ${({ $final }) => ($final ? 12 : 10.5)}px;
+  font-weight: 800;
+  color: ${({ $reached }) => ($reached ? "#b3541e" : "rgba(18, 60, 74, 0.6)")};
   white-space: nowrap;
+  transition: color 260ms ease;
 
   img {
-    width: 12px;
-    height: 12px;
+    width: ${({ $final }) => ($final ? 14 : 12)}px;
+    height: ${({ $final }) => ($final ? 14 : 12)}px;
+    opacity: ${({ $reached }) => ($reached ? 1 : 0.75)};
   }
+`;
+
+// Escalating with the combo: each step is bigger and a stage louder in colour,
+// ending somewhere ridiculous. Sizes are deliberately steep — "Insane" should
+// barely fit on the board.
+const PRAISE_STEPS = [
+  { size: 30, color: "#5fd8ff" },
+  { size: 38, color: "#3ee89b" },
+  { size: 48, color: "#ffd63f" },
+  { size: 60, color: "#ff9b2f" },
+  { size: 74, color: "#ff5fa2" },
+  { size: 90, color: "#b877ff" },
+];
+
+export const Praise = styled.div`
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  white-space: nowrap;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  font-size: ${({ $level }) => PRAISE_STEPS[$level - 1].size}px;
+  color: ${({ $level }) => PRAISE_STEPS[$level - 1].color};
+  /* A drawn-behind white border rather than -webkit-text-stroke, which is
+     painted centred over the glyph and eats into the colour at these weights.
+     Eight offsets make a solid outline; the last shadow is the drop under it. */
+  text-shadow:
+    -3px -3px 0 #fff,  0 -3px 0 #fff,  3px -3px 0 #fff,
+    -3px  0   0 #fff,                  3px  0   0 #fff,
+    -3px  3px 0 #fff,  0  3px 0 #fff,  3px  3px 0 #fff,
+    0 7px 12px rgba(6, 30, 44, 0.45);
+  animation: ${praisePop} 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
 `;
 
 export const ShuffleNotice = styled.div`
@@ -302,7 +441,18 @@ export const ShuffleNotice = styled.div`
 
 export const BoardWrap = styled.div`
   position: relative;
+  /* The frame inside is inline-level, so without this the wrapper keeps a few
+     px of baseline gap under it — enough to push everything positioned against
+     the wrapper (a praise word, the shuffle veil) off the board it's meant to
+     line up with. */
+  line-height: 0;
 `;
+
+// The board frame's own padding, needed in the component too — it's the offset
+// between the board's own coordinates and the wrapper a praise word is placed
+// in. Declared above BoardFrame because that template literal reads it as the
+// module loads.
+export const FRAME_PAD = 8;
 
 // Purely decorative — the frame's own padding lives here, outside the grid's
 // coordinate system entirely, so it can never throw off where a grid cell
@@ -313,8 +463,20 @@ export const BoardFrame = styled.div`
   border-radius: 16px;
   background: linear-gradient(160deg, #2a94a8 0%, #1f7a8c 60%, #176271 100%);
   box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.3);
-  padding: 8px;
-  cursor: ${({ $busy }) => ($busy ? "default" : "pointer")};
+  padding: ${FRAME_PAD}px;
+  /* The cursor belongs to the whole board, not to each shell. Set per tile it
+     changed every time the pointer crossed one of the 6px gaps, which is most
+     of the way across the board — a flicker that read as the board being
+     half-interactive. Set here it's inherited by everything inside (rocks
+     override it, being the one thing that genuinely can't be moved) and never
+     changes on the way across. It stays put while a cascade resolves, too:
+     the input guards already ignore those clicks, and a cursor blinking in
+     and out several times a second would be the same flicker back again. */
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
 `;
 
 // The actual invisible grid. Zero padding of its own — its content box is
@@ -351,6 +513,23 @@ export const Tile = styled.div`
   align-items: center;
   justify-content: center;
   border-radius: 12px;
+
+  /* The tile is one cell wide, but its grip reaches half a gap further on
+     every side, so the gaps between shells belong to whichever shell is
+     nearest instead of being dead space that swallows a press. Neighbouring
+     grips meet exactly and never overlap. */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -${GAP / 2}px;
+  }
+
+  /* A drag on a touch screen has to be the board's gesture, not the page's —
+     without this the browser claims the pull as a scroll and the swap never
+     gets its move events. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   /* Deliberately all longhands, never the transition shorthand — mixing a
      shorthand declaration here with the per-tile transition-delay below is a
      real footgun: transition: transform 240ms ... implicitly resets
@@ -371,17 +550,20 @@ export const Tile = styled.div`
   ${({ $falling }) =>
     $falling &&
     css`
-      /* Matches FALL_TRANSITION_MS in ShellMatchGame.jsx. Accelerates like
-         gravity taking hold, then overshoots the landing slightly before
-         settling — a small physical bounce rather than a dead stop. Kept
-         tight so a chain of cascades doesn't drag. */
-      transition-duration: 320ms;
-      transition-timing-function: cubic-bezier(0.38, 0, 0.62, 1.2);
+      /* Gravity's curve only — the duration is set inline per tile, since it
+         depends on how far that particular tile drops (see fallDurationFor in
+         ShellMatchGame.jsx). Accelerates from a standstill and stays fast into
+         the landing, which is what a fall actually does; the bounce that used
+         to live in an overshooting curve here now lives in the landing squash
+         instead, because a curve's overshoot scales with distance — a
+         six-row drop would have visibly punched through the board. */
+      transition-timing-function: cubic-bezier(0.45, 0.02, 0.85, 1);
     `}
 
   ${({ $locked }) =>
     $locked &&
     css`
+      cursor: default;
       background: linear-gradient(160deg, #2b2b2b 0%, #050505 70%);
       box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.1), inset 0 -4px 8px rgba(0, 0, 0, 0.7);
     `}
@@ -409,9 +591,9 @@ export const Burst = styled.span`
   background: radial-gradient(
     circle,
     rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 248, 224, 0.9) 22%,
-    rgba(255, 196, 102, 0.65) 50%,
-    rgba(255, 138, 92, 0) 78%
+    rgba(198, 244, 255, 0.92) 22%,
+    rgba(56, 178, 255, 0.7) 50%,
+    rgba(12, 110, 190, 0) 78%
   );
 
   ${({ $active }) =>
@@ -427,8 +609,8 @@ export const BurstRing = styled.span`
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;
-  border: 4px solid rgba(255, 244, 214, 0.85);
-  box-shadow: 0 0 8px rgba(255, 196, 102, 0.45);
+  border: 4px solid rgba(214, 246, 255, 0.9);
+  box-shadow: 0 0 10px rgba(56, 178, 255, 0.6);
 
   ${({ $active }) =>
     $active &&
@@ -477,6 +659,18 @@ export const Shell = styled.img`
     $popping &&
     css`
       animation: ${popIn} 260ms ease-out both;
+    `}
+
+  /* The "both" fill is what makes this safe to attach for the whole fall:
+     until its inline animation-delay elapses the shell holds the 0% frame, so
+     the squash fires the instant this tile lands and not before. Must fit
+     inside FALL_SETTLE_MS in ShellMatchGame.jsx, which is the only time the
+     board waits after the last landing. */
+  ${({ $landing }) =>
+    $landing &&
+    css`
+      transform-origin: 50% 88%;
+      animation: ${landSquash} 150ms ease-out both;
     `}
 `;
 

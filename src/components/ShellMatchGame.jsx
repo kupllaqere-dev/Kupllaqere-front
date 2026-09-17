@@ -6,15 +6,18 @@ import * as S from "./ShellMatchGame.styles";
  * shell decoration.
  *
  * There's no "score" — instead, breaking shells fills a shared nectar bar
- * with 6 checkpoints, each paying out real Nectar (via `onNectarEarned`,
+ * with 4 checkpoints, each paying out real Nectar (via `onNectarEarned`,
  * wired to the player's coin balance in Game.jsx) the moment it's crossed.
  * Combos (a drop that connects again) fill the bar faster, same as the old
  * score multiplier did. The player gets a flat budget of moves to work with
  * — filling the whole bar is meant to take real cascade play, not just be a
  * given.
  *
- * Three difficulties reuse this exact board/bar/moves engine; the only thing
- * that changes is which special tiles get seeded onto the board:
+ * Three difficulties reuse this exact board/bar/moves engine. The checkpoints
+ * sit at the same four places on the bar whatever the difficulty — what
+ * changes is what they pay (the first three are a trickle, the last one is the
+ * prize: 100/100/100/500 on easy up to 500/500/500/2500 on hard) and which
+ * special tiles get seeded onto the board:
  *  - easy:   plain shells only.
  *  - medium: some board SLOTS are cracked — whichever shell currently sits
  *            there breaks normally, but that first break on the slot pays no
@@ -25,6 +28,14 @@ import * as S from "./ShellMatchGame.styles";
  *  - hard:   cracked slots return, plus a few rocks that can never be
  *            broken, swapped, or moved — a fixed obstacle carved out of the
  *            grid, rendered as a solid black tile.
+ *
+ * Input works two ways, and both end up in the same attemptSwap: tap a shell
+ * and then tap a neighbour, or drag a shell onto the neighbour directly. A
+ * drag reads from where it started (the tile takes pointer capture) rather
+ * than from whatever is under the pointer, commits to one axis as soon as it's
+ * clearly a drag at all, and fires the swap well before the shell has been
+ * pulled a full cell. A press that never moves is still a tap, so the
+ * click-only interaction is untouched.
  *
  * Board model: the grid is actually TOTAL_ROWS tall (a hidden BUFFER_ROWS-tall
  * "reserve board" stacked above the VISIBLE_ROWS-tall playable one), clipped
@@ -63,6 +74,15 @@ const TOTAL_ROWS = VISIBLE_ROWS + BUFFER_ROWS;
 
 const CELL = 68;
 const GAP = 6;
+// Centre-to-centre distance between neighbouring cells — one cell of travel.
+const STEP_PX = CELL + GAP;
+// How far a pointer has to move before the press stops being a tap and
+// becomes a drag that's committed to an axis.
+const DRAG_SLOP_PX = 5;
+// How far a shell has to be pulled toward a neighbour before the two swap.
+// Well under a full cell, so a flick is enough and nobody has to haul a shell
+// all the way into the next slot for it to count.
+const DRAG_COMMIT_PX = STEP_PX * 0.38;
 export const BOARD_PX = COLS * CELL + (COLS - 1) * GAP;
 const BOARD_HEIGHT_PX = VISIBLE_ROWS * CELL + (VISIBLE_ROWS - 1) * GAP;
 
@@ -86,27 +106,34 @@ const CLEAR_MS = 220;
 // board rather than every column dropping in lockstep. Tight enough that
 // the wave reads without dragging the whole cascade out.
 const COLUMN_DELAY_MS = 26;
-const FALL_TRANSITION_MS = 320;
-// Longer than the worst-case column delay + the fall transition itself (see
-// $falling in ShellMatchGame.styles.js), so the whole wave finishes playing
+// A fall is timed like a real one: duration grows with the square root of the
+// distance, the way it does under constant acceleration. A shell dropping six
+// rows takes ~2.4x as long as one dropping a single row, instead of every
+// tile sharing one flat duration — which is what makes a board slide as a
+// rigid sheet rather than read as a stack of things falling.
+const FALL_BASE_MS = 115;
+// Time held after the last tile has landed, so its squash finishes playing
 // before the next cascade round starts clearing on top of it.
-const FALL_MS = (COLS - 1) * COLUMN_DELAY_MS + FALL_TRANSITION_MS + 60;
+const FALL_SETTLE_MS = 150;
+// Matches the popIn keyframe's duration in ShellMatchGame.styles.js. A round
+// whose only new tile is a locally spawned one (the enclosed-below-a-rock
+// fallback) may have nothing actually falling, and must still hold long
+// enough for that fade to finish.
+const POP_IN_MS = 260;
+const fallDurationFor = (rows) => (rows > 0 ? Math.round(FALL_BASE_MS * Math.sqrt(rows)) : 0);
 
 const TOTAL_MOVES = 50;
 const FILL_PER_TILE = 10;
 
-// Escalating segment sizes (not just escalating rewards) are what make the
-// far end of the bar "quite difficult" — the fill needed per checkpoint
-// grows even as the moves budget stays flat.
-const CHECKPOINTS = [
-  { threshold: 400, reward: 500 },
-  { threshold: 850, reward: 700 },
-  { threshold: 1350, reward: 900 },
-  { threshold: 1900, reward: 1200 },
-  { threshold: 2500, reward: 1500 },
-  { threshold: 3200, reward: 2000 },
-];
-const BAR_TOTAL = CHECKPOINTS[CHECKPOINTS.length - 1].threshold;
+// Four checkpoints at escalating distances (not just escalating rewards) — the
+// fill needed per segment grows even as the moves budget stays flat, so the
+// last one is the long haul. Where the marks sit is the same on every
+// difficulty; only what they pay changes, so a harder board is worth playing
+// for the money rather than for a shorter bar.
+const CHECKPOINT_THRESHOLDS = [500, 1100, 1800, 2800];
+const BAR_TOTAL = CHECKPOINT_THRESHOLDS[CHECKPOINT_THRESHOLDS.length - 1];
+const checkpointsFor = (rewards) =>
+  CHECKPOINT_THRESHOLDS.map((threshold, i) => ({ threshold, reward: rewards[i] }));
 
 const DIFFICULTIES = {
   easy: {
@@ -116,6 +143,7 @@ const DIFFICULTIES = {
     blurb: "Plain shells only — every match counts straight away.",
     crackedSlotCount: 0,
     lockedCount: 0,
+    checkpoints: checkpointsFor([100, 100, 100, 500]),
   },
   medium: {
     key: "medium",
@@ -124,6 +152,7 @@ const DIFFICULTIES = {
     blurb: "A few board slots are cracked — the first shell broken there doesn't count, then the slot's free for good.",
     crackedSlotCount: 6,
     lockedCount: 0,
+    checkpoints: checkpointsFor([300, 300, 300, 1500]),
   },
   hard: {
     key: "hard",
@@ -132,11 +161,20 @@ const DIFFICULTIES = {
     blurb: "Cracked slots return, plus a handful of solid rocks that can never be broken or moved.",
     crackedSlotCount: 5,
     lockedCount: 5,
+    checkpoints: checkpointsFor([500, 500, 500, 2500]),
   },
 };
 
+// One word per shatter, escalating with the combo: a drop that connects again
+// moves one further along, and the last word holds for anything beyond it.
+const PRAISE_WORDS = ["Nice", "Good", "Great", "Amazing", "Incredible", "Insane"];
+
 let tileSeq = 0;
 const nextTileId = () => ++tileSeq;
+let praiseSeq = 0;
+// A fresh id per shatter is what restarts the pop animation — same word twice
+// in a row still has to play twice.
+const nextPraiseId = () => ++praiseSeq;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 const randomColorId = () => COLORS[(Math.random() * COLORS.length) | 0].id;
@@ -320,22 +358,57 @@ const MAX_DROP_OFFSET = 3;
 function applyGravity(grid, locked) {
   const next = new Array(TOTAL_ROWS * COLS).fill(null);
   const spawnOffsets = new Map();
+  // tile id -> how many rows it visibly travels this round, which is what
+  // gives each tile its own fall duration (see fallDurationFor). A tile that
+  // doesn't move simply isn't in here.
+  const fallDistances = new Map();
+  let fallMs = 0;
 
   const compactSegment = (col, rowStart, rowEnd) => {
     const survivors = [];
     for (let r = rowStart; r < rowEnd; r++) {
       const tile = grid[r * COLS + col];
-      if (tile) survivors.push(tile);
+      if (tile) survivors.push({ tile, from: r });
     }
     const segLen = rowEnd - rowStart;
     const freshCount = segLen - survivors.length;
-    const fresh = [];
-    for (let k = 0; k < freshCount; k++) fresh.push({ id: nextTileId(), color: randomColorId() });
-    const column = [...fresh, ...survivors];
     const needsLocalDrop = rowStart > 0;
+    const column = [];
+    for (let k = 0; k < freshCount; k++) {
+      column.push({ tile: { id: nextTileId(), color: randomColorId() }, from: null });
+    }
+    column.push(...survivors);
+
     for (let i = 0; i < segLen; i++) {
-      next[(rowStart + i) * COLS + col] = column[i];
-      if (i < freshCount && needsLocalDrop) spawnOffsets.set(column[i].id, Math.min(i, MAX_DROP_OFFSET));
+      const row = rowStart + i;
+      const { tile, from } = column[i];
+      next[row * COLS + col] = tile;
+
+      // A survivor travels from wherever it used to sit. A fresh tile is born
+      // at the top of the reserve board and doesn't travel at all this round
+      // — it rides down with the stack over the rounds that follow, which is
+      // exactly why shells appear to stream in from off the top of the board.
+      // The one exception is the enclosed-below-a-rock fallback, where the
+      // tile has to be spawned a short hop above its own slot instead.
+      let distance = 0;
+      if (from === null) {
+        if (needsLocalDrop) {
+          distance = Math.min(i, MAX_DROP_OFFSET);
+          // Offset 0 still gets an entry: it's what marks the tile as locally
+          // spawned, and so what gives it the popIn fade in place of a drop.
+          spawnOffsets.set(tile.id, distance);
+        }
+      } else {
+        distance = row - from;
+      }
+
+      if (from === null && needsLocalDrop) {
+        fallMs = Math.max(fallMs, POP_IN_MS);
+      }
+      if (distance > 0) {
+        fallDistances.set(tile.id, distance);
+        fallMs = Math.max(fallMs, col * COLUMN_DELAY_MS + fallDurationFor(distance));
+      }
     }
   };
 
@@ -352,7 +425,7 @@ function applyGravity(grid, locked) {
     }
   }
 
-  return { grid: next, spawnOffsets };
+  return { grid: next, spawnOffsets, fallDistances, fallMs: fallMs + FALL_SETTLE_MS };
 }
 
 export default function ShellMatchGame({ onClose, onNectarEarned }) {
@@ -369,6 +442,14 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
   const [slotCracks, setSlotCracks] = useState(() => new Set());
 
   const [selected, setSelected] = useState(null);
+  // Drag-to-swap, alongside the original tap-a-shell-then-tap-a-neighbour.
+  // `dragRef` is the live gesture — pointer handlers read and write it without
+  // re-rendering — while `drag` is only what the render needs to keep the two
+  // shells under the finger offset toward each other.
+  const dragRef = useRef(null);
+  // tile id -> its DOM node, so a drag can move the two shells under the
+  // finger by writing their transforms directly. See paintTile.
+  const tileEls = useRef(new Map());
   const [busy, setBusy] = useState(false);
   const [clearingIds, setClearingIds] = useState(() => new Set());
   const [chippingIds, setChippingIds] = useState(() => new Set());
@@ -376,12 +457,16 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
   // every replacement tile comes down from the reserve board instead.
   const [spawnOffsets, setSpawnOffsets] = useState(() => new Map());
   const [poppingIds, setPoppingIds] = useState(() => new Set());
+  // tile id -> rows travelled in the current gravity step, so each tile gets a
+  // fall duration matched to its own drop instead of one shared duration.
+  const [fallDistances, setFallDistances] = useState(() => new Map());
   // True for the whole gravity/refill step of a cascade — swaps out the
   // Tile's snappy swap transition for a slower, smoother one (see $falling
   // in ShellMatchGame.styles.js) so a fall actually reads as a fall instead
   // of a snap.
   const [gravityPhase, setGravityPhase] = useState(false);
   const [shuffling, setShuffling] = useState(false);
+  const [praise, setPraise] = useState(null);
 
   const [movesLeft, setMovesLeft] = useState(TOTAL_MOVES);
   const movesRef = useRef(TOTAL_MOVES);
@@ -390,6 +475,10 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
   const fillRef = useRef(0);
   const [reachedCount, setReachedCount] = useState(0);
   const reachedRef = useRef(new Set());
+  // The running difficulty's four checkpoints. Kept in a ref as well as in
+  // `difficulty` state because the cascade loop awards them from inside an
+  // async run that would otherwise be reading a stale closure.
+  const checkpointsRef = useRef([]);
   const [earnedTotal, setEarnedTotal] = useState(0);
 
   const mountedRef = useRef(true);
@@ -408,6 +497,7 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     const config = DIFFICULTIES[key];
     const { grid: board, locked, crackedSlots } = createPlayableBoard(config);
     lockedRef.current = locked;
+    checkpointsRef.current = config.checkpoints;
     slotCracksRef.current = crackedSlots;
     setSlotCracks(new Set(crackedSlots));
     fillRef.current = 0;
@@ -417,13 +507,16 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     setDifficulty(config);
     setGrid(board);
     setSelected(null);
+    dragRef.current = null;
     setBusy(false);
     setClearingIds(new Set());
     setChippingIds(new Set());
     setSpawnOffsets(new Map());
     setPoppingIds(new Set());
+    setFallDistances(new Map());
     setGravityPhase(false);
     setShuffling(false);
+    setPraise(null);
     setMovesLeft(TOTAL_MOVES);
     setBarFill(0);
     setReachedCount(0);
@@ -434,7 +527,7 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
   const awardCheckpoint = useCallback((index) => {
     reachedRef.current.add(index);
     setReachedCount(reachedRef.current.size);
-    const reward = CHECKPOINTS[index].reward;
+    const reward = checkpointsRef.current[index].reward;
     setEarnedTotal((t) => t + reward);
     onNectarEarned?.(reward);
   }, [onNectarEarned]);
@@ -445,7 +538,7 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     const next = Math.min(prev + amount, BAR_TOTAL);
     fillRef.current = next;
     if (mountedRef.current) setBarFill(next);
-    CHECKPOINTS.forEach((cp, i) => {
+    checkpointsRef.current.forEach((cp, i) => {
       if (prev < cp.threshold && next >= cp.threshold && !reachedRef.current.has(i)) {
         awardCheckpoint(i);
       }
@@ -479,6 +572,21 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
       }
 
       if (!mountedRef.current) return;
+
+      // Drop the word at the middle of whatever just broke, rather than at
+      // some fixed spot on the board, so it reads as coming out of the break.
+      let sumCol = 0, sumRow = 0;
+      for (const idx of matches) {
+        sumCol += idx % COLS;
+        sumRow += ((idx / COLS) | 0) - BUFFER_ROWS;
+      }
+      setPraise({
+        id: nextPraiseId(),
+        level: Math.min(comboLevel, PRAISE_WORDS.length),
+        x: (sumCol / matches.size) * STEP_PX + CELL / 2,
+        y: (sumRow / matches.size) * STEP_PX + CELL / 2,
+      });
+
       setClearingIds(matches);
       setChippingIds(new Set(chipped));
       setSlotCracks(new Set(slotCracksRef.current));
@@ -491,10 +599,12 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
 
       const cleared = current.slice();
       for (const idx of matches) cleared[idx] = null;
-      const { grid: refilled, spawnOffsets: offsets } = applyGravity(cleared, locked);
+      const { grid: refilled, spawnOffsets: offsets, fallDistances: distances, fallMs } =
+        applyGravity(cleared, locked);
 
       current = refilled;
       setGravityPhase(true);
+      setFallDistances(distances);
       setSpawnOffsets(offsets);
       setPoppingIds(new Set(offsets.keys()));
       setGrid(refilled);
@@ -508,10 +618,11 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
       if (!mountedRef.current) return;
       setSpawnOffsets(new Map());
 
-      await sleep(FALL_MS);
+      await sleep(fallMs);
       if (!mountedRef.current) return;
       setGravityPhase(false);
       setPoppingIds(new Set());
+      setFallDistances(new Map());
     }
 
     if (!hasAnyMove(current, locked)) {
@@ -529,18 +640,13 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     if (fillRef.current >= BAR_TOTAL || movesRef.current <= 0) setPhase("results");
   }, [addFill]);
 
-  const handleTileClick = useCallback((idx) => {
-    if (busy) return;
-    const tapped = grid[idx];
-    if (!tapped || tapped.locked) return;
-
-    if (selected === idx) { setSelected(null); return; }
-    if (selected === null || !isAdjacent(selected, idx)) { setSelected(idx); return; }
-
-    const from = selected;
+  /** Swaps two adjacent cells, whichever way the player asked for it — a pair
+   * of taps or a drag both land here. A swap that connects nothing bounces
+   * straight back and costs no move. */
+  const attemptSwap = useCallback((from, to) => {
     setSelected(null);
 
-    const attempt = swapCells(grid, from, idx);
+    const attempt = swapCells(grid, from, to);
     const matches = findMatches(attempt);
 
     if (matches.size === 0) {
@@ -561,7 +667,180 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     setBusy(true);
     setGrid(attempt);
     setTimeout(() => resolveCascades(attempt), SWAP_MS);
-  }, [grid, busy, selected, resolveCascades]);
+  }, [grid, resolveCascades]);
+
+  const handleTileClick = useCallback((idx) => {
+    if (busy) return;
+    const tapped = grid[idx];
+    if (!tapped || tapped.locked) return;
+
+    if (selected === idx) { setSelected(null); return; }
+    if (selected === null || !isAdjacent(selected, idx)) { setSelected(idx); return; }
+
+    attemptSwap(selected, idx);
+  }, [grid, busy, selected, attemptSwap]);
+
+  /** The cell one step away in a direction, or null if there's nothing there
+   * to drag against — the board's edge, the line up into the reserve band, or
+   * a rock. A drag toward one of those simply doesn't move the shell, so the
+   * wall gets felt rather than explained. */
+  const dragNeighbor = useCallback((idx, dRow, dCol) => {
+    const row = (idx / COLS) | 0, col = idx % COLS;
+    const nr = row + dRow, nc = col + dCol;
+    if (nc < 0 || nc >= COLS) return null;
+    if (nr < BUFFER_ROWS || nr >= TOTAL_ROWS) return null;
+    const j = nr * COLS + nc;
+    const tile = grid?.[j];
+    if (!tile || tile.locked) return null;
+    return j;
+  }, [grid]);
+
+  /** Moves a tile by writing its transform straight to the DOM, around React
+   * rather than through it. A drag repaints on every pointer move, and going
+   * through state meant re-rendering all 72 tiles (each a handful of styled
+   * components) at pointer rate — which is what made dragging feel heavy. The
+   * string built here has to match the one the render produces exactly, so
+   * that React's own next write is a no-op rather than a fight. */
+  const paintTile = useCallback((idx, axis, offset) => {
+    const tileId = grid?.[idx]?.id;
+    if (tileId === undefined) return;
+    const el = tileEls.current.get(tileId);
+    if (!el) return;
+    const row = ((idx / COLS) | 0) - BUFFER_ROWS;
+    const col = idx % COLS;
+    const x = col * STEP_PX + (axis === "x" ? offset : 0);
+    const y = row * STEP_PX + (axis === "y" ? offset : 0);
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }, [grid]);
+
+  /** Hands a tile back to React: the gesture's overrides come off and the tile
+   * returns to its own slot on the ordinary transition. Nothing React renders
+   * next would do this by itself — as far as it knows the tile never left. */
+  const settleTile = useCallback((idx, axis) => {
+    const tileId = grid?.[idx]?.id;
+    if (tileId === undefined) return;
+    const el = tileEls.current.get(tileId);
+    if (!el) return;
+    el.style.transitionDuration = "";
+    el.style.zIndex = "";
+    paintTile(idx, axis, 0);
+  }, [grid, paintTile]);
+
+  const endDrag = useCallback((e) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return null;
+    settleTile(d.idx, d.axis);
+    if (d.neighbor != null) settleTile(d.neighbor, d.axis);
+    if (e?.currentTarget?.hasPointerCapture?.(d.pointerId)) {
+      e.currentTarget.releasePointerCapture(d.pointerId);
+    }
+    return d;
+  }, [settleTile]);
+
+  const handlePointerDown = useCallback((e, idx) => {
+    if (busy || e.button > 0) return;
+    const tile = grid[idx];
+    if (!tile || tile.locked) return;
+    // Capturing means every move and the release come back to this tile even
+    // once the pointer has left it, so the gesture is read from where it
+    // started rather than from whatever it happens to be over.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+    dragRef.current = {
+      idx, pointerId: e.pointerId, x: e.clientX, y: e.clientY,
+      axis: null, moved: false, neighbor: null,
+      // What's currently painted, so a move that changes nothing on screen
+      // costs nothing at all (see handlePointerMove).
+      painted: null,
+    };
+  }, [busy, grid]);
+
+  const handlePointerMove = useCallback((e) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+
+    // The gesture picks an axis once, at the moment it's clearly a drag at
+    // all, and keeps it for the rest of the pull — a diagonal wander partway
+    // through shouldn't quietly re-aim the swap at a different neighbour.
+    if (!d.axis) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_SLOP_PX) return;
+      d.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+      d.moved = true;
+      const el = tileEls.current.get(grid[d.idx].id);
+      if (el) {
+        // Track the finger with no transition of its own, and ride above the
+        // shell it's being traded with for the length of the pull.
+        el.style.transitionDuration = "0ms";
+        el.style.zIndex = "2";
+      }
+    }
+
+    const along = d.axis === "x" ? dx : dy;
+    const dir = along < 0 ? -1 : 1;
+    const neighbor = d.axis === "x" ? dragNeighbor(d.idx, 0, dir) : dragNeighbor(d.idx, dir, 0);
+
+    if (neighbor !== null && Math.abs(along) >= DRAG_COMMIT_PX) {
+      endDrag(e);
+      attemptSwap(d.idx, neighbor);
+      return;
+    }
+
+    // Reversing direction mid-pull hands the old partner back before the new
+    // one is picked up, so it doesn't stay stranded half out of its slot.
+    if (neighbor !== d.neighbor) {
+      if (d.neighbor != null) settleTile(d.neighbor, d.axis);
+      d.neighbor = neighbor;
+      d.painted = null;
+      if (neighbor != null) {
+        const el = tileEls.current.get(grid[neighbor].id);
+        if (el) el.style.transitionDuration = "0ms";
+      }
+    }
+
+    const offset = neighbor === null ? 0 : Math.round(Math.max(-STEP_PX, Math.min(STEP_PX, along)));
+    // Nothing to repaint when nothing would land anywhere else: dragging
+    // against a wall pins the offset at 0 for the whole pull, and sub-pixel
+    // jitter moves no shell either.
+    if (d.painted === offset) return;
+    d.painted = offset;
+
+    paintTile(d.idx, d.axis, offset);
+    if (neighbor != null) paintTile(neighbor, d.axis, -offset);
+  }, [grid, dragNeighbor, endDrag, settleTile, paintTile, attemptSwap]);
+
+  const handlePointerUp = useCallback((e) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    endDrag(e);
+    // A press that never turned into a drag is a tap, and taps still drive the
+    // original select-then-pick-a-neighbour swap.
+    if (!d.moved) handleTileClick(d.idx);
+  }, [endDrag, handleTileClick]);
+
+  // Tiles are drawn in a stable id order instead of board order. They're
+  // absolutely positioned, so DOM order carries no visual meaning — but it
+  // carries a great deal of animation meaning: React reconciles a reordered
+  // keyed list by detaching and re-inserting the nodes that moved, and a
+  // detached node loses the computed style the browser needs to interpolate
+  // from. In board order every surviving tile in a refilled column shifts
+  // later in the list (fresh tiles are prepended above it), so exactly the
+  // tiles that should be seen falling were the ones being re-inserted — their
+  // transform change produced no transition and they snapped into place.
+  // Ids only ever increase, so id order keeps survivors' relative order fixed
+  // and appends fresh tiles at the end: React never moves a node again.
+  const renderTiles = [];
+  if (grid) {
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i]) renderTiles.push({ tile: grid[i], idx: i });
+    }
+    renderTiles.sort((a, b) => a.tile.id - b.tile.id);
+  }
+
+  const barPct = (barFill / BAR_TOTAL) * 100;
 
   return (
     <S.Overlay onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -595,22 +874,34 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
             </S.StatsRow>
 
             <S.BarTrack style={{ width: BOARD_PX }}>
-              <S.BarFill style={{ width: `${(barFill / BAR_TOTAL) * 100}%` }} />
-              {CHECKPOINTS.map((cp, i) => (
-                <S.CheckpointMark key={i} style={{ left: `${(cp.threshold / BAR_TOTAL) * 100}%` }}>
-                  <S.CheckpointDot $reached={reachedCount > i}>
-                    {reachedCount > i ? "✓" : i + 1}
-                  </S.CheckpointDot>
-                  <S.CheckpointReward>
-                    <img src="/icons/Nectar.png" alt="" />{cp.reward}
-                  </S.CheckpointReward>
-                </S.CheckpointMark>
-              ))}
+              <S.BarFill
+                style={{
+                  width: `${barPct}%`,
+                  // Pinned to the track's width so the gradient's colours stay
+                  // where they are as the fill grows past them.
+                  backgroundSize: `${BOARD_PX}px 100%`,
+                }}
+              />
+              <S.BarCap $visible={barPct > 0} style={{ left: `${barPct}%` }} />
+              {difficulty.checkpoints.map((cp, i) => {
+                const reached = reachedCount > i;
+                const isFinal = i === difficulty.checkpoints.length - 1;
+                return (
+                  <S.CheckpointMark key={i} style={{ left: `${(cp.threshold / BAR_TOTAL) * 100}%` }}>
+                    <S.CheckpointDot $reached={reached} $final={isFinal}>
+                      {reached ? "✓" : ""}
+                    </S.CheckpointDot>
+                    <S.CheckpointReward $reached={reached} $final={isFinal}>
+                      <img src="/icons/Nectar.png" alt="" />{cp.reward}
+                    </S.CheckpointReward>
+                  </S.CheckpointMark>
+                );
+              })}
             </S.BarTrack>
 
             <S.BoardWrap>
               {shuffling && <S.ShuffleNotice>Shuffling…</S.ShuffleNotice>}
-              <S.BoardFrame $busy={busy}>
+              <S.BoardFrame>
                 <S.Grid
                   style={{
                     width: BOARD_PX,
@@ -630,18 +921,21 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
                     <S.Cell key={`cell-${i}`} $cracked={slotCracks.has(visIndex((i / COLS) | 0, i % COLS))} />
                   ))}
 
-                  {grid.map((tile, idx) => {
-                    if (!tile) return null;
+                  {renderTiles.map(({ tile, idx }) => {
                     const fullRow = (idx / COLS) | 0, col = idx % COLS;
                     // Row 0 of the visible band sits at pixel 0; the reserve
                     // board above it gets negative rows, clipped out of view
                     // by the Grid's own overflow rather than any extra math.
                     const baseVisualRow = fullRow - BUFFER_ROWS;
                     const visualRow = baseVisualRow - (spawnOffsets.get(tile.id) || 0);
+                    // Resting position only. While a drag is in flight the two
+                    // shells under the finger are moved by paintTile, straight
+                    // on the DOM — this render doesn't run again until the
+                    // gesture is over.
                     const style = {
                       width: CELL,
                       height: CELL,
-                      transform: `translate(${col * (CELL + GAP)}px, ${visualRow * (CELL + GAP)}px)`,
+                      transform: `translate(${col * STEP_PX}px, ${visualRow * STEP_PX}px)`,
                     };
                     // Left-to-right wave: each column starts falling a little
                     // later than the one before it, instead of the whole
@@ -649,10 +943,18 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
                     // rather than an inline transitionDelay style, so it
                     // can't be silently reset by the transition shorthand.
                     const delayMs = gravityPhase ? col * COLUMN_DELAY_MS : 0;
+                    // Per-tile, because a tile's drop is its own: the further
+                    // it falls the longer it takes. Set inline (the styled
+                    // component only supplies the gravity curve) so each tile
+                    // in the same falling board can differ. 0 rows → 0ms,
+                    // which is right — a tile that doesn't move has nothing
+                    // to interpolate anyway.
+                    const fallRows = gravityPhase ? fallDistances.get(tile.id) || 0 : 0;
+                    if (gravityPhase) style.transitionDuration = `${fallDurationFor(fallRows)}ms`;
 
                     if (tile.locked) {
                       return (
-                        <S.Tile key={tile.id} $locked $delayMs={delayMs} style={{ ...style, cursor: "default" }}>
+                        <S.Tile key={tile.id} $locked $delayMs={delayMs} style={style}>
                           <S.Rock>🪨</S.Rock>
                         </S.Tile>
                       );
@@ -661,15 +963,30 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
                     const isVisible = fullRow >= BUFFER_ROWS;
                     const clearing = isVisible && clearingIds.has(idx);
                     const chipping = isVisible && chippingIds.has(idx);
+                    // Squash on impact, timed to start at the exact moment
+                    // this tile's own fall ends (its column's stagger plus its
+                    // own duration) rather than when the board as a whole
+                    // finishes — so a short drop lands early and squashes
+                    // early. Mutually exclusive with the popIn fade, since
+                    // both drive the shell's transform.
+                    const popping = poppingIds.has(tile.id);
+                    const landing = fallRows > 0 && !popping;
 
                     return (
                       <S.Tile
                         key={tile.id}
+                        ref={(el) => {
+                          if (el) tileEls.current.set(tile.id, el);
+                          else tileEls.current.delete(tile.id);
+                        }}
                         $selected={isVisible && selected === idx}
                         $falling={gravityPhase}
                         $delayMs={delayMs}
                         style={style}
-                        onClick={isVisible ? () => handleTileClick(idx) : undefined}
+                        onPointerDown={isVisible ? (e) => handlePointerDown(e, idx) : undefined}
+                        onPointerMove={isVisible ? handlePointerMove : undefined}
+                        onPointerUp={isVisible ? handlePointerUp : undefined}
+                        onPointerCancel={isVisible ? endDrag : undefined}
                       >
                         <S.Burst $active={clearing} />
                         <S.BurstRing $active={clearing} />
@@ -678,26 +995,41 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
                           src="/assets/shell/shell.png"
                           draggable={false}
                           $clearing={clearing}
-                          $popping={poppingIds.has(tile.id)}
-                          style={{ filter: COLOR_FILTER[tile.color] }}
+                          $popping={popping}
+                          $landing={landing}
+                          style={{
+                            filter: COLOR_FILTER[tile.color],
+                            ...(landing && { animationDelay: `${delayMs + fallDurationFor(fallRows)}ms` }),
+                          }}
                         />
                       </S.Tile>
                     );
                   })}
                 </S.Grid>
               </S.BoardFrame>
+              {praise && (
+                <S.Praise
+                  key={praise.id}
+                  $level={praise.level}
+                  style={{ left: praise.x + S.FRAME_PAD, top: praise.y + S.FRAME_PAD }}
+                >
+                  {PRAISE_WORDS[praise.level - 1]}
+                </S.Praise>
+              )}
             </S.BoardWrap>
 
-            <S.Hint>Swap neighbouring shells to connect 3 or more.</S.Hint>
+            <S.Hint>Drag a shell onto its neighbour — or tap the two of them — to connect 3 or more.</S.Hint>
           </>
         )}
 
         {phase === "results" && difficulty && (
           <S.ResultsBody>
             <S.ResultsHeadline>
-              {reachedCount >= CHECKPOINTS.length ? "Bar complete!" : "Out of moves"}
+              {reachedCount >= difficulty.checkpoints.length ? "Bar complete!" : "Out of moves"}
             </S.ResultsHeadline>
-            <S.ResultsRow>{difficulty.label} · {reachedCount} / {CHECKPOINTS.length} checkpoints</S.ResultsRow>
+            <S.ResultsRow>
+              {difficulty.label} · {reachedCount} / {difficulty.checkpoints.length} checkpoints
+            </S.ResultsRow>
             <S.ResultsNectar>
               <img src="/icons/Nectar.png" alt="" />
               +{earnedTotal.toLocaleString()} Nectar

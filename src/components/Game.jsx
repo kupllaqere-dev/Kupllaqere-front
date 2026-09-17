@@ -29,6 +29,7 @@ import PlanterSystem, {
 import SeedField from "../game/SeedField";
 import TreeSystem, { FRUITS, FRUIT_GROW_MS } from "../game/TreeSystem";
 import ShellSystem from "../game/ShellSystem";
+import RainSystem from "../game/RainSystem";
 import ShellMatchGame from "./ShellMatchGame";
 import PlayerManager from "../game/PlayerManager";
 import MovementManager from "../game/MovementManager";
@@ -79,6 +80,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const seedFieldRef = useRef(null);
   // Decorative shell on the Beach — clicking it opens the match-3 minigame.
   const shellRef = useRef(null);
+  const rainRef = useRef(null);
   const [shellGameOpen, setShellGameOpen] = useState(false);
   // { kind: "seed" | "fruit", index, x, y }
   const [plantMenu, setPlantMenu] = useState(null);
@@ -159,6 +161,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     seedFieldRef.current = null;
     shellRef.current?.destroy();
     shellRef.current = null;
+    rainRef.current?.destroy();
+    rainRef.current = null;
     setShellGameOpen(false);
     setPlantMenu(null);
     setRenameTarget(null);
@@ -179,6 +183,10 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
         y: Math.round(map.height * 0.8),
         onClick: () => setShellGameOpen(true),
       });
+    }
+
+    if (map.weather === "rain") {
+      rainRef.current = new RainSystem(scene);
     }
 
     if (!map.planter) return;
@@ -417,6 +425,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
       treeRef.current = null;
       seedFieldRef.current = null;
       shellRef.current = null;
+      rainRef.current = null;
       socketManager?.disconnect();
       game?.destroy(true);
     };

@@ -95,6 +95,8 @@ export const MAPS = {
     colliders:    null,
     collidersKey: null,
     spawn:   { x: 0.5, y: 0.88 },
+    // Rain overlay — see RainSystem (mounted in Game.jsx).
+    weather: "rain",
   },
   graveyard: {
     id:      "graveyard",
