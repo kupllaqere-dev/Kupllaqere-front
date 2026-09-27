@@ -6,6 +6,7 @@ import PlayerProfile from "./PlayerProfile";
 import SettingsPanel from "./SettingsPanel";
 import MapsModal from "./MapsModal";
 import CollectiblesModal from "./CollectiblesModal";
+import QuestsModal from "./QuestsModal";
 import NameChangeModal from "./NameChangeModal";
 import PlayerThumbnail from "./PlayerThumbnail";
 import GameClock from "./GameClock";
@@ -15,6 +16,7 @@ import ChessWindow from "./ChessWindow";
 import ChessInviteNotification from "./ChessInviteNotification";
 import { fetchUnreadCount } from "../api/mail";
 import { lookupUser } from "../api/auth";
+import { devGrant, devSpend } from "../api/dev";
 
 const CHESS_IDLE = {
   phase: "idle",
@@ -26,17 +28,17 @@ const CHESS_IDLE = {
 };
 
 // Bottom-left vials, left to right. All three share the same glass sprite.
-// XP is filled from the server's levelling curve (fv-game-back/lib/xp.js);
-// nectar and lis have no curve of their own yet, so they stay hand-set.
+// XP fills from the server's levelling curve (fv-game-back/lib/xp.js); Nectar
+// and Lis fill from spending that currency (fv-game-back/lib/vials.js) — same
+// treatment, just driven by a different pair of server fields per vial.
 const VIALS = [
   { key: "xp", label: "XP", texture: "/assets/xp/vial-liquid-xp.png" },
   { key: "nectar", label: "Nectar", texture: "/assets/xp/vial-liquid-nectar.png" },
   { key: "lis", label: "Lis", texture: "/assets/xp/vial-liquid-lis.png" },
 ];
 
-// The curve runs to nine figures by level 100, which will not fit under a 36px
-// vial — the readout is compact ("8.4K / 10K") and the tooltip carries the
-// exact numbers.
+// The numbers behind any vial can run large — the readout is compact
+// ("8.4K / 10K") and the tooltip carries the exact numbers.
 const compactXp = new Intl.NumberFormat(undefined, {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -54,9 +56,7 @@ const NAV_ITEMS = [
   { key: "collectibles", label: "Collectibles", icon: "/assets/ui-icons/Collectibles.png" },
 ];
 
-function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, onPurchaseComplete, onBalancesChanged, onlinePlayers, currentMap, onChangeMap, seedInventory, consumables, onConsumablesChange, onDevLevelUp }) {
-  // Only the hand-set vials need state — XP comes down as a prop.
-  const [vialInputs, setVialInputs] = useState({ nectar: "0", lis: "0" });
+function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerName, onSaveName, outfit, gender, skinColor, bio, onSaveBio, selectedBadge, onSaveBadge, currentUserId, email, role, socket, coins, gems, level, xp, xpForNextLevel, xpPercent, nectarPct, nectarProgress, nectarNeeded, nectarFlyTick, lisPct, lisProgress, lisNeeded, lisFlyTick, onPurchaseComplete, onBalancesChanged, onlinePlayers, currentMap, onChangeMap, seedInventory, consumables, onConsumablesChange, onDevLevelUp, quests, onClaimQuest, onTogglePinQuest }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -66,6 +66,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [renaming, setRenaming] = useState(false);
   const [showMaps, setShowMaps] = useState(false);
   const [showCollectibles, setShowCollectibles] = useState(false);
+  const [showQuests, setShowQuests] = useState(false);
   const [showAngel, setShowAngel] = useState(false);
   const [showChess, setShowChess] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -79,13 +80,75 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
   const [declineMsg, setDeclineMsg] = useState(null);
   const declineDismissRef = useRef(null);
 
-  function handleVialInput(key, e) {
-    const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
-    setVialInputs((prev) => ({
-      ...prev,
-      [key]: digits === "" ? "" : String(Math.min(100, Number(digits))),
-    }));
-  }
+  // Per-vial pct/progress/needed, keyed the same way as VIALS above.
+  const VIAL_VALUES = {
+    xp: { pct: xpPercent, progress: xp, needed: xpForNextLevel },
+    nectar: { pct: nectarPct, progress: nectarProgress, needed: nectarNeeded },
+    lis: { pct: lisPct, progress: lisProgress, needed: lisNeeded },
+  };
+
+  // Fly-to-Collectibles animation: a completed vial (nectarFlyTick/lisFlyTick
+  // bumped in App.jsx once per vial filled) plays a shrink-and-fly flourish
+  // from its spot in the dock to the Collectibles nav icon. The dock's own
+  // vial already shows its post-rollover (reset) fill by the time this fires,
+  // so the clone is a pure visual — it doesn't drive any real state.
+  const vialRefs = useRef({});
+  const collectiblesBtnRef = useRef(null);
+  const prevFlyTicksRef = useRef({ nectar: nectarFlyTick, lis: lisFlyTick });
+  const [flyingVial, setFlyingVial] = useState(null);
+
+  useEffect(() => {
+    const prev = prevFlyTicksRef.current;
+    const changedKey =
+      nectarFlyTick !== prev.nectar ? "nectar" : lisFlyTick !== prev.lis ? "lis" : null;
+    prev.nectar = nectarFlyTick;
+    prev.lis = lisFlyTick;
+    if (!changedKey) return;
+
+    const fromEl = vialRefs.current[changedKey];
+    const toEl = collectiblesBtnRef.current;
+    if (!fromEl || !toEl) return;
+
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+    const id = `${changedKey}-${Date.now()}`;
+
+    setFlyingVial({
+      id,
+      key: changedKey,
+      startStyle: {
+        left: fromRect.left,
+        top: fromRect.top,
+        width: fromRect.width,
+        height: fromRect.height,
+      },
+    });
+
+    // Two frames so the browser paints the start position before the
+    // transition-driving transform below lands — one frame isn't reliably
+    // enough for the initial styles to have committed yet.
+    let raf2 = null;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const dx = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2);
+        const dy = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2);
+        setFlyingVial((cur) =>
+          cur && cur.id === id
+            ? { ...cur, endStyle: { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0 } }
+            : cur
+        );
+      });
+    });
+    const timeout = setTimeout(() => {
+      setFlyingVial((cur) => (cur && cur.id === id ? null : cur));
+    }, 550);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== null) cancelAnimationFrame(raf2);
+      clearTimeout(timeout);
+    };
+  }, [nectarFlyTick, lisFlyTick]);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -285,10 +348,31 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
     setRenaming(true);
   }, []);
 
+  // DEV buttons: top up a balance, or spend it through the same path a real
+  // purchase would (fv-game-back/lib/vials.js) so the Nectar/Lis vials can be
+  // filled without buying anything for real.
+  const handleDevGrant = useCallback(async (currency, amount) => {
+    try {
+      const data = await devGrant(currency, amount);
+      onBalancesChanged?.({ coins: data.coins, gems: data.gems });
+    } catch (err) {
+      console.error("Dev grant failed:", err);
+    }
+  }, [onBalancesChanged]);
+
+  const handleDevSpend = useCallback(async (currency, amount) => {
+    try {
+      const data = await devSpend(currency, amount);
+      onBalancesChanged?.({ coins: data.coins, gems: data.gems, vial: data.vial });
+    } catch (err) {
+      console.error("Dev spend failed:", err);
+    }
+  }, [onBalancesChanged]);
+
   const menuActions = {
     store: () => setShowStore(true),
     maps: () => setShowMaps(true),
-    quests: () => {},
+    quests: () => setShowQuests(true),
     news: () => window.open("https://platform.neclisworld.com", "_blank", "noopener,noreferrer"),
     farm: () => onChangeMap?.(FARM_MAP_ID),
     collectibles: () => setShowCollectibles(true),
@@ -394,6 +478,14 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
           onUseConsumable={handleUseConsumable}
         />
       )}
+      {showQuests && (
+        <QuestsModal
+          onClose={() => setShowQuests(false)}
+          quests={quests}
+          onClaim={onClaimQuest}
+          onTogglePin={onTogglePinQuest}
+        />
+      )}
       {renaming && (
         <NameChangeModal
           currentName={playerName || ""}
@@ -476,6 +568,50 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                 <GameClock />
               </S.NamePlate>
               <FriendOnlineToasts socket={socket} />
+
+              {(quests?.quests ?? []).some((q) => q.pinned) && (
+                <S.PinnedQuestDock>
+                  {quests.quests
+                    .filter((q) => q.pinned)
+                    .map((q) => {
+                      const claimable = q.completed && !q.claimed;
+                      return (
+                        <S.PinnedQuestRow
+                          key={q.key}
+                          $claimable={claimable}
+                          onClick={() => claimable && onClaimQuest?.(q.key)}
+                        >
+                          <S.PinnedQuestHeader>
+                            <S.PinnedQuestHeaderTitle>Daily - {q.title}</S.PinnedQuestHeaderTitle>
+                            <S.PinnedQuestActions>
+                              <S.PinnedQuestActionBtn
+                                title="Open Quests"
+                                onClick={(e) => { e.stopPropagation(); setShowQuests(true); }}
+                              >
+                                ⤢
+                              </S.PinnedQuestActionBtn>
+                              <S.PinnedQuestActionBtn
+                                title="Unpin from HUD"
+                                onClick={(e) => { e.stopPropagation(); onTogglePinQuest?.(q.key, false); }}
+                              >
+                                ✕
+                              </S.PinnedQuestActionBtn>
+                            </S.PinnedQuestActions>
+                          </S.PinnedQuestHeader>
+                          <S.PinnedQuestMain>
+                            <S.PinnedQuestObjective>{q.label}</S.PinnedQuestObjective>
+                            <S.PinnedQuestStats>
+                              <S.PinnedQuestCount $done={claimable || q.claimed}>
+                                {q.progress} / {q.target}
+                              </S.PinnedQuestCount>
+                              {claimable && <S.PinnedQuestClaim>Claim</S.PinnedQuestClaim>}
+                            </S.PinnedQuestStats>
+                          </S.PinnedQuestMain>
+                        </S.PinnedQuestRow>
+                      );
+                    })}
+                </S.PinnedQuestDock>
+              )}
             </S.AvatarBlock>
 
             <S.ButtonRow>
@@ -483,6 +619,7 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
                 <S.IconButton
                   key={item.key}
                   $index={i}
+                  ref={item.key === "collectibles" ? collectiblesBtnRef : undefined}
                   onClick={() => menuActions[item.key]?.()}
                   title={navTitle(item.key, item.label)}
                 >
@@ -511,60 +648,76 @@ function HUD({ onLogout, equipped, onEquip, onUnequip, onApplyLookBatch, playerN
         <S.VialDock>
           {VIALS.map(({ key, label, texture }) => {
             const isXp = key === "xp";
-            // The server sends the next level's cost, null once the cap is
-            // reached — and nothing at all until the first payload lands, which
-            // is the case a cached fv_user from before the curve falls into.
-            const cost = isXp && typeof xpForNextLevel === "number" && xpForNextLevel > 0
-              ? xpForNextLevel
-              : null;
-            const capped = isXp && xpForNextLevel === null;
-            const pct = isXp
-              ? Math.max(0, Math.min(100, xpPercent ?? 0))
-              : Math.max(0, Math.min(100, Number(vialInputs[key]) || 0));
+            const v = VIAL_VALUES[key];
+            // The server sends what the next fill costs, null once XP hits the
+            // level cap (Nectar/Lis never cap) — and nothing at all until the
+            // first payload lands, which is the case a cached fv_user from
+            // before the curve falls into.
+            const cost = typeof v.needed === "number" && v.needed > 0 ? v.needed : null;
+            const capped = isXp && v.needed === null;
+            const pct = Math.max(0, Math.min(100, v.pct ?? 0));
             let title = `${label} ${Math.round(pct)}%`;
             if (cost) {
-              title = `${label} ${Math.round(xp ?? 0).toLocaleString()} / ${cost.toLocaleString()} to level ${(level ?? 1) + 1}`;
+              title = isXp
+                ? `${label} ${Math.round(v.progress ?? 0).toLocaleString()} / ${cost.toLocaleString()} to level ${(level ?? 1) + 1}`
+                : `${label} ${Math.round(v.progress ?? 0).toLocaleString()} / ${cost.toLocaleString()} to the next vial`;
             } else if (capped) {
               title = `${label} — level ${level ?? 1}, fully levelled`;
             }
             return (
-              <S.VialColumn key={key}>
+              <S.VialColumn key={key} ref={(el) => { vialRefs.current[key] = el; }}>
                 <S.Vial title={title}>
                   <S.VialTube>
                     <S.VialFill $pct={pct} $texture={texture} />
                   </S.VialTube>
                   <S.VialGlass src="/assets/xp/vial.png" alt="" />
                 </S.Vial>
-                {isXp ? (
-                  <S.VialReadoutWrap>
-                    <S.VialInputLabel>{label}</S.VialInputLabel>
-                    <S.VialReadout title={title}>
-                      {cost
-                        ? `${compactXp.format(Math.round(xp ?? 0))}/${compactXp.format(cost)}`
-                        : capped
-                          ? "MAX"
-                          : `${Math.round(pct)}%`}
-                    </S.VialReadout>
-                  </S.VialReadoutWrap>
-                ) : (
-                  <S.VialInputWrap>
-                    <S.VialInputLabel>{label}</S.VialInputLabel>
-                    <S.VialInput
-                      type="text"
-                      inputMode="numeric"
-                      value={vialInputs[key]}
-                      onChange={(e) => handleVialInput(key, e)}
-                      placeholder="0"
-                      aria-label={`${label} percent`}
-                    />
-                  </S.VialInputWrap>
-                )}
+                <S.VialReadoutWrap>
+                  <S.VialInputLabel>{label}</S.VialInputLabel>
+                  <S.VialReadout title={title}>
+                    {cost
+                      ? `${compactXp.format(Math.round(v.progress ?? 0))}/${compactXp.format(cost)}`
+                      : capped
+                        ? "MAX"
+                        : `${Math.round(pct)}%`}
+                  </S.VialReadout>
+                </S.VialReadoutWrap>
               </S.VialColumn>
             );
           })}
         </S.VialDock>
+        {flyingVial && (
+          <S.VialFlyClone
+            style={{
+              left: flyingVial.startStyle.left,
+              top: flyingVial.startStyle.top,
+              width: flyingVial.startStyle.width,
+              height: flyingVial.startStyle.height,
+              transform: flyingVial.endStyle?.transform ?? "translate(0, 0) scale(1)",
+              opacity: flyingVial.endStyle?.opacity ?? 1,
+            }}
+          >
+            <S.VialGlass src="/assets/xp/vial.png" alt="" />
+          </S.VialFlyClone>
+        )}
 
         <S.SettingsWrapper ref={menuRef}>
+          {import.meta.env.DEV && (
+            <>
+              <S.DevButton onClick={() => handleDevGrant("coins", 5000)} title="Dev: add 5,000 coins">
+                GET 5K NECTAR
+              </S.DevButton>
+              <S.DevButton onClick={() => handleDevGrant("gems", 50)} title="Dev: add 50 Lis">
+                GET 50 LIS
+              </S.DevButton>
+              <S.DevButton onClick={() => handleDevSpend("coins", 5000)} title="Dev: spend 5,000 coins, filling the Nectar vial">
+                SPEND 5K NECTAR
+              </S.DevButton>
+              <S.DevButton onClick={() => handleDevSpend("gems", 50)} title="Dev: spend 50 Lis, filling the Lis vial">
+                SPEND 50 LIS
+              </S.DevButton>
+            </>
+          )}
           {import.meta.env.DEV && onDevLevelUp && (
             <S.DevButton onClick={onDevLevelUp} title="Dev: play the level-up banner">
               DEV: LEVEL UP

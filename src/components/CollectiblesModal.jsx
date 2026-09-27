@@ -269,7 +269,9 @@ export default function CollectiblesModal({
               <FooterTag $color="rgba(200, 180, 235, 0.75)">
                 x{selectedItem.count} · {selectedItem.description}
               </FooterTag>
-              <UseBtn onClick={() => onUseConsumable?.(selectedItem.id)}>USE</UseBtn>
+              {selectedItem.usable !== false && (
+                <UseBtn onClick={() => onUseConsumable?.(selectedItem.id)}>USE</UseBtn>
+              )}
             </>
           ) : filled === 0 ? (
             "Nothing collected yet — seeds drop in the Garden, items come from the shop."

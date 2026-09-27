@@ -428,7 +428,7 @@ function applyGravity(grid, locked) {
   return { grid: next, spawnOffsets, fallDistances, fallMs: fallMs + FALL_SETTLE_MS };
 }
 
-export default function ShellMatchGame({ onClose, onNectarEarned }) {
+export default function ShellMatchGame({ onClose, onNectarEarned, onRoundStart, onRoundWin }) {
   const [phase, setPhase] = useState("select"); // "select" | "playing" | "results"
   const [difficulty, setDifficulty] = useState(null);
   const [grid, setGrid] = useState(null);
@@ -522,7 +522,8 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     setReachedCount(0);
     setEarnedTotal(0);
     setPhase("playing");
-  }, []);
+    onRoundStart?.();
+  }, [onRoundStart]);
 
   const awardCheckpoint = useCallback((index) => {
     reachedRef.current.add(index);
@@ -530,7 +531,9 @@ export default function ShellMatchGame({ onClose, onNectarEarned }) {
     const reward = checkpointsRef.current[index].reward;
     setEarnedTotal((t) => t + reward);
     onNectarEarned?.(reward);
-  }, [onNectarEarned]);
+    // The last checkpoint is the round's big payout — reaching it is a "win".
+    if (index === checkpointsRef.current.length - 1) onRoundWin?.();
+  }, [onNectarEarned, onRoundWin]);
 
   const addFill = useCallback((amount) => {
     if (amount <= 0) return;

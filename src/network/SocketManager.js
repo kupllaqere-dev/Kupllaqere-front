@@ -123,6 +123,23 @@ export default class SocketManager {
     this.socket.on("session:kicked", callback);
   }
 
+  // ── Quests ─────────────────────────────────────────
+  /** A tracked action ticked one of today's quests forward. */
+  onQuestProgress(callback) {
+    this.socket.on("quest:progress", callback);
+  }
+
+  // ── Shell game (Beach) ─────────────────────────────
+  /** Pings the server that a round started, for the "play the shell game" quest. */
+  sendShellPlay() {
+    this.socket.emit("shell:play");
+  }
+
+  /** Pings the server that the bar's final checkpoint was reached. */
+  sendShellWin() {
+    this.socket.emit("shell:win");
+  }
+
   // ── Chess ──────────────────────────────────────────
   sendChessInvite(targetSocketId) {
     this.socket.emit("chess:invite", { targetSocketId });

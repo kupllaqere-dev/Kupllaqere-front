@@ -9,6 +9,7 @@ import { readAuthParams, isAuthLink } from "./auth/authLink";
 import { updateName, updateBio, updateBadge, getMe } from "./api/auth";
 import { fetchSeeds } from "./api/seeds";
 import { fetchConsumables } from "./api/consumables";
+import { fetchQuests, claimQuest as claimQuestApi, setQuestPin as setQuestPinApi } from "./api/quests";
 import supabase from "./lib/supabase";
 import { useScaling } from "./hooks/useScaling";
 import { DEFAULT_MAP } from "./game/MapManager";
@@ -66,9 +67,15 @@ function App() {
   // Bought one-shot items, sharing the Collectibles bag with seeds:
   // { catalogue, owned: { itemId: count } }.
   const [consumables, setConsumables] = useState({ catalogue: [], owned: {} });
+  // Today's 5 daily quests, mirroring the server (fv-game-back/lib/quests.js).
+  const [quests, setQuests] = useState({ questDay: null, quests: [], pinnedKeys: [] });
   // Bumped once per level gained; LevelUpNotification replays on every change.
   const [levelUpTick, setLevelUpTick] = useState(0);
   const triggerLevelUp = useCallback(() => setLevelUpTick((n) => n + 1), []);
+  // Bumped once per Nectar/Lis vial filled; the HUD replays its fly-to-
+  // Collectibles animation on every change, same pattern as levelUpTick.
+  const [nectarFlyTick, setNectarFlyTick] = useState(0);
+  const [lisFlyTick, setLisFlyTick] = useState(0);
   // Every payload that can move progression funnels through `user.level`, so
   // watching it here catches a level gained from a harvest, a getMe sync or a
   // socket update without each of those having to fire the banner itself.
@@ -138,6 +145,16 @@ function App() {
                   : prev.xpForNextLevel,
               maxLevel: data.user.maxLevel ?? prev.maxLevel,
               xpPercent: data.user.xpPercent ?? prev.xpPercent,
+              // Nectar/Lis vials fill from spending (lib/vials.js) — same
+              // server-authoritative treatment as XP above.
+              nectarPct: data.user.nectarPct ?? prev.nectarPct,
+              nectarProgress: data.user.nectarProgress ?? prev.nectarProgress,
+              nectarNeeded: data.user.nectarNeeded ?? prev.nectarNeeded,
+              nectarVials: data.user.nectarVials ?? prev.nectarVials,
+              lisPct: data.user.lisPct ?? prev.lisPct,
+              lisProgress: data.user.lisProgress ?? prev.lisProgress,
+              lisNeeded: data.user.lisNeeded ?? prev.lisNeeded,
+              lisVials: data.user.lisVials ?? prev.lisVials,
             };
             localStorage.setItem("fv_user", JSON.stringify(next));
             return next;
@@ -252,9 +269,44 @@ function App() {
     });
   }, []);
 
+  // Nectar/Lis vials fill from spending (fv-game-back/lib/vials.js) — any
+  // response that can complete one carries a `vial` field, keyed by whichever
+  // currency was actually spent: { nectar?: {...}, lis?: {...} }. Folds the
+  // new fill level into `user` and, if a vial was just completed, mirrors the
+  // granted trophy into the Collectibles bag and bumps the tick that tells
+  // the HUD to replay its fly-to-Collectibles animation.
+  const applyVialUpdate = useCallback((vial) => {
+    if (!vial) return;
+    for (const [kind, result] of Object.entries(vial)) {
+      if (!result) continue;
+      setUser((prev) => {
+        if (!prev) return prev;
+        const next = {
+          ...prev,
+          [`${kind}Pct`]: result.pct,
+          [`${kind}Progress`]: result.progress,
+          [`${kind}Needed`]: result.needed,
+          [`${kind}Vials`]: result.vials,
+        };
+        localStorage.setItem("fv_user", JSON.stringify(next));
+        return next;
+      });
+      if (result.gained > 0) {
+        if (result.owned !== undefined) {
+          setConsumables((prev) => ({
+            ...prev,
+            owned: { ...prev.owned, [`${kind}_vial`]: result.owned },
+          }));
+        }
+        if (kind === "nectar") setNectarFlyTick((n) => n + 1);
+        else setLisFlyTick((n) => n + 1);
+      }
+    }
+  }, []);
+
   // A planter harvest is banked server-side, so the numbers it sends back are
   // the real ones — they replace the local balance rather than adding to it.
-  const handleBalancesChanged = useCallback(({ coins, gems, level, xp, xpForNextLevel, maxLevel, xpPercent }) => {
+  const handleBalancesChanged = useCallback(({ coins, gems, level, xp, xpForNextLevel, maxLevel, xpPercent, vial }) => {
     setUser((prev) => {
       if (!prev) return prev;
       const next = {
@@ -270,12 +322,13 @@ function App() {
       localStorage.setItem("fv_user", JSON.stringify(next));
       return next;
     });
-  }, []);
+    applyVialUpdate(vial);
+  }, [applyVialUpdate]);
 
   // Buying clothes moves both balances; buying a shop upgrade moves only one,
   // and the inventory expansion also changes the wardrobe's capacity — so each
   // field is applied only when the caller actually sent it.
-  const handlePurchaseComplete = useCallback(({ coins, gems, inventorySlots }) => {
+  const handlePurchaseComplete = useCallback(({ coins, gems, inventorySlots, vial }) => {
     setUser((prev) => {
       const next = {
         ...prev,
@@ -286,7 +339,8 @@ function App() {
       localStorage.setItem("fv_user", JSON.stringify(next));
       return next;
     });
-  }, []);
+    applyVialUpdate(vial);
+  }, [applyVialUpdate]);
 
   useEffect(() => {
     if (!user || user.needsSetup) return;
@@ -296,7 +350,47 @@ function App() {
     fetchConsumables()
       .then((data) => setConsumables(data))
       .catch(() => {});
+    fetchQuests()
+      .then((data) => setQuests(data))
+      .catch(() => {});
   }, [user?.id, user?.needsSetup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live ticks from tracked actions (visiting a map, chatting, harvesting...)
+  // land here rather than requiring a refetch of the whole quest list.
+  useEffect(() => {
+    if (!gameSocket) return;
+    const handler = ({ questDay, key, progress, target, completed }) => {
+      setQuests((prev) => {
+        if (prev.questDay && questDay && prev.questDay !== questDay) return prev;
+        return {
+          ...prev,
+          quests: prev.quests.map((q) => (q.key === key ? { ...q, progress, target, completed } : q)),
+        };
+      });
+    };
+    gameSocket.onQuestProgress(handler);
+    return () => gameSocket.off("quest:progress", handler);
+  }, [gameSocket]);
+
+  const handleClaimQuest = useCallback(async (questKey) => {
+    const result = await claimQuestApi(questKey);
+    setQuests((prev) => ({
+      ...prev,
+      quests: prev.quests.map((q) => (q.key === questKey ? { ...q, claimed: true } : q)),
+    }));
+    handleBalancesChanged(result);
+  }, [handleBalancesChanged]);
+
+  const handleTogglePinQuest = useCallback(async (questKey, pinned) => {
+    await setQuestPinApi(questKey, pinned);
+    setQuests((prev) => ({
+      ...prev,
+      quests: prev.quests.map((q) => (q.key === questKey ? { ...q, pinned } : q)),
+      pinnedKeys: pinned
+        ? [...prev.pinnedKeys, questKey]
+        : prev.pinnedKeys.filter((k) => k !== questKey),
+    }));
+  }, []);
 
   // The shop hands back the new counts after a purchase; the bag mirrors them
   // rather than refetching.
@@ -400,6 +494,14 @@ function App() {
           xp={user?.xp ?? 0}
           xpForNextLevel={user?.xpForNextLevel}
           xpPercent={user?.xpPercent ?? 0}
+          nectarPct={user?.nectarPct ?? 0}
+          nectarProgress={user?.nectarProgress ?? 0}
+          nectarNeeded={user?.nectarNeeded ?? 10000}
+          nectarFlyTick={nectarFlyTick}
+          lisPct={user?.lisPct ?? 0}
+          lisProgress={user?.lisProgress ?? 0}
+          lisNeeded={user?.lisNeeded ?? 20}
+          lisFlyTick={lisFlyTick}
           onPurchaseComplete={handlePurchaseComplete}
           onBalancesChanged={handleBalancesChanged}
           onlinePlayers={onlinePlayers}
@@ -409,6 +511,9 @@ function App() {
           consumables={consumables}
           onConsumablesChange={handleConsumablesChange}
           onDevLevelUp={triggerLevelUp}
+          quests={quests}
+          onClaimQuest={handleClaimQuest}
+          onTogglePinQuest={handleTogglePinQuest}
         />
         <LevelUpNotification trigger={levelUpTick} level={user?.level ?? 1} />
       </div>

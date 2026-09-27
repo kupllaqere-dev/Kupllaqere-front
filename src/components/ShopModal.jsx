@@ -610,7 +610,7 @@ function ShopModal({ onClose, gems = 0, onPurchaseComplete, onConsumablesChange 
         expansion: data.expansion,
       });
       // App owns the balance the HUD renders, and the slot total it caches.
-      onPurchaseComplete?.({ gems: data.gems, inventorySlots: data.slots });
+      onPurchaseComplete?.({ gems: data.gems, inventorySlots: data.slots, vial: data.vial });
       setMessage({ source: "slots", text: `+${data.expansion.amount} slots added.`, error: false });
     } catch (err) {
       setMessage({ source: "slots", text: err.message, error: true });
@@ -625,7 +625,7 @@ function ShopModal({ onClose, gems = 0, onPurchaseComplete, onConsumablesChange 
     try {
       const data = await purchaseConsumable(item.id);
       setConsumables((prev) => (prev ? { ...prev, owned: data.owned } : prev));
-      onPurchaseComplete?.({ gems: data.gems });
+      onPurchaseComplete?.({ gems: data.gems, vial: data.vial });
       // The bag is rendered elsewhere (Collectibles), so it has to be told.
       onConsumablesChange?.(data.owned);
       setMessage({ source: item.id, text: `${item.name} added to your Collectibles.`, error: false });
@@ -735,7 +735,9 @@ function ShopModal({ onClose, gems = 0, onPurchaseComplete, onConsumablesChange 
                   )}
                 </Card>
 
-                {(consumables?.catalogue || []).map((item) => {
+                {(consumables?.catalogue || [])
+                  .filter((item) => item.purchasable !== false)
+                  .map((item) => {
                   const owned = consumables.owned?.[item.id] ?? 0;
                   const affordable = gems >= item.cost;
                   return (

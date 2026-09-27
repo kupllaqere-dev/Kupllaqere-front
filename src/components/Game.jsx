@@ -879,6 +879,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
             onCoinsEarnedRef.current?.(amount);
             showToast({ type: "coins", amount });
           }}
+          onRoundStart={() => socketRef.current?.sendShellPlay()}
+          onRoundWin={() => socketRef.current?.sendShellWin()}
         />,
         document.body
       )}

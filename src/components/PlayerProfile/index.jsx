@@ -381,8 +381,8 @@ export default function PlayerProfile({
 
   // Sending a gift is paid for out of the sender's Lis, and the server hands
   // back the balance it left behind rather than the client subtracting it.
-  const handleGiftSent = useCallback(({ gems: nextGems, gift }) => {
-    if (nextGems !== undefined) onBalancesChanged?.({ gems: nextGems });
+  const handleGiftSent = useCallback(({ gems: nextGems, gift, vial }) => {
+    if (nextGems !== undefined || vial) onBalancesChanged?.({ gems: nextGems, vial });
     if (gift) setReceivedGifts(prev => [gift, ...prev]);
   }, [onBalancesChanged]);
 

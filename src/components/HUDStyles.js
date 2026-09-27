@@ -1,4 +1,4 @@
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 
 const goldPulse = keyframes`
   0%, 100% { box-shadow: 0 0 8px rgba(255, 200, 40, 0.5), 0 0 20px rgba(255, 180, 0, 0.25); opacity: 0.88; text-shadow: 0 0 4px rgba(255,255,255,0.3); }
@@ -141,6 +141,146 @@ export const VialDock = styled.div`
   z-index: 5;
 `;
 
+// Pinned quests. Sits inside AvatarBlock (a sibling of NamePlate/FriendToastStack,
+// see HUD.jsx), positioned relative to it the same way those are — so "under
+// the clock" is just clearing NamePlate (~30px) + GameClock (~30px) below the
+// ring's own 162px. No rounded corners, and each row's top-right corner is
+// chamfered (clip-path) rather than square, for a tag-like read.
+const QUEST_FONT = "Quicksand, Nunito, Poppins, sans-serif";
+const QUEST_GOLD = "#ffd65a";
+
+export const PinnedQuestDock = styled.div`
+  position: absolute;
+  top: calc(100% + 55px);
+  left: 0;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: all;
+  z-index: 5;
+`;
+
+export const PinnedQuestRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 18px;
+  background: rgba(15, 13, 18, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
+  cursor: ${({ $claimable }) => ($claimable ? "pointer" : "default")};
+  transition: background 0.15s ease;
+
+  ${({ $claimable }) =>
+    $claimable &&
+    css`
+      background: rgba(255, 214, 90, 0.1);
+      border-bottom-color: rgba(255, 214, 90, 0.55);
+      &:hover { background: rgba(255, 214, 90, 0.18); }
+    `}
+`;
+
+export const PinnedQuestHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+export const PinnedQuestHeaderTitle = styled.span`
+  flex: 1;
+  min-width: 0;
+  font-family: ${QUEST_FONT};
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const PinnedQuestActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+`;
+
+export const PinnedQuestActionBtn = styled.button`
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+`;
+
+export const PinnedQuestMain = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+export const PinnedQuestObjective = styled.span`
+  flex: 1;
+  min-width: 0;
+  display: block;
+  font-family: ${QUEST_FONT};
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const PinnedQuestStats = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+`;
+
+export const PinnedQuestCount = styled.span`
+  font-family: ${QUEST_FONT};
+  font-size: 14px;
+  font-weight: 800;
+  color: ${({ $done }) => ($done ? QUEST_GOLD : "#ffffff")};
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+`;
+
+export const PinnedQuestClaim = styled.span`
+  font-family: ${QUEST_FONT};
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #241a00;
+  background: ${QUEST_GOLD};
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
+
 export const VialColumn = styled.div`
   display: flex;
   flex-direction: column;
@@ -190,16 +330,6 @@ export const VialFill = styled.div`
   }
 `;
 
-// Manual fill control that sits under each vial.
-export const VialInputWrap = styled.label`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  pointer-events: all;
-  cursor: text;
-`;
-
 export const VialInputLabel = styled.span`
   color: rgba(230, 215, 255, 0.85);
   font-size: 10px;
@@ -208,31 +338,9 @@ export const VialInputLabel = styled.span`
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 `;
 
-export const VialInput = styled.input`
-  width: 54px;
-  height: 30px;
-  box-sizing: border-box;
-  padding: 0 6px;
-  text-align: center;
-  background: ${PANEL_BG};
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 8px;
-  color: rgba(240, 225, 255, 0.97);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-
-  &:focus {
-    border-color: rgba(235, 210, 255, 0.95);
-    box-shadow: 0 0 10px rgba(180, 120, 255, 0.6);
-  }
-`;
-
-// The XP vial is server-driven, so it gets a readout where the others get an
-// input. Same chip, but it sizes to its text — the curve's numbers are longer
-// than a percentage.
+// All three vials are server-driven now, each with its own readout chip —
+// it sizes to its text since the underlying numbers can run longer than a
+// percentage (e.g. "8.4K/10K").
 export const VialReadoutWrap = styled.div`
   display: flex;
   flex-direction: column;
@@ -266,6 +374,16 @@ export const VialGlass = styled.img`
   height: 100%;
   pointer-events: none;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+`;
+
+// A completed Nectar/Lis vial's one-shot flourish — placed at the real
+// vial's screen position, then HUD.jsx adds a transform/opacity that this
+// transition animates toward the Collectibles nav icon.
+export const VialFlyClone = styled.div`
+  position: fixed;
+  pointer-events: none;
+  z-index: 500;
+  transition: transform 500ms ease-in, opacity 500ms ease-in;
 `;
 
 export const IconButton = styled.div`
