@@ -1,6 +1,6 @@
 import { perspectiveScale } from "./perspective";
 import { genderScale, setNameBadge, layoutNameBadge } from "./LocalPlayer";
-import RigAvatar from "./avatar/RigAvatar.js";
+import RigAvatar from "./avatar/SkeletonAvatar.js";
 import makeChatBubble from "./makeChatBubble.js";
 
 export const FRAME = {
@@ -27,7 +27,7 @@ export default class PlayerManager {
     const initialScale = perspectiveScale(data.y) * genderScale(data.gender);
 
     const shadowImg = scene.add.image(data.x, data.y, "shadow");
-    shadowImg.setOrigin(0.5, 0.8);
+    shadowImg.setOrigin(0.5, 0.5); // centres the ellipse on the feet — see createLocalPlayer
     shadowImg.setScale(initialScale * 0.375);
     shadowImg.setAlpha(0.2);
     shadowImg.setDepth(data.y - 1);

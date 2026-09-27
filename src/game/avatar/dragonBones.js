@@ -1,6 +1,9 @@
 // Minimal DragonBones (5.x JSON) runtime — just enough to pose a bone rig and
-// sample its animation tracks. Meshes, IK, slot/FFD timelines, bone offsets and
-// multi-skin armatures are unsupported; the walking-avatar rig uses none of them.
+// sample its animation tracks. Meshes, slot/FFD timelines, bone offsets and
+// multi-skin armatures are unsupported; the walking-avatar rig uses none of
+// them. Two-bone IK (a "thigh+shin" or "upper+lower arm" chain solving for a
+// target bone's position) is supported, since some rigs bake their walk cycle
+// as IK-target motion rather than per-bone rotation curves.
 //
 // Conventions match the DragonBones exporter: y points down, angles are
 // degrees, and a bone timeline stores *offsets* from the bone's setup pose
@@ -60,6 +63,18 @@ export function parseArmature(skeJson, armatureName = null) {
     };
   }
 
+  // Only two-bone (chain: 1) IK is handled — the effector bone plus its
+  // parent solve to reach `target`'s posed position. Other chain lengths are
+  // dropped rather than mis-solved.
+  const iks = [];
+  for (const ik of raw.ik || []) {
+    if (ik.chain !== 1) continue;
+    const effectorIndex = boneIndex.get(ik.bone);
+    const targetIndex   = boneIndex.get(ik.target);
+    if (effectorIndex === undefined || targetIndex === undefined) continue;
+    iks.push({ boneIndex: effectorIndex, targetIndex, bendPositive: ik.bendPositive !== false });
+  }
+
   return {
     name:      raw.name,
     frameRate: raw.frameRate || skeJson.frameRate || 24,
@@ -67,6 +82,7 @@ export function parseArmature(skeJson, armatureName = null) {
     bones,
     slots,
     animations,
+    iks,
   };
 }
 
@@ -84,6 +100,46 @@ export function createPose(armature) {
  * `frameTime` is in timeline frames (see `loopFrameTime`).
  */
 export function poseArmature(armature, animation, frameTime, pose) {
+  computeBonePose(armature, animation, frameTime, pose, null);
+
+  if (armature.iks.length) {
+    // Pass 1 (above) gives every bone's animated-but-unsolved world position,
+    // which is all a two-bone solve needs: target and chain-root positions are
+    // plain translations, unaffected by the rotation IK is about to override.
+    // Pass 2 substitutes solved *world* rotations for the chain-root and
+    // effector bones, then reruns the same parent-before-child sweep so the
+    // solve cascades correctly to anything parented under the effector.
+    const overrides = new Map();
+    for (const ik of armature.iks) {
+      const effector = armature.bones[ik.boneIndex];
+      const rootIndex = effector.parent;
+      const root = armature.bones[rootIndex];
+      if (rootIndex < 0) continue;
+
+      const p0     = pose.bones[rootIndex];
+      const target = pose.bones[ik.targetIndex];
+      const [theta0, theta1] = solveTwoBoneIK(
+        p0.tx, p0.ty, target.tx, target.ty, root.length, effector.length, ik.bendPositive,
+      );
+      overrides.set(rootIndex, theta0);
+      overrides.set(ik.boneIndex, theta1);
+    }
+    computeBonePose(armature, animation, frameTime, pose, overrides);
+  }
+
+  for (let i = 0; i < armature.slots.length; i++) {
+    const slot = armature.slots[i];
+    const m    = pose.slots[i];
+    copyMatrix(m, slot.matrix);
+    concat(m, pose.bones[slot.bone]);
+  }
+}
+
+// Fills `pose.bones` with world matrices, parents before children.
+// `rotationOverrides` (bone index -> world-space rotation in radians), when
+// given, replaces the animated rotation for those bones only — used for the
+// second, IK-solved pass.
+function computeBonePose(armature, animation, frameTime, pose, rotationOverrides) {
   for (let i = 0; i < armature.bones.length; i++) {
     const bone = armature.bones[i];
     const t    = bone.transform;
@@ -97,18 +153,44 @@ export function poseArmature(armature, animation, frameTime, pose) {
       if (tracks.scale)     { sampleTrack(tracks.scale,     frameTime, sample); scaleX *= sample[0]; scaleY *= sample[1]; }
     }
 
+    const worldOverride = rotationOverrides?.get(i);
+    if (worldOverride !== undefined) {
+      const parentRotation = bone.parent >= 0 ? matrixRotation(pose.bones[bone.parent]) : 0;
+      rotation = worldOverride - parentRotation;
+    }
+
     const m = pose.bones[i];
     setMatrix(m, x, y, rotation, t.skew, scaleX, scaleY);
     if (bone.parent >= 0) concat(m, pose.bones[bone.parent]);
   }
-
-  for (let i = 0; i < armature.slots.length; i++) {
-    const slot = armature.slots[i];
-    const m    = pose.slots[i];
-    copyMatrix(m, slot.matrix);
-    concat(m, pose.bones[slot.bone]);
-  }
 }
+
+// Solves a 2-bone ("thigh + shin") chain rooted at (p0x, p0y) so its tip
+// reaches (tx, ty), returning [rootWorldRotation, effectorWorldRotation].
+// Falls back to fully extending toward the target when it's out of reach.
+function solveTwoBoneIK(p0x, p0y, tx, ty, l0, l1, bendPositive) {
+  const dx = tx - p0x, dy = ty - p0y;
+  const maxReach = l0 + l1;
+  const minReach = Math.abs(l0 - l1);
+  let dist = Math.hypot(dx, dy);
+  if (dist > maxReach) dist = maxReach;
+  if (dist < minReach) dist = minReach || 0.0001;
+
+  const baseAngle = Math.atan2(dy, dx);
+  const cosA   = clamp((l0 * l0 + dist * dist - l1 * l1) / (2 * l0 * dist), -1, 1);
+  const angleA = Math.acos(cosA);
+  const theta0 = bendPositive ? baseAngle - angleA : baseAngle + angleA;
+
+  const cosI     = clamp((l0 * l0 + l1 * l1 - dist * dist) / (2 * l0 * l1), -1, 1);
+  const interior = Math.acos(cosI);
+  const theta1   = bendPositive ? theta0 + (Math.PI - interior) : theta0 - (Math.PI - interior);
+
+  return [theta0, theta1];
+}
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function matrixRotation(m) { return Math.atan2(m.b, m.a); }
 
 /**
  * Poses one slot-shaped `{ bone, matrix }` against bones already posed by
@@ -177,7 +259,7 @@ function orderBones(rawBones) {
     visiting.delete(raw.name);
 
     const i = out.length;
-    out.push({ name: raw.name, parent, transform: readTransform(raw.transform) });
+    out.push({ name: raw.name, parent, length: raw.length || 0, transform: readTransform(raw.transform) });
     index.set(raw.name, i);
     return i;
   }

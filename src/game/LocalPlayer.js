@@ -1,5 +1,5 @@
 import { perspectiveScale } from "./perspective";
-import RigAvatar, { preloadRig } from "./avatar/RigAvatar.js";
+import RigAvatar, { preloadRig } from "./avatar/SkeletonAvatar.js";
 
 export const BADGE_NAMES = ["diamond", "flame", "medal", "paint", "verified"];
 export const BADGE_DISPLAY_SIZE = 18;
@@ -50,7 +50,12 @@ export function createLocalPlayer(scene, x, y, name, gender) {
   const initialScale = perspectiveScale(y) * gScale;
 
   const shadow = scene.add.image(x, y, "shadow");
-  shadow.setOrigin(0.5, 0.8);
+  // The ellipse sits in the middle of a mostly empty 980x980 image, so a
+  // centred origin is what lands it on (x, y) — the spot the avatar stands on.
+  // The old 0.8 was for the baked sprite sheet, whose frames left 114 px of
+  // blank space below the feet; the rig has no such padding, so 0.8 floated
+  // the shadow ~108 px up the character's shins.
+  shadow.setOrigin(0.5, 0.5);
   shadow.setScale(initialScale * 0.375);
   shadow.setAlpha(0.2);
 
