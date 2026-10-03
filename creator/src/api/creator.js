@@ -16,8 +16,10 @@ async function request(path, options = {}) {
     },
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `HTTP ${res.status}`);
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.message || `HTTP ${res.status}`);
+    err.details = body.errors || [];
+    throw err;
   }
   return res.json();
 }
@@ -47,20 +49,25 @@ export function creatorLogout() {
 
 export const getMe = () => request("/api/creator/me");
 
+// Body parts, item types and the parts each one needs.
+export const getItemTypes = () => request("/api/creator/item-types");
+
 export const getMySubmissions = (params = {}) =>
   request(`/api/creator/submissions?${new URLSearchParams(params)}`);
 
-export const submitSingle = (formData) =>
-  request("/api/creator/submit", { method: "POST", body: formData });
-
-export const submitSet = (formData) =>
+// formData: files[] (Name-body_part.png) + manifest JSON listing each item's files
+export const submitItems = (formData) =>
   request("/api/creator/submit", { method: "POST", body: formData });
 
 export const updateSubmission = (id, data) =>
   request(`/api/creator/submissions/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 
-export const reuploadVariant = (id, idx, formData) =>
-  request(`/api/creator/submissions/${id}/variant/${idx}`, { method: "POST", body: formData });
+// formData: files[] — adds or replaces body parts, then re-packs the atlas
+export const uploadParts = (id, formData) =>
+  request(`/api/creator/submissions/${id}/parts`, { method: "POST", body: formData });
 
-export const deleteVariant = (id, idx) =>
-  request(`/api/creator/submissions/${id}/variant/${idx}`, { method: "DELETE" });
+export const deletePart = (id, part) =>
+  request(`/api/creator/submissions/${id}/parts/${encodeURIComponent(part)}`, { method: "DELETE" });
+
+export const deleteSubmission = (id) =>
+  request(`/api/creator/submissions/${id}`, { method: "DELETE" });

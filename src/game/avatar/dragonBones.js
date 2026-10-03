@@ -81,6 +81,9 @@ export function parseArmature(skeJson, armatureName = null) {
     aabb:      raw.aabb || { x: 0, y: 0, width: 0, height: 0 },
     bones,
     slots,
+    // Every slot name, back to front — including slots with no attachment,
+    // which a rig can still use purely to declare its stacking.
+    drawOrder: (raw.slot || []).map(s => s.name),
     animations,
     iks,
   };

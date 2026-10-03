@@ -1,6 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import styled from "styled-components";
-import { getSubmissions, updateSubmissionStatus, updateSetStatus } from "../api/admin";
+import { getSubmissions, updateSubmissionStatus, updateSetStatus, repackSubmission } from "../api/admin";
+import RigPreview from "../components/RigPreview";
+import { useSubmissionGarments } from "../components/useSubmissionGarments";
+
+const ATLAS_LABEL = { queued: "Atlas queued", packing: "Packing atlas…", ready: "Atlas packed", failed: "Atlas failed" };
+const ATLAS_COLOR = { queued: "#9aa0a6", packing: "#c4a1ff", ready: "#4ade80", failed: "#ff7777" };
+const isPacking = (s) => s.atlasStatus === "queued" || s.atlasStatus === "packing";
 
 // ── Sprite sheet constants ────────────────────────────────────────────────────
 const FRAME_W    = 510;
@@ -36,7 +42,7 @@ function baseUrl(gender) {
     : "/assets/character-bases/females_new.png";
 }
 
-// ── AvatarCanvas ─────────────────────────────────────────────────────────────
+// ── AvatarCanvas (legacy spritesheet submissions) ────────────────────────────
 function AvatarCanvas({ gender, itemImageUrls = [] }) {
   const canvasRef               = useRef(null);
   const [dir, setDir]           = useState("down");
@@ -99,15 +105,55 @@ function AvatarCanvas({ gender, itemImageUrls = [] }) {
   );
 }
 
+// ── Rig atlas info + re-pack ─────────────────────────────────────────────────
+function AtlasInfo({ submission, onUpdated }) {
+  const [busy, setBusy] = useState(false);
+  const s = submission.atlasStatus || "queued";
+
+  const repack = async () => {
+    setBusy(true);
+    try {
+      await repackSubmission(submission.id);
+      onUpdated({ ...submission, atlasStatus: "queued", atlasError: null });
+    } catch (e) { alert(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <ControlGroup>
+      <ControlLabel>Atlas</ControlLabel>
+      <AtlasLine>
+        <AtlasState style={{ color: ATLAS_COLOR[s] }}>{ATLAS_LABEL[s]}</AtlasState>
+        {s === "ready" && submission.atlasSize && <Gray>{submission.atlasSize.w}×{submission.atlasSize.h}</Gray>}
+        {s === "ready" && <a href={submission.atlasUrl} target="_blank" rel="noreferrer">PNG</a>}
+        {s === "ready" && <a href={submission.atlasJsonUrl} target="_blank" rel="noreferrer">JSON</a>}
+        {submission.status !== "approved" && (s === "failed" || s === "ready") && (
+          <RepackBtn onClick={repack} disabled={busy}>Re-pack</RepackBtn>
+        )}
+      </AtlasLine>
+      {s === "failed" && submission.atlasError && <AtlasErr>{submission.atlasError}</AtlasErr>}
+      <PartList>
+        {(submission.parts || []).map((p) => (
+          <PartLink key={p.part} href={p.url} target="_blank" rel="noreferrer" title={p.fileName}>{p.fileName}</PartLink>
+        ))}
+      </PartList>
+    </ControlGroup>
+  );
+}
+
 // ── Single-item Inspector ─────────────────────────────────────────────────────
-function SingleInspector({ submission, onStatusChange }) {
+function SingleInspector({ submission, onStatusChange, onUpdated }) {
   const [variantIdx, setVariantIdx] = useState(0);
   const [busy, setBusy]             = useState(false);
   const [note, setNote]             = useState(submission.adminNote || "");
 
+  const isRig      = submission.format === "rig";
   const gender     = submission.gender || "female";
   const variant    = submission.variants[variantIdx];
   const itemImgUrl = variant?.imageUrl || null;
+  const rigSubs    = useMemo(() => (isRig ? [submission] : []), [isRig, submission]);
+  const { garments, error: garmentError } = useSubmissionGarments(rigSubs);
+  const notReady   = isRig && submission.atlasStatus !== "ready";
 
   const handleStatus = async (status) => {
     setBusy(true);
@@ -121,25 +167,31 @@ function SingleInspector({ submission, onStatusChange }) {
   return (
     <InspectorBox>
       <InspectorInner>
-        <AvatarCanvas gender={gender} itemImageUrls={itemImgUrl ? [itemImgUrl] : []} />
+        {isRig
+          ? <RigPreview garments={garments} note={garmentError || (notReady ? "Raw uploads — atlas not packed yet" : null)} />
+          : <AvatarCanvas gender={gender} itemImageUrls={itemImgUrl ? [itemImgUrl] : []} />}
         <SidePanel>
           <ControlGroup>
             <ControlLabel>Gender</ControlLabel>
             <GenderTag>{gender === "male" ? "Male" : "Female"}</GenderTag>
           </ControlGroup>
 
-          <ControlGroup>
-            <ControlLabel>Variants</ControlLabel>
-            <ThumbRow>
-              {submission.variants.map((v, i) => (
-                <ThumbBtn key={i} $active={i === variantIdx} onClick={() => setVariantIdx(i)}>
-                  {v.thumbnailUrl
-                    ? <ThumbImg src={v.thumbnailUrl} alt={`variant ${i + 1}`} />
-                    : <ThumbPlaceholder>{i + 1}</ThumbPlaceholder>}
-                </ThumbBtn>
-              ))}
-            </ThumbRow>
-          </ControlGroup>
+          {isRig ? (
+            <AtlasInfo submission={submission} onUpdated={onUpdated} />
+          ) : (
+            <ControlGroup>
+              <ControlLabel>Variants</ControlLabel>
+              <ThumbRow>
+                {submission.variants.map((v, i) => (
+                  <ThumbBtn key={i} $active={i === variantIdx} onClick={() => setVariantIdx(i)}>
+                    {v.thumbnailUrl
+                      ? <ThumbImg src={v.thumbnailUrl} alt={`variant ${i + 1}`} />
+                      : <ThumbPlaceholder>{i + 1}</ThumbPlaceholder>}
+                  </ThumbBtn>
+                ))}
+              </ThumbRow>
+            </ControlGroup>
+          )}
 
           <ControlGroup>
             <ControlLabel>Admin note (optional)</ControlLabel>
@@ -152,7 +204,11 @@ function SingleInspector({ submission, onStatusChange }) {
           </ControlGroup>
 
           <ActionRow>
-            <ApproveBtn disabled={busy || submission.status === "approved"} onClick={() => handleStatus("approved")}>
+            <ApproveBtn
+              disabled={busy || submission.status === "approved" || notReady}
+              title={notReady ? "Waiting for the atlas to be packed" : ""}
+              onClick={() => handleStatus("approved")}
+            >
               {submission.status === "approved" ? "✓ Approved" : "Approve"}
             </ApproveBtn>
             <DeclineBtn disabled={busy || submission.status === "declined"} onClick={() => handleStatus("declined")}>
@@ -166,15 +222,19 @@ function SingleInspector({ submission, onStatusChange }) {
 }
 
 // ── Set Inspector ─────────────────────────────────────────────────────────────
-function SetInspector({ setEntry, onSetStatusChange }) {
+function SetInspector({ setEntry, onSetStatusChange, onUpdated }) {
   const [activeItem, setActiveItem] = useState(0);
   const [variantIdx, setVariantIdx] = useState(0);
   const [busy, setBusy]             = useState(false);
   const [note, setNote]             = useState(setEntry.adminNote || "");
 
-  const items  = setEntry.items || [];
+  const items  = useMemo(() => setEntry.items || [], [setEntry.items]);
   const item   = items[activeItem];
   const gender = item?.gender || "female";
+  const isRig  = items.some((it) => it.format === "rig");
+  const rigItems = useMemo(() => items.filter((it) => it.format === "rig"), [items]);
+  const { garments, error: garmentError } = useSubmissionGarments(rigItems);
+  const notReady = rigItems.some((it) => it.atlasStatus !== "ready");
 
   // Build all current variant URLs for the avatar (first variant of each item)
   const avatarUrls = items.map((it) => it.variants[variantIdx]?.imageUrl).filter(Boolean);
@@ -192,7 +252,9 @@ function SetInspector({ setEntry, onSetStatusChange }) {
     <InspectorBox>
       <SetBanner>Set — {items.length} items</SetBanner>
       <InspectorInner>
-        <AvatarCanvas gender={gender} itemImageUrls={avatarUrls} />
+        {isRig
+          ? <RigPreview garments={garments} note={garmentError || (notReady ? "Some atlases aren't packed yet" : null)} />
+          : <AvatarCanvas gender={gender} itemImageUrls={avatarUrls} />}
 
         <SetItemTabs>
           {items.map((it, i) => (
@@ -211,18 +273,22 @@ function SetInspector({ setEntry, onSetStatusChange }) {
                 <GenderTag>{gender === "male" ? "Male" : "Female"}</GenderTag>
               </ControlGroup>
 
-              <ControlGroup>
-                <ControlLabel>Variants (click to preview on avatar)</ControlLabel>
-                <ThumbRow>
-                  {item.variants.map((v, i) => (
-                    <ThumbBtn key={i} $active={i === variantIdx} onClick={() => setVariantIdx(i)}>
-                      {v.thumbnailUrl
-                        ? <ThumbImg src={v.thumbnailUrl} alt={`variant ${i + 1}`} />
-                        : <ThumbPlaceholder>{i + 1}</ThumbPlaceholder>}
-                    </ThumbBtn>
-                  ))}
-                </ThumbRow>
-              </ControlGroup>
+              {item.format === "rig" ? (
+                <AtlasInfo submission={item} onUpdated={onUpdated} />
+              ) : (
+                <ControlGroup>
+                  <ControlLabel>Variants (click to preview on avatar)</ControlLabel>
+                  <ThumbRow>
+                    {item.variants.map((v, i) => (
+                      <ThumbBtn key={i} $active={i === variantIdx} onClick={() => setVariantIdx(i)}>
+                        {v.thumbnailUrl
+                          ? <ThumbImg src={v.thumbnailUrl} alt={`variant ${i + 1}`} />
+                          : <ThumbPlaceholder>{i + 1}</ThumbPlaceholder>}
+                      </ThumbBtn>
+                    ))}
+                  </ThumbRow>
+                </ControlGroup>
+              )}
             </>
           )}
 
@@ -237,7 +303,11 @@ function SetInspector({ setEntry, onSetStatusChange }) {
           </ControlGroup>
 
           <ActionRow>
-            <ApproveBtn disabled={busy || setEntry.status === "approved"} onClick={() => handleStatus("approved")}>
+            <ApproveBtn
+              disabled={busy || setEntry.status === "approved" || notReady}
+              title={notReady ? "Waiting for every atlas to be packed" : ""}
+              onClick={() => handleStatus("approved")}
+            >
               {setEntry.status === "approved" ? "✓ Approved" : "Approve Set"}
             </ApproveBtn>
             <DeclineBtn disabled={busy || setEntry.status === "declined"} onClick={() => handleStatus("declined")}>
@@ -257,18 +327,26 @@ function StatusBadge({ status }) {
 }
 
 // ── Row for a single submission ───────────────────────────────────────────────
-function SingleRow({ sub, expanded, onToggle, onStatusChange }) {
+function contentsLabel(sub) {
+  if (sub.format === "rig") {
+    const s = sub.atlasStatus || "queued";
+    return <span style={{ color: ATLAS_COLOR[s] }}>{sub.parts.length} parts · {ATLAS_LABEL[s].replace("Atlas ", "")}</span>;
+  }
+  return <Gray>{sub.variants.length} variant{sub.variants.length !== 1 ? "s" : ""}</Gray>;
+}
+
+function SingleRow({ sub, expanded, onToggle, onStatusChange, onUpdated }) {
   return (
     <>
       <tr style={{ cursor: "pointer" }} onClick={() => onToggle(sub.id)}>
         <Td>
-          {sub.variants[0]?.thumbnailUrl
-            ? <ItemImg src={sub.variants[0].thumbnailUrl} alt={sub.name} />
+          {sub.thumbnailUrl
+            ? <ItemImg src={sub.thumbnailUrl} alt={sub.name} />
             : <NoImg />}
         </Td>
         <Td><strong>{sub.name}</strong></Td>
         <Td><Gray>{sub.category} / {sub.subcategory}</Gray></Td>
-        <Td><Gray>{sub.variants.length} variant{sub.variants.length !== 1 ? "s" : ""}</Gray></Td>
+        <Td>{contentsLabel(sub)}</Td>
         <Td><Gray>{sub.uploadedBy?.name || sub.uploadedBy?.email || "—"}</Gray></Td>
         <Td><Gray>{new Date(sub.createdAt).toLocaleDateString()}</Gray></Td>
         <Td><StatusBadge status={sub.status} /></Td>
@@ -277,7 +355,7 @@ function SingleRow({ sub, expanded, onToggle, onStatusChange }) {
       {expanded && (
         <tr>
           <td colSpan={8} style={{ padding: 0 }}>
-            <SingleInspector submission={sub} onStatusChange={onStatusChange} />
+            <SingleInspector submission={sub} onStatusChange={onStatusChange} onUpdated={onUpdated} />
           </td>
         </tr>
       )}
@@ -286,16 +364,18 @@ function SingleRow({ sub, expanded, onToggle, onStatusChange }) {
 }
 
 // ── Row for a set ─────────────────────────────────────────────────────────────
-function SetRow({ setEntry, expanded, onToggle, onSetStatusChange }) {
-  const firstThumb = setEntry.items?.[0]?.variants?.[0]?.thumbnailUrl;
+function SetRow({ setEntry, expanded, onToggle, onSetStatusChange, onUpdated }) {
+  const items = setEntry.items || [];
+  const isRig = items.some((it) => it.format === "rig");
+  const packed = items.filter((it) => it.atlasStatus === "ready").length;
   return (
     <>
       <tr style={{ cursor: "pointer" }} onClick={() => onToggle(setEntry.setCode)}>
         <Td>
           <ThumbStack>
-            {(setEntry.items || []).slice(0, 3).map((it, i) => (
-              it.variants[0]?.thumbnailUrl
-                ? <StackImg key={i} src={it.variants[0].thumbnailUrl} style={{ zIndex: 3 - i, left: i * 10 }} />
+            {items.slice(0, 3).map((it, i) => (
+              it.thumbnailUrl
+                ? <StackImg key={i} src={it.thumbnailUrl} style={{ zIndex: 3 - i, left: i * 10 }} />
                 : null
             ))}
           </ThumbStack>
@@ -304,8 +384,12 @@ function SetRow({ setEntry, expanded, onToggle, onSetStatusChange }) {
           <strong>Set</strong>
           <SetItemNames>{(setEntry.items || []).map((it) => it.name).join(", ")}</SetItemNames>
         </Td>
-        <Td><SetBadge>5 items · 5 variants each</SetBadge></Td>
-        <Td><Gray>25 total</Gray></Td>
+        <Td><SetBadge>{items.length} items</SetBadge></Td>
+        <Td>
+          {isRig
+            ? <Gray>{packed}/{items.length} atlases packed</Gray>
+            : <Gray>{items.reduce((n, it) => n + it.variants.length, 0)} variants</Gray>}
+        </Td>
         <Td><Gray>{setEntry.uploadedBy?.name || setEntry.uploadedBy?.email || "—"}</Gray></Td>
         <Td><Gray>{new Date(setEntry.createdAt).toLocaleDateString()}</Gray></Td>
         <Td><StatusBadge status={setEntry.status} /></Td>
@@ -314,7 +398,7 @@ function SetRow({ setEntry, expanded, onToggle, onSetStatusChange }) {
       {expanded && (
         <tr>
           <td colSpan={8} style={{ padding: 0 }}>
-            <SetInspector setEntry={setEntry} onSetStatusChange={onSetStatusChange} />
+            <SetInspector setEntry={setEntry} onSetStatusChange={onSetStatusChange} onUpdated={onUpdated} />
           </td>
         </tr>
       )}
@@ -355,10 +439,29 @@ export default function Submissions() {
     setData((d) => ({
       ...d,
       submissions: d.submissions.map((s) =>
-        s.isSet && s.setCode === setCode ? { ...s, status } : s
+        s.isSet && s.setCode === setCode ? { ...s, status, items: s.items.map((it) => ({ ...it, status })) } : s
       ),
     }));
   };
+
+  const handleUpdated = (updated) => {
+    setData((d) => ({
+      ...d,
+      submissions: d.submissions.map((s) => s.isSet
+        ? { ...s, items: s.items.map((it) => (it.id === updated.id ? updated : it)) }
+        : s.id === updated.id ? updated : s),
+    }));
+  };
+
+  // Keep atlas status live while the worker is packing.
+  const anyPacking = data.submissions.some((s) => (s.isSet ? s.items.some(isPacking) : isPacking(s)));
+  useEffect(() => {
+    if (!anyPacking) return;
+    const id = setInterval(() => {
+      getSubmissions({ status: statusFilter, page, limit: LIMIT }).then(setData).catch(() => {});
+    }, 4000);
+    return () => clearInterval(id);
+  }, [anyPacking, statusFilter, page]);
 
   const toggle = (key) => setExpanded((e) => (e === key ? null : key));
   const totalPages = Math.max(1, Math.ceil(data.total / LIMIT));
@@ -386,7 +489,7 @@ export default function Submissions() {
               <Th>Preview</Th>
               <Th>Name</Th>
               <Th>Category</Th>
-              <Th>Variants</Th>
+              <Th>Contents</Th>
               <Th>Creator</Th>
               <Th>Date</Th>
               <Th>Status</Th>
@@ -400,8 +503,8 @@ export default function Submissions() {
             )}
             {data.submissions.map((sub) =>
               sub.isSet
-                ? <SetRow    key={sub.setCode} setEntry={sub} expanded={expanded === sub.setCode} onToggle={toggle} onSetStatusChange={handleSetStatusChange} />
-                : <SingleRow key={sub.id}      sub={sub}      expanded={expanded === sub.id}      onToggle={toggle} onStatusChange={handleStatusChange} />
+                ? <SetRow    key={sub.setCode} setEntry={sub} expanded={expanded === sub.setCode} onToggle={toggle} onSetStatusChange={handleSetStatusChange} onUpdated={handleUpdated} />
+                : <SingleRow key={sub.id}      sub={sub}      expanded={expanded === sub.id}      onToggle={toggle} onStatusChange={handleStatusChange} onUpdated={handleUpdated} />
             )}
           </tbody>
         </Table>
@@ -509,4 +612,20 @@ const ModeBtn        = styled.button`
   background:${(p) => p.$active ? "rgba(123,47,247,0.35)" : "transparent"};
   color:${(p) => p.$active ? "#c4a1ff" : "#666"};
   &:hover{border-color:#7b2ff7;color:#c4a1ff;}
+`;
+
+// Rig atlas info
+const AtlasLine  = styled.div`display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap;
+  a{color:#c4a1ff;font-weight:600;text-decoration:none;&:hover{text-decoration:underline;}}`;
+const AtlasState = styled.span`font-weight:700;`;
+const AtlasErr   = styled.div`font-size:12px;color:#ff8a8a;line-height:1.4;`;
+const RepackBtn  = styled.button`
+  padding:3px 10px;border-radius:6px;border:1px solid #ffffff20;background:transparent;color:#ccc;font-size:11px;cursor:pointer;
+  &:hover:not(:disabled){border-color:#7b2ff7;color:#c4a1ff;}&:disabled{opacity:0.4;}
+`;
+const PartList = styled.div`display:flex;flex-wrap:wrap;gap:4px;`;
+const PartLink = styled.a`
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;color:#999;
+  padding:2px 6px;border-radius:5px;background:#ffffff08;text-decoration:none;
+  &:hover{color:#c4a1ff;}
 `;

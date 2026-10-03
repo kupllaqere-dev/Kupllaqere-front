@@ -3,12 +3,13 @@ import {
   parseArmature, createPose, poseArmature, poseSlot, createMatrix,
   attachmentMatrix, loopFrameTime,
 } from "./dragonBones.js";
+import { partDrawOrder } from "./rigParts.js";
 
 // The "skeleton" rig: the avatar is assembled straight out of the packed
 // atlas, the DragonBones skeleton is laid over it in its idle pose, and each
 // body part is then pinned to the bone it sits on.
 //
-// Assembly. spritesheet.json is a TexturePacker sheet whose frames are trimmed
+// Assembly. qifsha.json is a TexturePacker sheet whose frames are trimmed
 // cutouts of one 600x900 canvas — `spriteSourceSize` says where each cutout
 // belongs on it. Phaser restores that offset itself for a trimmed frame
 // (`x = -displayOriginX + frame.x` in the batcher, with an Image's width being
@@ -21,18 +22,12 @@ import {
 // pixel is one armature unit (to within 0.2 px across the whole sheet) and the
 // canvas centre lands on the armature origin. That is the whole mapping
 // between the two files, and it checks out: every atlas frame's centre lands
-// on the bone named after it, and within ~3 units of the matching display
-// transform in the earlier skeleton_ske.json export (where every slot hung off
-// `root`, so those transforms were still in armature space).
+// on the bone named after it.
 //
-// Linking. The rig's slots are not used to decide which bone drives which
-// part. finalwalk_ske.json does parent most of them to bones, but it rigs
-// `pivoted_left_upper_leg` and `cursed_leg_seccond_attempt` onto the upper-leg
-// bones — alternate pieces that are not in the spritesheet — and leaves the
-// `Left_Upper_Leg` / `Right_Upper_Leg` slots that *are* in it hanging off
-// `root`, which would leave both thighs behind while the legs walked. Nor are
-// the display transforms used, since the atlas already places the art. Each
-// part is instead
+// Linking. The rig's slots only set the draw order. In qifsha_ske.json they
+// all hang off `root` with no attachments, so they say nothing about which
+// bone drives which part, and the atlas already places the art. Each part is
+// instead
 // *pinned* to its bone the way RigClothing pins garments: unrotated and
 // unmoved in the setup pose — which is what the keyless `idle` clip resolves
 // to, so the assembled art renders exactly as authored at rest — then riding
@@ -42,32 +37,14 @@ import {
 // in dragonBones.js.
 
 const RIG_DIR   = "/assets/skeleton";
-const SKE_FILE  = "finalwalk_ske.json";
+const SKE_FILE   = "qifsha_ske.json";
+const ATLAS_FILE = "qifsha"; // .png + .json
 const SKE_KEY   = "skeleton-ske";
 const ATLAS_KEY = "skeleton-atlas";
 
-// Draw order, back to front. DragonBones keeps it as the armature's slot
-// order, but those slots are named as the *mirror* of the atlas frames (the
-// rig's "Left_Foot" slot holds the art the atlas calls "Right_Foot.png" —
-// confirmed by their display transforms), so the order is transcribed here
-// against the atlas' own names — and then adjusted where the rig's own
-// stacking read wrong, marked below. A frame's name lowercased is also its bone:
-// "Left_Upper_Leg.png" -> `left_upper_leg`, which is the bone whose segment
-// that cutout actually lies on. The right arm has no upper-arm part because
-// the rig has no `right_upper_arm` bone — `right_lower_arm` hangs off `torso`.
-const PART_ORDER = [
-  "Right_Lower_Arm",
-  "Right_Foot",
-  "Left_Foot",
-  "Right_Upper_Leg",
-  "Torso",
-  "Left_Upper_Arm",  // over the torso: it is the near arm, so the shoulder reads as in front
-  "Right_Lower_Leg",
-  "Left_Lower_Leg",
-  "Left_Upper_Leg",  // over its own shin, so the thigh covers the knee seam
-  "Left_Lower_Arm",
-  "Head",
-];
+// Draw order, back to front, comes from the rig's slot order (the last slot,
+// Head, on top) via partDrawOrder in rigParts.js — shared with the creator
+// portal's preview so both stack the parts the same way.
 
 // The parts that touch the ground. The avatar is anchored between these
 // rather than on the middle of its whole bounding box: the arms hang well
@@ -122,7 +99,7 @@ const armatureCache = new WeakMap(); // Phaser.Game → parsed armature + parts
 
 export function preloadRig(scene) {
   scene.load.json(SKE_KEY, `${RIG_DIR}/${SKE_FILE}`);
-  scene.load.atlas(ATLAS_KEY, `${RIG_DIR}/spritesheet.png`, `${RIG_DIR}/spritesheet.json`);
+  scene.load.atlas(ATLAS_KEY, `${RIG_DIR}/${ATLAS_FILE}.png`, `${RIG_DIR}/${ATLAS_FILE}.json`);
 }
 
 /** Parses the armature and resolves the atlas parts once per game. */
@@ -160,7 +137,7 @@ function buildParts(scene, armature) {
   const pinY = y + height / 2;
 
   const parts = [];
-  for (const name of PART_ORDER) {
+  for (const name of partDrawOrder(armature)) {
     const frameName = `${name}.png`;
     if (!texture.has(frameName)) {
       console.warn(`Skeleton rig: atlas has no frame "${frameName}"`);

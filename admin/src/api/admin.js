@@ -75,6 +75,9 @@ export const updateSubmissionStatus = (id, status, adminNote) =>
   request(`/api/admin/submissions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, adminNote }) });
 export const updateSetStatus = (setCode, status, adminNote) =>
   request(`/api/admin/submissions/set/${setCode}/status`, { method: "PATCH", body: JSON.stringify({ status, adminNote }) });
+// Re-runs the atlas packing worker on a rig submission.
+export const repackSubmission = (id) =>
+  request(`/api/admin/submissions/${id}/repack`, { method: "POST" });
 
 // Online
 export const getOnline = () => request("/api/admin/online");
