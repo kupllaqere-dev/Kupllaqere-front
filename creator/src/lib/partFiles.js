@@ -15,10 +15,20 @@ const OLD_FILE_RE = /^([A-Za-z]+(?:-[A-Za-z]+)*)_([A-Za-z0-9_-]+)\.png$/;
 
 export const NAME_EXAMPLE = "Texas_rodeo-left_upper_arm.png";
 
+// Ids that stay unique across hot reloads and remounts — a module-level
+// counter restarts at 1 when the module reloads while pieces and items already
+// on screen keep theirs, and two items sharing an id then edit as one.
+export function uid() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 /** { part, itemName } or { error }. */
 export function parseFileName(fileName, types) {
   const base = String(fileName).split(/[\\/]/).pop();
-  const byToken = new Map(types.bodyParts.map((p) => [p.token.toLowerCase(), p.name]));
+  // Matched against the part's own name ("Right_Lower_Arm"), not the token the
+  // backend sends, so a backend still on the old hyphenated tokens can't make
+  // the multi-word parts unrecognisable.
+  const byToken = new Map(types.bodyParts.map((p) => [p.name.toLowerCase(), p.name]));
   const m = FILE_RE.exec(base);
   const part = m && byToken.get(m[2].toLowerCase());
   if (!part) {
@@ -26,7 +36,7 @@ export function parseFileName(fileName, types) {
     if (/\s/.test(base)) return { error: "Contains spaces — use underscores in the name." };
     const old = OLD_FILE_RE.exec(base);
     const oldPart = old && byToken.get(old[1].replace(/-/g, "_").toLowerCase());
-    if (oldPart) return { error: `The body part now goes last — rename it ${old[2]}-${tokenOf(oldPart, types)}.png` };
+    if (oldPart) return { error: `The body part now goes last — rename it ${old[2]}-${tokenOf(oldPart)}.png` };
     if (m) return { error: `Unknown body part "${m[2]}".` };
     return { error: `Doesn't follow Name-body_part.png (e.g. ${NAME_EXAMPLE}).` };
   }
@@ -36,8 +46,8 @@ export function parseFileName(fileName, types) {
 }
 
 /** The body part as file names end in it: "left_upper_arm". */
-export function tokenOf(part, types) {
-  return types.bodyParts.find((p) => p.name === part)?.token ?? part.toLowerCase();
+export function tokenOf(part) {
+  return part.toLowerCase();
 }
 
 /** "Left_Upper_Arm" -> "Left upper arm". */
@@ -47,9 +57,9 @@ export function labelOf(part) {
 }
 
 /** The file name a piece of `itemName` on `part` is expected under. */
-export function expectedFileName(itemName, part, types) {
+export function expectedFileName(itemName, part) {
   const name = String(itemName || "Item").trim().replace(/\s+/g, "_").replace(/[^A-Za-z0-9_-]/g, "") || "Item";
-  return `${name}-${tokenOf(part, types)}.png`;
+  return `${name}-${tokenOf(part)}.png`;
 }
 
 function loadImageFromFile(file) {
@@ -90,7 +100,6 @@ function cropThumb(img, b, size = 72) {
 
 const OVERLAP_SLACK = 40; // px a garment may sit outside its body part and still count as on it
 
-let nextId = 1;
 
 /**
  * Checks one dropped file. Always resolves, with `error` set when it can't be
@@ -98,7 +107,7 @@ let nextId = 1;
  * the 600x900 canvas) enables the "is this on the right body part?" check.
  */
 export async function inspectFile(file, types, bodyRects) {
-  const entry = { id: nextId++, file, fileName: file.name };
+  const entry = { id: uid(), file, fileName: file.name };
   const parsed = parseFileName(file.name, types);
   if (parsed.error) return { ...entry, error: parsed.error };
   Object.assign(entry, parsed);

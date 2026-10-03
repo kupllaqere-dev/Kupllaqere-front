@@ -5,7 +5,7 @@ import RigStage from "../components/RigStage";
 import { getSharedRig } from "@avatar/RigView.js";
 import { rawPiece, renderTemplate, bodyPartRects } from "@avatar/CanvasRig.js";
 import { getItemTypes, submitItems } from "../api/creator";
-import { inspectFile, checkItem, layerOf, labelOf, expectedFileName, NAME_EXAMPLE } from "../lib/partFiles";
+import { inspectFile, checkItem, layerOf, labelOf, tokenOf, expectedFileName, uid, NAME_EXAMPLE } from "../lib/partFiles";
 import { categoryLabel, subcategoryLabel, typeLabel } from "../lib/labels";
 
 // Collects every file in a drop, walking into dropped folders.
@@ -32,9 +32,8 @@ async function filesFromDrop(dataTransfer) {
 
 // Each item is its own drop zone: whatever is dropped on it becomes its
 // pieces, one per body part, regardless of the name in the file.
-let nextItemId = 1;
 // `hidden` only takes an item off the preview avatar — it is still submitted.
-const newItem = () => ({ id: nextItemId++, name: "", category: null, subcategory: null, files: [], hidden: false });
+const newItem = () => ({ id: uid(), name: "", category: null, subcategory: null, files: [], hidden: false });
 
 // Submitting is switched off for now — flip back to true to re-enable it.
 const SUBMIT_ENABLED = false;
@@ -293,7 +292,7 @@ export default function Create() {
               <Example>{NAME_EXAMPLE}</Example>
               <p>Body parts:</p>
               <Tokens>
-                {types?.bodyParts.map((p) => <Token key={p.name}>{p.token}</Token>)}
+                {types?.bodyParts.map((p) => <Token key={p.name}>{tokenOf(p.name)}</Token>)}
               </Tokens>
               <p>Drop an item's pieces onto that item — add as many as it needs. Use <b>+ Add item</b> for the next one. Each piece shows on the avatar as soon as it's added.</p>
               <TemplateBtn onClick={downloadTemplate}>Download body template</TemplateBtn>
@@ -475,8 +474,8 @@ function ItemDetail({ item, index, types, onMeta, onAddFiles, onRemoveFile, onRe
                     {labelOf(part)}
                     {kind === "suggested" && <Dim> · usually included</Dim>}
                   </PartName>
-                  <PartFile title={f ? f.fileName : `e.g. ${expectedFileName(item.name, part, types)}`}>
-                    {f ? f.fileName : expectedFileName(item.name, part, types)}
+                  <PartFile title={f ? f.fileName : `e.g. ${expectedFileName(item.name, part)}`}>
+                    {f ? f.fileName : expectedFileName(item.name, part)}
                   </PartFile>
                   {f?.warning && <PartWarn>{f.warning}</PartWarn>}
                 </PartText>

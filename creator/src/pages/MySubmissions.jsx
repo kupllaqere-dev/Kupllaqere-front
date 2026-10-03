@@ -324,7 +324,7 @@ function Detail({ sub, types, onChanged, onDeleted }) {
                     <PartDot $state={p ? "ok" : "optional"} />
                     <PartText>
                       <PartName>{labelOf(part)}{kind === "suggested" && <Dim> · usually included</Dim>}</PartName>
-                      <PartFile>{p ? p.fileName : expectedFileName(sub.name, part, types)}</PartFile>
+                      <PartFile>{p ? p.fileName : expectedFileName(sub.name, part)}</PartFile>
                     </PartText>
                     {p && <a href={p.url} target="_blank" rel="noreferrer">view</a>}
                     {p && !locked && sub.parts.length > 1 && (
