@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { loadItemAtlas, loadImage, rawPiece } from "@avatar/CanvasRig.js";
+import { parseGarmentFrame } from "@avatar/rigParts.js";
 
 /**
  * Garments for rig submissions: each packed atlas once it's ready (its meta
- * carries the item's layer), otherwise the creator's raw uploads.
+ * carries the item's layer), otherwise the creator's raw uploads. The preview
+ * is side-on, so only side pieces are returned — front and back are skipped.
  */
 export function useSubmissionGarments(subs) {
   const [garments, setGarments] = useState([]);
@@ -17,9 +19,13 @@ export function useSubmissionGarments(subs) {
       if (s.atlasStatus === "ready" && s.atlasJsonUrl) {
         const { pieces, meta } = await loadItemAtlas(s.atlasJsonUrl, s.atlasUrl);
         const layer = meta?.item?.layer ?? 5;
-        return [...pieces].map(([part, piece]) => ({ part, layer, piece }));
+        return [...pieces]
+          .map(([name, piece]) => ({ ...parseGarmentFrame(name), layer, piece }))
+          .filter((g) => g.view === "side");
       }
-      return Promise.all((s.parts || []).map(async (p) => ({ part: p.part, layer: 5, piece: rawPiece(await loadImage(p.url)) })));
+      return Promise.all((s.parts || [])
+        .filter((p) => (p.view || "side") === "side")
+        .map(async (p) => ({ part: p.part, layer: 5, piece: rawPiece(await loadImage(p.url)) })));
     }))
       .then((lists) => { if (!cancelled) setGarments(lists.flat()); })
       .catch((e) => { if (!cancelled) setError(e.message); });

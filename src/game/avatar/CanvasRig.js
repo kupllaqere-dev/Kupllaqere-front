@@ -2,10 +2,10 @@ import {
   parseArmature, createPose, poseArmature, poseSlot, createMatrix,
   attachmentMatrix, loopFrameTime,
 } from "./dragonBones.js";
-import { partDrawOrder, RIG_CANVAS } from "./rigParts.js";
+import { RIG_CANVAS, resolveRigParts, frameNameCandidates } from "./rigParts.js";
 
-// The skeleton avatar drawn onto a plain 2D canvas — the same rig, pins and
-// timing as SkeletonAvatar, without Phaser, so the creator portal and the
+// The skeleton avatar drawn onto a plain 2D canvas — the same rigs (side,
+// front and back), pins and timing as SkeletonAvatar, without Phaser, so the creator portal and the
 // admin panel can preview clothing on the real in-game body.
 //
 // Everything here works in armature units on the shared 600x900 canvas (see
@@ -19,10 +19,16 @@ import { partDrawOrder, RIG_CANVAS } from "./rigParts.js";
 // their own React, so anything shared with them must be plain JS.
 
 const RIG_DIR = "/assets/skeleton";
+const rigAssets = (dir) => ({
+  ske:        `${RIG_DIR}/${dir}/${dir}_ske.json`,
+  atlasJson:  `${RIG_DIR}/${dir}/${dir}.json`,
+  atlasImage: `${RIG_DIR}/${dir}/${dir}.png`,
+});
+/** Each view's rig files (see RIG_VIEWS in rigParts.js). */
 export const RIG_ASSETS = {
-  ske:        `${RIG_DIR}/qifsha_ske.json`,
-  atlasJson:  `${RIG_DIR}/qifsha.json`,
-  atlasImage: `${RIG_DIR}/qifsha.png`,
+  side:  rigAssets("FemaleSideWalk"),
+  front: rigAssets("FemaleFrontWalk"),
+  back:  rigAssets("FemaleBackWalk"),
 };
 
 export const ANIMATIONS = { idle: "idle", walk: "walk" };
@@ -62,7 +68,7 @@ async function fetchJson(url) {
 
 /**
  * Frames of a TexturePacker atlas — the multi-texture "textures" form
- * qifsha.json uses, or the plain hash / array forms — keyed by name
+ * FemaleSideWalk.json uses, or the plain hash / array forms — keyed by name
  * without the ".png". Rotated frames are skipped: neither the rig's atlas nor
  * the backend packer ever rotates.
  */
@@ -110,8 +116,13 @@ export async function loadItemAtlas(jsonUrl, imageUrl = null) {
   return { pieces, meta: json.meta || {} };
 }
 
-/** Loads the in-game rig: skeleton, body atlas, and each part pinned to its bone. */
-export async function loadRig(assets = RIG_ASSETS) {
+/**
+ * Loads one view's rig — "side", "front" or "back", or an assets object —
+ * with its skeleton, body atlas, and each part pinned to its bone.
+ */
+export async function loadRig(view = "side") {
+  const assets = typeof view === "string" ? RIG_ASSETS[view] : view;
+  if (!assets) throw new Error(`Unknown rig view "${view}"`);
   const [ske, atlasJson, image] = await Promise.all([
     fetchJson(assets.ske),
     fetchJson(assets.atlasJson),
@@ -120,29 +131,35 @@ export async function loadRig(assets = RIG_ASSETS) {
 
   const armature = parseArmature(ske);
   const frames   = parseAtlasFrames(atlasJson);
-  const { x, y, width, height } = armature.aabb;
-  const pinX = x + width / 2;   // canvas centre, in armature units
-  const pinY = y + height / 2;
+  const findFrame = (name) => {
+    const key = frameNameCandidates(name).find(k => frames.has(k));
+    if (!key) return null;
+    const f = frames.get(key);
+    return { key, centreX: f.dx + f.sw / 2 - f.sourceW / 2, centreY: f.dy + f.sh / 2 - f.sourceH / 2 };
+  };
 
   // Back to front, as the rig's slots stack them — the same order in game.
-  const order = partDrawOrder(armature);
-  const parts = [];
-  for (const name of order) {
-    const frame     = frames.get(name);
-    const boneIndex = armature.bones.findIndex(b => b.name === name.toLowerCase());
-    if (!frame || boneIndex < 0) {
-      console.warn(`CanvasRig: body part "${name}" is missing from the atlas or skeleton`);
-      continue;
-    }
-    parts.push({
-      name,
-      boneIndex,
-      slot: { bone: boneIndex, matrix: attachmentMatrix(armature, boneIndex, pinX, pinY) },
-      body: { image, ...frame },
-    });
-  }
+  const resolved = resolveRigParts(armature, findFrame);
+  const parts = resolved.parts.map(({ name, boneIndex, key }) => ({
+    name,
+    boneIndex,
+    slot: { bone: boneIndex, matrix: attachmentMatrix(armature, boneIndex, resolved.pinX, resolved.pinY) },
+    body: { image, ...frames.get(key) },
+  }));
 
-  const rig = { armature, parts, order, ikTargets: new Set(armature.iks.map(ik => ik.targetIndex)) };
+  const rig = {
+    armature,
+    parts,
+    order: parts.map(p => p.name),
+    ikTargets: new Set(armature.iks.map(ik => ik.targetIndex)),
+    // The 600x900 authoring canvas in armature units — what a preview fits.
+    canvas: {
+      x: resolved.pinX - RIG_CANVAS.width / 2,
+      y: resolved.pinY - RIG_CANVAS.height / 2,
+      width:  RIG_CANVAS.width,
+      height: RIG_CANVAS.height,
+    },
+  };
   rig.bounds  = restBounds(rig, parts);
   const feet  = parts.filter(p => GROUND_PARTS.includes(p.name));
   const footB = feet.length ? restBounds(rig, feet) : rig.bounds;

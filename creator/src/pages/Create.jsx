@@ -5,7 +5,10 @@ import RigStage from "../components/RigStage";
 import { getSharedRig } from "@avatar/RigView.js";
 import { rawPiece, renderTemplate, bodyPartRects } from "@avatar/CanvasRig.js";
 import { getItemTypes, submitItems } from "../api/creator";
-import { inspectFile, checkItem, layerOf, labelOf, tokenOf, expectedFileName, uid, NAME_EXAMPLE } from "../lib/partFiles";
+import {
+  inspectFile, checkItem, layerOf, labelOf, tokenOf, expectedFileName, uid, partsOfView,
+  NAME_EXAMPLE, VIEW_NAME_EXAMPLE, VIEWS, VIEW_LABELS,
+} from "../lib/partFiles";
 import { categoryLabel, subcategoryLabel, typeLabel } from "../lib/labels";
 
 // Collects every file in a drop, walking into dropped folders.
@@ -31,7 +34,9 @@ async function filesFromDrop(dataTransfer) {
 }
 
 // Each item is its own drop zone: whatever is dropped on it becomes its
-// pieces, one per body part, regardless of the name in the file.
+// pieces, one per body part per view (side, front, back), regardless of the
+// name in the file. A piece's view is the one in its file name, or else the
+// view the avatar was showing when it was dropped.
 // `hidden` only takes an item off the preview avatar — it is still submitted.
 const newItem = () => ({ id: uid(), name: "", category: null, subcategory: null, files: [], hidden: false });
 
@@ -45,13 +50,13 @@ function itemStatus(it) {
   return "Ready";
 }
 
-async function downloadTemplate() {
-  const rig = await getSharedRig();
+async function downloadTemplate(view) {
+  const rig = await getSharedRig(view);
   const canvas = renderTemplate(rig);
   canvas.toBlob((blob) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "neclis_body_template_600x900.png";
+    a.download = `neclis_body_template_${view}_600x900.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }, "image/png");
@@ -60,7 +65,8 @@ async function downloadTemplate() {
 export default function Create() {
   const [types, setTypes]         = useState(null);
   const [typesError, setTypesError] = useState(null);
-  const [bodyRects, setBodyRects] = useState(null);
+  const [bodyRects, setBodyRects] = useState({}); // view -> part -> rect on the canvas
+  const [view, setView]           = useState("side"); // the avatar view shown, and where unnamed drops go
 
   const [rawItems, setRawItems]   = useState(() => [newItem()]);
   const [rejected, setRejected]   = useState([]); // uploads with an error
@@ -74,18 +80,20 @@ export default function Create() {
 
   useEffect(() => {
     getItemTypes().then(setTypes).catch((e) => setTypesError(e.message));
-    getSharedRig().then((rig) => setBodyRects(bodyPartRects(rig))).catch(() => {});
+    for (const v of VIEWS) {
+      getSharedRig(v).then((rig) => setBodyRects((prev) => ({ ...prev, [v]: bodyPartRects(rig) }))).catch(() => {});
+    }
   }, []);
 
   // ── items, with their pieces in body order and where they stand ──
   const items = useMemo(() => {
     if (!types) return [];
     const order = types.bodyParts.map((p) => p.name);
+    const rank  = (f) => VIEWS.indexOf(f.view) * 100 + order.indexOf(f.part);
     return rawItems.map((it) => {
-      const files = [...it.files].sort((a, b) => order.indexOf(a.part) - order.indexOf(b.part));
-      const parts = files.map((f) => f.part);
-      const check = checkItem(parts, it.category, it.subcategory, types);
-      return { ...it, files, parts, check, complete: check.complete && !!it.name.trim() };
+      const files = [...it.files].sort((a, b) => rank(a) - rank(b));
+      const check = checkItem(files, it.category, it.subcategory, types);
+      return { ...it, files, check, complete: check.complete && !!it.name.trim() };
     });
   }, [rawItems, types]);
 
@@ -96,6 +104,7 @@ export default function Create() {
   const garments = useMemo(() => items
     .filter((it) => !it.hidden)
     .flatMap((it) => it.files.map((f) => ({
+      view:  f.view,
       part:  f.part,
       layer: layerOf(it.category, it.subcategory, types),
       piece: rawPiece(f.image),
@@ -107,29 +116,32 @@ export default function Create() {
   const addFiles = useCallback(async (itemId, list) => {
     if (!types || !list.length) return;
     setError(null); setSuccess(null);
-    const inspected = await Promise.all([...list].map((f) => inspectFile(f, types, bodyRects)));
+    const inspected = await Promise.all([...list].map((f) => inspectFile(f, types, bodyRects, view)));
     const good = inspected.filter((e) => !e.error);
     const bad  = inspected.filter((e) => e.error);
 
     if (good.length) {
       setRawItems((prev) => prev.map((it) => {
         if (it.id !== itemId) return it;
-        // A piece for a part the item already has replaces it — and so does a
-        // later file for the same part within this drop.
-        const incoming = new Map(good.map((g) => [g.part, g]));
-        const replaced = it.files.filter((f) => incoming.has(f.part));
+        // A piece for a part the item already has in that view replaces it —
+        // and so does a later file for the same part and view in this drop.
+        const key = (f) => `${f.view}/${f.part}`;
+        const incoming = new Map(good.map((g) => [key(g), g]));
+        const replaced = it.files.filter((f) => incoming.has(key(f)));
         replaced.forEach((f) => URL.revokeObjectURL(f.url));
-        good.filter((g) => incoming.get(g.part) !== g).forEach((g) => URL.revokeObjectURL(g.url));
+        good.filter((g) => incoming.get(key(g)) !== g).forEach((g) => URL.revokeObjectURL(g.url));
         return {
           ...it,
           name:  it.name || good[0].itemName,
-          files: [...it.files.filter((f) => !incoming.has(f.part)), ...incoming.values()],
+          files: [...it.files.filter((f) => !incoming.has(key(f))), ...incoming.values()],
         };
       }));
       setSelected(itemId);
+      // Show what was just added: if none of it is for this view, go to its view.
+      if (!good.some((g) => g.view === view)) setView(good[0].view);
     }
     if (bad.length) setRejected((prev) => [...bad, ...prev].slice(0, 40));
-  }, [types, bodyRects]);
+  }, [types, bodyRects, view]);
 
   const removeFile = (itemId, fileId) => updateItem(itemId, (it) => {
     const f = it.files.find((p) => p.id === fileId);
@@ -182,6 +194,7 @@ export default function Create() {
       category:    it.category,
       subcategory: it.subcategory,
       files:       it.files.map((f) => { fd.append("files", f.file, f.fileName); return index++; }),
+      views:       it.files.map((f) => f.view),
     }));
     fd.append("manifest", JSON.stringify({ gender, asSet: asSet && filled.length > 1, items: manifestItems }));
 
@@ -201,6 +214,9 @@ export default function Create() {
   // ── stage notice ──
   let overlay = null;
   if (!filled.length) overlay = "Drop body-part PNGs on an item to try them on the avatar.";
+  else if (!garments.some((g) => g.view === view)) {
+    overlay = `Nothing for the ${VIEW_LABELS[view].toLowerCase()} view yet — drop pieces on an item while it's shown.`;
+  }
 
   if (typesError) {
     return <Page><Fatal>Couldn't load item types: {typesError}</Fatal></Page>;
@@ -211,7 +227,7 @@ export default function Create() {
       <TopBar>
         <div>
           <Title>New upload</Title>
-          <Sub>One 600×900 PNG per body part, named <Mono>Name-body_part.png</Mono></Sub>
+          <Sub>One 600×900 PNG per body part and view, named <Mono>Name-body_part.png</Mono></Sub>
         </div>
         <TopActions>
           <GenderSelect value={gender} onChange={(e) => setGender(e.target.value)}>
@@ -254,6 +270,8 @@ export default function Create() {
                 types={types}
                 active={current?.id === it.id}
                 over={overId === it.id}
+                view={view}
+                onShowView={setView}
                 onSelect={() => setSelected(it.id)}
                 onDragOver={(e) => { e.preventDefault(); if (overId !== it.id) setOverId(it.id); }}
                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverId(null); }}
@@ -287,22 +305,25 @@ export default function Create() {
           <Guide>
             <summary>Naming & canvas rules</summary>
             <GuideBody>
-              <p>Paint each piece on the <b>600×900</b> body template, in place, on a transparent background — one PNG per body part the item covers.</p>
+              <p>The avatar is seen from the <b>side</b>, the <b>front</b> and the <b>back</b>, and an item can have pieces for each. Switch views under the avatar.</p>
+              <p>Paint each piece on that view's <b>600×900</b> body template, in place, on a transparent background — one PNG per body part the item covers.</p>
               <p>Name it <Mono>Name-body_part.png</Mono>: the name first, a hyphen, then the body part with underscores:</p>
               <Example>{NAME_EXAMPLE}</Example>
-              <p>Body parts:</p>
+              <p>Pieces go to the view the avatar is showing when you drop them. To mark the view in the name instead, put it before the body part:</p>
+              <Example>{VIEW_NAME_EXAMPLE}</Example>
+              <p>Body parts in the {VIEW_LABELS[view].toLowerCase()} view:</p>
               <Tokens>
-                {types?.bodyParts.map((p) => <Token key={p.name}>{tokenOf(p.name)}</Token>)}
+                {types && partsOfView(types, view).map((p) => <Token key={p}>{tokenOf(p)}</Token>)}
               </Tokens>
               <p>Drop an item's pieces onto that item — add as many as it needs. Use <b>+ Add item</b> for the next one. Each piece shows on the avatar as soon as it's added.</p>
-              <TemplateBtn onClick={downloadTemplate}>Download body template</TemplateBtn>
+              <TemplateBtn onClick={() => downloadTemplate(view)}>Download {VIEW_LABELS[view].toLowerCase()} body template</TemplateBtn>
             </GuideBody>
           </Guide>
         </Left>
 
         {/* ── Middle: the avatar ── */}
         <Middle>
-          <RigStage garments={garments} overlay={overlay} />
+          <RigStage garments={garments} overlay={overlay} view={view} onViewChange={setView} />
         </Middle>
 
         {/* ── Right: the selected item ── */}
@@ -315,6 +336,8 @@ export default function Create() {
               item={current}
               index={items.indexOf(current)}
               types={types}
+              view={view}
+              onViewChange={setView}
               onMeta={(patch) => updateItem(current.id, (it) => ({ ...it, ...patch }))}
               onAddFiles={(list) => addFiles(current.id, list)}
               onRemoveFile={(fileId) => removeFile(current.id, fileId)}
@@ -328,7 +351,7 @@ export default function Create() {
 }
 
 // ── One item on the left: its pieces, and a place to drop more ─────────────
-function ItemZone({ item, index, types, active, over, onSelect, onDragOver, onDragLeave, onDrop, onAddFiles, onRemoveFile, onToggleHidden }) {
+function ItemZone({ item, index, types, active, over, view, onShowView, onSelect, onDragOver, onDragLeave, onDrop, onAddFiles, onRemoveFile, onToggleHidden }) {
   const inputRef = useRef(null);
   return (
     <Zone $active={active} $over={over} onClick={onSelect} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
@@ -356,9 +379,14 @@ function ItemZone({ item, index, types, active, over, onSelect, onDragOver, onDr
       {item.files.length > 0 && (
         <Pieces $hidden={item.hidden}>
           {item.files.map((f) => (
-            <Piece key={f.id} title={f.fileName}>
+            <Piece
+              key={f.id}
+              title={`${f.fileName} — show the ${VIEW_LABELS[f.view].toLowerCase()} view`}
+              onClick={() => onShowView(f.view)}
+            >
               <PieceThumb>{f.thumb && <img src={f.thumb} alt="" />}</PieceThumb>
               <PieceLabel>{labelOf(f.part)}</PieceLabel>
+              <ViewTag $on={f.view === view}>{VIEW_LABELS[f.view]}</ViewTag>
               <PieceRemove
                 onClick={(e) => { e.stopPropagation(); onRemoveFile(f.id); }}
                 title="Remove piece"
@@ -372,8 +400,8 @@ function ItemZone({ item, index, types, active, over, onSelect, onDragOver, onDr
         $over={over}
         onClick={(e) => { e.stopPropagation(); onSelect(); inputRef.current?.click(); }}
       >
-        {!types ? "Loading…" : over ? "Drop to add to this item"
-          : item.files.length ? "+ Drop more pieces or browse" : "Drop PNGs or a folder here, or browse"}
+        {!types ? "Loading…" : over ? `Drop to add to this item's ${VIEW_LABELS[view].toLowerCase()} view`
+          : item.files.length ? `+ Drop ${VIEW_LABELS[view].toLowerCase()} pieces or browse` : `Drop ${VIEW_LABELS[view].toLowerCase()} PNGs or a folder here, or browse`}
       </DropStrip>
       <input
         ref={inputRef}
@@ -401,14 +429,18 @@ const EyeOffIcon = () => (
 );
 
 // ── Selected item ────────────────────────────────────────────────────────────
-function ItemDetail({ item, index, types, onMeta, onAddFiles, onRemoveFile, onRemoveItem }) {
+function ItemDetail({ item, index, types, view, onViewChange, onMeta, onAddFiles, onRemoveFile, onRemoveItem }) {
   const inputRef = useRef(null);
-  const { rule, suggested } = item.check;
-  const byPart = new Map(item.files.map((f) => [f.part, f]));
+  const { rule } = item.check;
+  const suggested = item.check.suggested[view] || [];
+  const files  = item.files.filter((f) => f.view === view);
+  const byPart = new Map(files.map((f) => [f.part, f]));
+  const count  = (v) => item.files.filter((f) => f.view === v).length;
 
-  // Rows: what's uploaded, then the parts this category usually also covers.
+  // Rows: what's uploaded for this view, then the parts this category usually
+  // also covers.
   const rows = [
-    ...item.files.map((f) => ({ part: f.part, kind: "uploaded" })),
+    ...files.map((f) => ({ part: f.part, kind: "uploaded" })),
     ...suggested.map((p) => ({ part: p, kind: "suggested" })),
   ];
 
@@ -447,8 +479,15 @@ function ItemDetail({ item, index, types, onMeta, onAddFiles, onRemoveFile, onRe
       </Field>
 
       <Field>
+        <ViewTabs>
+          {VIEWS.map((v) => (
+            <ViewTab key={v} $on={v === view} onClick={() => onViewChange(v)}>
+              {VIEW_LABELS[v]} <Dim>{count(v)}</Dim>
+            </ViewTab>
+          ))}
+        </ViewTabs>
         <PartsHead>
-          <Label>Pieces</Label>
+          <Label>{VIEW_LABELS[view]} pieces</Label>
           <LinkBtn onClick={() => inputRef.current?.click()}>+ Add pieces</LinkBtn>
           <input
             ref={inputRef}
@@ -459,7 +498,7 @@ function ItemDetail({ item, index, types, onMeta, onAddFiles, onRemoveFile, onRe
             onChange={(e) => { onAddFiles([...e.target.files]); e.target.value = ""; }}
           />
         </PartsHead>
-        {!rows.length && <Hint>No pieces yet — drop PNGs on this item on the left.</Hint>}
+        {!rows.length && <Hint>No {VIEW_LABELS[view].toLowerCase()} pieces yet — drop PNGs on this item on the left while this view is shown.</Hint>}
         {rule && suggested.length > 0 && <Hint>{subcategoryLabel(item.subcategory)} usually also covers the parts below — they're optional.</Hint>}
         <Parts>
           {rows.map(({ part, kind }) => {
@@ -474,8 +513,8 @@ function ItemDetail({ item, index, types, onMeta, onAddFiles, onRemoveFile, onRe
                     {labelOf(part)}
                     {kind === "suggested" && <Dim> · usually included</Dim>}
                   </PartName>
-                  <PartFile title={f ? f.fileName : `e.g. ${expectedFileName(item.name, part)}`}>
-                    {f ? f.fileName : expectedFileName(item.name, part)}
+                  <PartFile title={f ? f.fileName : `e.g. ${expectedFileName(item.name, part, view)}`}>
+                    {f ? f.fileName : expectedFileName(item.name, part, view)}
                   </PartFile>
                   {f?.warning && <PartWarn>{f.warning}</PartWarn>}
                 </PartText>
@@ -572,6 +611,19 @@ const Piece = styled.div`
 const PieceThumb = styled.div`
   width:26px;height:26px;border-radius:5px;background:#111;flex-shrink:0;overflow:hidden;
   img{width:100%;height:100%;object-fit:contain;}
+`;
+const ViewTag = styled.span`
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;flex-shrink:0;
+  color:${(p) => p.$on ? "#a8e6f5" : "#777"};
+  background:${(p) => p.$on ? "rgba(104,207,238,0.12)" : "rgba(255,255,255,0.05)"};
+`;
+const ViewTabs = styled.div`display:flex;border:1px solid #ffffff15;border-radius:8px;overflow:hidden;`;
+const ViewTab = styled.button`
+  flex:1;padding:7px 8px;border:none;font-size:12px;font-weight:700;cursor:pointer;
+  background:${(p) => p.$on ? "rgba(104,207,238,0.15)" : "transparent"};
+  color:${(p) => p.$on ? "#a8e6f5" : "#888"};
+  & + &{border-left:1px solid #ffffff15;}
+  &:hover{color:#a8e6f5;}
 `;
 const PieceLabel = styled.div`flex:1;min-width:0;font-size:12px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
 const PieceRemove = styled.button`

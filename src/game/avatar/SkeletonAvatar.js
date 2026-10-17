@@ -3,13 +3,19 @@ import {
   parseArmature, createPose, poseArmature, poseSlot, createMatrix,
   attachmentMatrix, loopFrameTime,
 } from "./dragonBones.js";
-import { partDrawOrder } from "./rigParts.js";
+import { resolveRigParts, frameNameCandidates } from "./rigParts.js";
 
 // The "skeleton" rig: the avatar is assembled straight out of the packed
 // atlas, the DragonBones skeleton is laid over it in its idle pose, and each
 // body part is then pinned to the bone it sits on.
 //
-// Assembly. qifsha.json is a TexturePacker sheet whose frames are trimmed
+// Three views. The character has a side-on rig (FemaleSideWalk), shown
+// walking or standing left/right — mirrored for right — a front-on rig
+// (FemaleFrontWalk), shown walking down and standing FRONT, and a back-on rig
+// (FemaleBackWalk), shown walking up and standing BACK. Each is its own
+// armature and atlas; the avatar builds all three and shows one at a time.
+//
+// Assembly. Each atlas is a TexturePacker sheet whose frames are trimmed
 // cutouts of one 600x900 canvas — `spriteSourceSize` says where each cutout
 // belongs on it. Phaser restores that offset itself for a trimmed frame
 // (`x = -displayOriginX + frame.x` in the batcher, with an Image's width being
@@ -17,34 +23,26 @@ import { partDrawOrder } from "./rigParts.js";
 // origin drawn at one shared point: the canvas centre. Stacked in draw order
 // they rebuild the original artwork pixel for pixel, no per-part maths.
 //
-// Registration. The armature's aabb is (-300, -450.24) 600.19x900.24 — the
-// same 600x900 canvas with its centre at the armature origin, so one canvas
-// pixel is one armature unit (to within 0.2 px across the whole sheet) and the
-// canvas centre lands on the armature origin. That is the whole mapping
-// between the two files, and it checks out: every atlas frame's centre lands
-// on the bone named after it.
+// Registration. One canvas pixel is one armature unit in every rig, so all
+// that is needed is where the canvas centre sits in armature units, and which
+// bone each frame rides — see resolveRigParts in rigParts.js.
 //
-// Linking. The rig's slots only set the draw order. In qifsha_ske.json they
-// all hang off `root` with no attachments, so they say nothing about which
-// bone drives which part, and the atlas already places the art. Each part is
-// instead
-// *pinned* to its bone the way RigClothing pins garments: unrotated and
-// unmoved in the setup pose — which is what the keyless `idle` clip resolves
-// to, so the assembled art renders exactly as authored at rest — then riding
-// that bone rigidly for any pose that differs from it. Where the pin point
-// sits does not matter to that (the bone's motion is applied as a rigid
-// transform either way), so all eleven parts share one. See attachmentMatrix()
-// in dragonBones.js.
+// Linking. Each part is *pinned* to its bone the way RigClothing pins
+// garments: unrotated and unmoved in the setup pose, so the assembled art
+// renders exactly as authored at rest, then riding that bone rigidly for any
+// pose that differs from it. Where the pin point sits does not matter to that,
+// so all parts share one. See attachmentMatrix() in dragonBones.js.
 
-const RIG_DIR   = "/assets/skeleton";
-const SKE_FILE   = "qifsha_ske.json";
-const ATLAS_FILE = "qifsha"; // .png + .json
-const SKE_KEY   = "skeleton-ske";
-const ATLAS_KEY = "skeleton-atlas";
+const RIG_DIR = "/assets/skeleton";
+const VIEWS = {
+  side:  { dir: "FemaleSideWalk",  skeKey: "skeleton-side-ske",  atlasKey: "skeleton-side-atlas"  },
+  front: { dir: "FemaleFrontWalk", skeKey: "skeleton-front-ske", atlasKey: "skeleton-front-atlas" },
+  back:  { dir: "FemaleBackWalk",  skeKey: "skeleton-back-ske",  atlasKey: "skeleton-back-atlas"  },
+};
 
 // Draw order, back to front, comes from the rig's slot order (the last slot,
-// Head, on top) via partDrawOrder in rigParts.js — shared with the creator
-// portal's preview so both stack the parts the same way.
+// Head, on top), via resolveRigParts — shared with the creator portal's
+// preview so both stack the parts the same way.
 
 // The parts that touch the ground. The avatar is anchored between these
 // rather than on the middle of its whole bounding box: the arms hang well
@@ -55,12 +53,14 @@ const GROUND_PARTS = ["Left_Foot", "Right_Foot"];
 
 // The pose held when nothing is playing. `idle` is keyless (duration 0), so it
 // resolves to the setup pose — naming it rather than passing null keeps that
-// true if the clip later gains keyframes.
+// true if the clip later gains keyframes. A rig without one rests in its
+// setup pose.
 const REST_ANIM = "idle";
+const WALK_ANIM = "walk";
 
-// Art unit -> world pixel. The assembled art is ~684 units tall and the
-// character bases this replaces were 668 px tall, so this keeps the on-screen
-// size — and every perspectiveScale() value tuned against it — unchanged.
+// Art unit -> world pixel. The assembled art is ~684 units tall in every rig
+// and the character bases this replaces were 668 px tall, so this keeps the
+// on-screen size — and every perspectiveScale() value tuned against it.
 const RIG_SCALE = 0.978;
 
 // Matches RigAvatar's speed-up over the authored 24 fps timeline: the walk
@@ -71,12 +71,12 @@ const PLAYBACK_RATE = 1.5;
 // arm swing, which would swallow click-to-move taps near the player.
 const HIT_WIDTH_RATIO = 0.55;
 
-// Which way the art faces: +1 as authored, -1 mirrored. The rig is
-// front-facing with a single walk cycle, so heading right is shown by
-// mirroring the whole thing. Direction reaches an avatar two ways — the walk
-// animation key while it is moving, and the frame index while it stands — so
-// both set the facing, and anything carrying no left/right (walkUp/walkDown,
-// FRONT/BACK) leaves it alone so the last facing persists.
+// Which way the side view faces: +1 as authored, -1 mirrored. It has a single
+// walk cycle, so heading right is shown by mirroring it. Direction reaches an
+// avatar two ways — the walk animation key while it is moving, and the frame
+// index while it stands — so both pick the view and set the facing. The front
+// and back views are never mirrored; the side view's facing persists while it
+// is hidden.
 //
 // The frame indices are PlayerManager's FRAME, repeated rather than imported:
 // PlayerManager imports this module, so importing it back would be a cycle.
@@ -84,6 +84,8 @@ const FACE_LEFT  =  1;
 const FACE_RIGHT = -1;
 const RIGHT_FRAMES = new Set([4, 5]); // FRONT_RIGHT, RIGHT
 const LEFT_FRAMES  = new Set([1, 2]); // FRONT_LEFT,  LEFT
+const FRONT_FRAME  = 0;
+const BACK_FRAME   = 3;
 
 // Bone overlay — the skeleton drawn over the assembled art so the two can be
 // checked against each other. Off: it was for confirming the parts really do
@@ -95,25 +97,30 @@ const JOINT_COLOR   = 0xffffff;
 const BONE_WIDTH    = 4;        // art units, so it scales with the avatar
 const JOINT_RADIUS  = 5;
 
-const armatureCache = new WeakMap(); // Phaser.Game → parsed armature + parts
+const armatureCache = new WeakMap(); // Phaser.Game → { [view]: parsed armature + parts }
 
 export function preloadRig(scene) {
-  scene.load.json(SKE_KEY, `${RIG_DIR}/${SKE_FILE}`);
-  scene.load.atlas(ATLAS_KEY, `${RIG_DIR}/${ATLAS_FILE}.png`, `${RIG_DIR}/${ATLAS_FILE}.json`);
+  for (const { dir, skeKey, atlasKey } of Object.values(VIEWS)) {
+    scene.load.json(skeKey, `${RIG_DIR}/${dir}/${dir}_ske.json`);
+    scene.load.atlas(atlasKey, `${RIG_DIR}/${dir}/${dir}.png`, `${RIG_DIR}/${dir}/${dir}.json`);
+  }
 }
 
-/** Parses the armature and resolves the atlas parts once per game. */
-export function getRigArmature(scene) {
-  const cached = armatureCache.get(scene.game);
-  if (cached) return cached;
+/** Parses one view's armature and resolves its atlas parts once per game. */
+export function getRigArmature(scene, view = "side") {
+  let cached = armatureCache.get(scene.game);
+  if (!cached) armatureCache.set(scene.game, cached = {});
+  if (cached[view]) return cached[view];
 
-  const ske = scene.cache.json.get(SKE_KEY);
-  if (!ske || !scene.textures.exists(ATLAS_KEY)) {
+  const { skeKey, atlasKey } = VIEWS[view];
+  const ske = scene.cache.json.get(skeKey);
+  if (!ske || !scene.textures.exists(atlasKey)) {
     throw new Error("Skeleton rig assets are not loaded — call preloadRig() in the scene's preload()");
   }
 
   const armature = parseArmature(ske);
-  armature.parts     = buildParts(scene, armature);
+  armature.atlasKey  = atlasKey;
+  armature.parts     = buildParts(scene.textures.get(atlasKey), armature);
   armature.artBounds = computeArtBounds(armature, armature.parts);
   armature.ikTargets = new Set(armature.iks.map(ik => ik.targetIndex));
 
@@ -123,38 +130,36 @@ export function getRigArmature(scene) {
   const footBounds = feet.length ? computeArtBounds(armature, feet) : armature.artBounds;
   armature.anchorX = (footBounds.minX + footBounds.maxX) / 2;
 
-  armatureCache.set(scene.game, armature);
+  cached[view] = armature;
   return armature;
 }
 
 // One entry per atlas frame, in draw order: the bone it rides, the slot matrix
 // that pins it there, and its trimmed rect as an offset from the pin point
-// (used only to measure where the art actually sits).
-function buildParts(scene, armature) {
-  const texture = scene.textures.get(ATLAS_KEY);
-  const { x, y, width, height } = armature.aabb;
-  const pinX = x + width / 2;   // canvas centre, in armature units
-  const pinY = y + height / 2;
+// (used only to measure where the art actually sits). Which frame rides which
+// bone, and where the pin goes, is worked out by resolveRigParts in
+// rigParts.js — shared with the creator portal's preview.
+//
+// frame.x/y are the trim offset on the untrimmed canvas; realWidth/Height
+// are that canvas. Both are relative to the pin, which is its centre.
+function buildParts(texture, armature) {
+  const findFrame = (name) => {
+    const key = frameNameCandidates(name).map(n => `${n}.png`).find(k => texture.has(k));
+    if (!key) return null;
+    const f = texture.get(key);
+    return {
+      key,
+      centreX: f.x + f.cutWidth  / 2 - f.realWidth  / 2,
+      centreY: f.y + f.cutHeight / 2 - f.realHeight / 2,
+    };
+  };
 
-  const parts = [];
-  for (const name of partDrawOrder(armature)) {
-    const frameName = `${name}.png`;
-    if (!texture.has(frameName)) {
-      console.warn(`Skeleton rig: atlas has no frame "${frameName}"`);
-      continue;
-    }
-    const boneIndex = armature.bones.findIndex(b => b.name === name.toLowerCase());
-    if (boneIndex < 0) {
-      console.warn(`Skeleton rig: no bone for atlas frame "${frameName}"`);
-      continue;
-    }
-
-    // frame.x/y are the trim offset on the untrimmed canvas; realWidth/Height
-    // are that canvas. Both are relative to the pin, which is its centre.
-    const frame = texture.get(frameName);
-    parts.push({
+  const { pinX, pinY, parts } = resolveRigParts(armature, findFrame);
+  return parts.map(({ name, boneIndex, key }) => {
+    const frame = texture.get(key);
+    return {
       name,
-      frameName,
+      frameName: key,
       boneIndex,
       slot: { bone: boneIndex, matrix: attachmentMatrix(armature, boneIndex, pinX, pinY) },
       rect: {
@@ -163,9 +168,8 @@ function buildParts(scene, armature) {
         w:    frame.cutWidth,
         h:    frame.cutHeight,
       },
-    });
-  }
-  return parts;
+    };
+  });
 }
 
 // Where the assembled art sits in armature units, in the rest pose — this is
@@ -201,66 +205,76 @@ function computeArtBounds(armature, parts) {
  * and PlayerManager drive it exactly as they drove the spritesheet.
  */
 export default class SkeletonAvatar extends Phaser.GameObjects.Container {
-  #armature;
-  #pose;
-  #parts = []; // { slot, out, image } — one per atlas frame, in draw order
-  #bones = null; // debug Graphics, or null when the overlay is off
-  #clip;
+  // view name → { armature, pose, root, parts: [{ slot, out, image }], bones }
+  #views = {};
+  #view = "side";
+  #clipName = REST_ANIM;
   #elapsed = 0;
-  #anchorX = 0;
   #facing = FACE_LEFT;
 
   constructor(scene, x, y) {
     super(scene, x, y);
 
-    const armature = getRigArmature(scene);
-    this.#armature = armature;
-    this.#pose     = createPose(armature);
-    this.#clip     = armature.animations[REST_ANIM] ?? null;
+    let width = 0, height = 0;
+    for (const name of Object.keys(VIEWS)) {
+      const view = this.#buildView(scene, getRigArmature(scene, name));
+      view.root.setVisible(name === this.#view);
+      this.#views[name] = view;
 
-    const { minX, maxX, minY, maxY } = armature.artBounds;
-    this.#anchorX = armature.anchorX;
-
-    // Inner container carries the art-unit → world-pixel scale, and offsets
-    // the art so the character stands between the feet on the container's
-    // (0, 0) — the point the shadow, name plate and depth sorting all use —
-    // leaving the outer container's own scale free for the game's perspective
-    // scale. #applyFacing sets its x and scaleX, since mirroring changes both.
-    this.rigRoot = new Phaser.GameObjects.Container(scene, 0, -maxY * RIG_SCALE);
-    this.rigRoot.scaleY = RIG_SCALE;
-    this.add(this.rigRoot);
+      const { minX, maxX, minY, maxY } = view.armature.artBounds;
+      width  = Math.max(width,  (maxX - minX) * RIG_SCALE);
+      height = Math.max(height, (maxY - minY) * RIG_SCALE);
+    }
     this.#applyFacing();
-
-    // Every part is drawn as if it were the whole 600x900 canvas, so they all
-    // sit at the same point — the canvas centre, which is the armature origin.
-    for (const part of armature.parts) {
-      const image = new Phaser.GameObjects.Image(scene, 0, 0, ATLAS_KEY, part.frameName);
-      image.setOrigin(0.5, 0.5);
-      this.rigRoot.add(image);
-      this.#parts.push({ slot: part.slot, out: createMatrix(), image });
-    }
-
-    // Added last, so the skeleton lands on top of the art it drives.
-    if (SHOW_SKELETON) {
-      this.#bones = new Phaser.GameObjects.Graphics(scene);
-      this.rigRoot.add(this.#bones);
-    }
 
     // Sprite-compatible animation surface.
     this.anims = { currentAnim: null, isPlaying: false };
     this.frame = { name: 0 };
-    // MovementManager/PlayerManager look up an animation key per direction; the
-    // rig has a single front-facing walk, so the name passes straight through.
+    // MovementManager/PlayerManager look up an animation key per direction;
+    // play() reads the direction straight off the name, so it passes through.
     this._animKey = name => name;
 
     // The layout box the rest of the game measures against: the art's width,
     // and its height from the feet up to the top of the head, so
-    // `displayHeight` still lands chat bubbles just above the avatar.
-    this.setSize((maxX - minX) * RIG_SCALE, (maxY - minY) * RIG_SCALE);
+    // `displayHeight` still lands chat bubbles just above the avatar. Covers
+    // every view, so it does not change as the avatar turns.
+    this.setSize(width, height);
     this.#applyPose();
 
     scene.add.existing(this);
     this.addToUpdateList();
+  }
+
+  // Inner container per view carries the art-unit → world-pixel scale, and
+  // offsets the art so the character stands between the feet on the outer
+  // container's (0, 0) — the point the shadow, name plate and depth sorting
+  // all use — leaving the outer container's own scale free for the game's
+  // perspective scale. #applyFacing sets its x and scaleX, since mirroring
+  // changes both.
+  #buildView(scene, armature) {
+    const root = new Phaser.GameObjects.Container(scene, 0, -armature.artBounds.maxY * RIG_SCALE);
+    root.scaleX = RIG_SCALE;
+    root.scaleY = RIG_SCALE;
+    root.x      = -armature.anchorX * RIG_SCALE;
+    this.add(root);
+
+    // Every part is drawn as if it were the whole 600x900 canvas, so they all
+    // sit at the same point — the canvas centre, which is the pin point.
+    const parts = armature.parts.map(part => {
+      const image = new Phaser.GameObjects.Image(scene, 0, 0, armature.atlasKey, part.frameName);
+      image.setOrigin(0.5, 0.5);
+      root.add(image);
+      return { slot: part.slot, out: createMatrix(), image };
+    });
+
+    // Added last, so the skeleton lands on top of the art it drives.
+    let bones = null;
+    if (SHOW_SKELETON) {
+      bones = new Phaser.GameObjects.Graphics(scene);
+      root.add(bones);
+    }
+
+    return { armature, pose: createPose(armature), root, parts, bones };
   }
 
   preUpdate(_time, delta) {
@@ -269,19 +283,24 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
     this.#applyPose();
   }
 
-  /** Starts (or keeps) an animation. Any walk direction plays the walk cycle. */
+  /**
+   * Starts (or keeps) an animation. walkUp plays the back view's walk cycle,
+   * walkDown the front view's, walkLeft/walkRight the side view's, mirrored
+   * for right.
+   */
   play(key) {
-    const name = String(key).startsWith("walk") ? "walk" : String(key);
-    const clip = this.#armature.animations[name] ?? null;
+    key = String(key);
+    const name = key.startsWith("walk") ? WALK_ANIM : key;
 
-    // The cycle itself is the same either way; only the facing differs.
-    if (String(key).endsWith("Right")) this.#setFacing(FACE_RIGHT);
-    else if (String(key).endsWith("Left")) this.#setFacing(FACE_LEFT);
+    if (key.endsWith("Up"))   this.#setView("back");
+    else if (key.endsWith("Down")) this.#setView("front");
+    else if (key.endsWith("Right")) { this.#setView("side"); this.#setFacing(FACE_RIGHT); }
+    else if (key.endsWith("Left"))  { this.#setView("side"); this.#setFacing(FACE_LEFT); }
 
     // Direction changes keep the cycle running rather than snapping to frame 0.
-    if (this.#clip !== clip) {
-      this.#clip    = clip;
-      this.#elapsed = 0;
+    if (this.#clipName !== name) {
+      this.#clipName = name;
+      this.#elapsed  = 0;
     }
     this.anims.isPlaying   = true;
     this.anims.currentAnim = { key };
@@ -291,7 +310,7 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
 
   /** Drops back to the rig's idle pose. */
   stop() {
-    this.#clip             = this.#armature.animations[REST_ANIM] ?? null;
+    this.#clipName         = REST_ANIM;
     this.#elapsed          = 0;
     this.anims.isPlaying   = false;
     this.anims.currentAnim = null;
@@ -301,19 +320,29 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
 
   /** Shows or hides the bone overlay on this avatar. */
   setSkeletonVisible(visible) {
-    if (this.#bones) this.#bones.setVisible(visible);
+    for (const { bones } of Object.values(this.#views)) bones?.setVisible(visible);
     return this;
   }
 
-  // The rig is front-facing only, so directional frames have no pose to switch
-  // to — but they do say which way a standing avatar looks, which is the only
-  // direction a remote player who has not moved yet ever sends.
+  // Neither rig has directional standing poses, but the frame does say which
+  // way a standing avatar looks — the only direction a remote player who has
+  // not moved yet ever sends — so it picks the view and the facing.
   setFrame(name) {
     this.frame.name = name;
     const frame = Number(name);
-    if (RIGHT_FRAMES.has(frame)) this.#setFacing(FACE_RIGHT);
-    else if (LEFT_FRAMES.has(frame)) this.#setFacing(FACE_LEFT);
+    if (frame === FRONT_FRAME) this.#setView("front");
+    else if (frame === BACK_FRAME) this.#setView("back");
+    else if (RIGHT_FRAMES.has(frame)) { this.#setView("side"); this.#setFacing(FACE_RIGHT); }
+    else if (LEFT_FRAMES.has(frame))  { this.#setView("side"); this.#setFacing(FACE_LEFT); }
     return this;
+  }
+
+  #setView(name) {
+    if (name === this.#view) return;
+    this.#views[this.#view].root.setVisible(false);
+    this.#view = name;
+    this.#views[name].root.setVisible(true);
+    this.#applyPose();
   }
 
   // Mirroring flips the art about the container's x, so the centring offset
@@ -326,8 +355,9 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
   }
 
   #applyFacing() {
-    this.rigRoot.scaleX = this.#facing * RIG_SCALE;
-    this.rigRoot.x      = -this.#facing * this.#anchorX * RIG_SCALE;
+    const { root, armature } = this.#views.side;
+    root.scaleX = this.#facing * RIG_SCALE;
+    root.x      = -this.#facing * armature.anchorX * RIG_SCALE;
   }
 
   // No-ops kept so avatar code written against Phaser.Sprite still runs.
@@ -352,19 +382,23 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
     );
   }
 
+  // Only the visible view is posed; a hidden one catches up when it is shown.
   #applyPose() {
-    const frameTime = loopFrameTime(this.#armature, this.#clip, this.#elapsed);
-    poseArmature(this.#armature, this.#clip, frameTime, this.#pose);
+    const view = this.#views[this.#view];
+    const { armature, pose } = view;
+    const clip = armature.animations[this.#clipName] ?? null;
+    const frameTime = loopFrameTime(armature, clip, this.#elapsed);
+    poseArmature(armature, clip, frameTime, pose);
 
-    for (const { slot, out, image } of this.#parts) {
-      const m = poseSlot(slot, this.#pose, out);
+    for (const { slot, out, image } of view.parts) {
+      const m = poseSlot(slot, pose, out);
       image.setPosition(m.tx, m.ty);
       image.rotation = Math.atan2(m.b, m.a);
       image.scaleX   = Math.hypot(m.a, m.b);
       image.scaleY   = Math.hypot(m.c, m.d) * (m.a * m.d - m.b * m.c < 0 ? -1 : 1);
     }
 
-    if (this.#bones) this.#drawSkeleton();
+    if (view.bones) this.#drawSkeleton(view);
   }
 
   // Each bone as a segment from its origin along its own x axis, with a joint
@@ -372,15 +406,14 @@ export default class SkeletonAvatar extends Phaser.GameObjects.Container {
   // target bones are skipped: they are handles the walk cycle steers the legs
   // and arm by, not limbs, and being 200 units long and axis-aligned they just
   // read as stray lines shooting out past the hand and ankles.
-  #drawSkeleton() {
-    const { bones, ikTargets } = this.#armature;
-    const g = this.#bones;
+  #drawSkeleton({ armature, pose, bones: g }) {
+    const { bones, ikTargets } = armature;
     g.clear();
 
     for (let i = 0; i < bones.length; i++) {
       if (ikTargets.has(i)) continue;
       const bone = bones[i];
-      const m    = this.#pose.bones[i];
+      const m    = pose.bones[i];
 
       if (bone.length) {
         g.lineStyle(BONE_WIDTH, BONE_COLOR, 0.9);

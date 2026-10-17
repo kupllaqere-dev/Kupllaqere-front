@@ -62,12 +62,13 @@ export const submitItems = (formData) =>
 export const updateSubmission = (id, data) =>
   request(`/api/creator/submissions/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 
-// formData: files[] — adds or replaces body parts, then re-packs the atlas
+// formData: files[] (+ view, for files whose name doesn't say) — adds or
+// replaces body parts, then re-packs the atlas
 export const uploadParts = (id, formData) =>
   request(`/api/creator/submissions/${id}/parts`, { method: "POST", body: formData });
 
-export const deletePart = (id, part) =>
-  request(`/api/creator/submissions/${id}/parts/${encodeURIComponent(part)}`, { method: "DELETE" });
+export const deletePart = (id, part, view = "side") =>
+  request(`/api/creator/submissions/${id}/parts/${encodeURIComponent(part)}?view=${encodeURIComponent(view)}`, { method: "DELETE" });
 
 export const deleteSubmission = (id) =>
   request(`/api/creator/submissions/${id}`, { method: "DELETE" });

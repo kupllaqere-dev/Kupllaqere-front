@@ -5,12 +5,17 @@ import { bakeGraphics } from "./bakeGraphics";
  * Outdoor planter for the Farm map: a raised timber bed holding a 5x5 grid of
  * soil plots the player can sow, wait on, and harvest.
  *
- * The bed is drawn in one-point perspective. A vanishing point sits directly
- * above the bed's front edge, and every horizontal measurement is scaled by its
+ * The bed is drawn in one-point perspective. The vanishing point sits on the
+ * map's horizon, `lean` px to the right of the bed's centre — always relative
+ * to the bed, so every bed built with the same lean is an exact copy of the
+ * others wherever it stands. Every horizontal measurement is scaled by its
  * distance below that point, so the back of the bed is narrower than the front
- * and the rows compress as they recede. `scaleAt()` is the single source of
- * that projection — plot quads, rim thickness, gaps, speckle size and plant
- * scale all run through it.
+ * and the rows compress as they recede.
+ * `scaleAt()` and `project()` are the single source of that projection — plot
+ * quads, rim thickness, gaps, speckle size and plant scale all run through it.
+ *
+ * A bed can start locked: its plots are inert and a price tag sits over the
+ * soil until unlock() is called (the Farm's extra beds are bought with Lis).
  *
  * The bed is a view over server state: plots are loaded with load(), sowing and
  * harvesting are requests the caller makes on the player's behalf (see
@@ -69,6 +74,13 @@ export function getSeed(seedId) {
   return SEEDS.find((s) => s.id === seedId) || SEEDS[0];
 }
 
+/**
+ * Lis it costs to open each bed on the Farm, by position. The first is free;
+ * the rest are bought in order. Must match PLANTER_PRICES in
+ * fv-game-back/lib/farm.js, which is what actually charges.
+ */
+export const PLANTER_PRICES = [0, 100, 250];
+
 /** What the bed's plaque reads before anyone renames it. */
 export const DEFAULT_PLANTER_NAME = "PLANTER";
 
@@ -88,20 +100,22 @@ export function sanitizePlanterName(name) {
 }
 
 // ── Bed geometry (world px, measured at the front edge) ──────────────
-const BED_FRONT_W = 960; // outer width where the bed is closest to camera
-const BED_DEPTH   = 500; // projected front-to-back extent
-const WALL_H      = 86;  // height of the visible front face of the box
-const RIM         = 38;  // timber rim between the outer edge and the soil
-const GAP         = 14;  // furrow between neighbouring plots
-const PLAQUE_W    = 306; // name plaque on the front face
-const PLAQUE_H    = 46;
-const PLAQUE_PAD  = 20;  // inner margin the name has to fit inside
-const PLANT_PX    = 78;  // font size of a fully grown plant at the front row
+export const BED_FRONT_W = 440; // outer width where the bed is closest to camera
+const BED_DEPTH   = 150; // projected front-to-back extent
+export const WALL_H = 44; // height of the visible front face of the box
+const RIM         = 20;  // timber rim between the outer edge and the soil
+const GAP         = 7;   // furrow between neighbouring plots
+const PLAQUE_W    = 168; // name plaque on the front face
+const PLAQUE_H    = 26;
+const PLAQUE_PAD  = 12;  // inner margin the name has to fit inside
+const PLANT_PX    = 46;  // font size of a fully grown plant at the front row
+const POST_W      = 10;  // corner posts on the front face
+const BOARDS      = 7;   // vertical boards across the front face
 const SOIL_FRONT_W = BED_FRONT_W - RIM * 2;
 
-// How far above the front edge the vanishing point sits. Larger = flatter
-// angle; this value puts the back edge at ~66% of the front edge's width.
-const VP_RISE = 1350;
+// Fallback for a bed placed without a horizon: how far above the front edge
+// the vanishing point sits. Larger = flatter angle.
+const VP_RISE = 350;
 
 // ── Palette ──────────────────────────────────────────────────────────
 const WOOD_FRONT   = 0x9c6b3a; // rim plank catching the light
@@ -154,7 +168,15 @@ export default class PlanterSystem {
    * @param {object}   opts
    * @param {number}   opts.centerX      world x of the bed's centre
    * @param {number}   opts.centerY      world y of the bed's centre
+   * @param {number}   opts.lean         how far right of the bed's centre the vanishing
+   *                                      point sits; 0 = straight on, larger = steeper lean
+   * @param {number}   opts.vpY          world y of the vanishing point (the horizon)
+   * @param {number}   opts.plotOffset   index of this bed's first plot; plot indices
+   *                                      in and out of this class are farm-wide
    * @param {string}   opts.name          plaque text; falls back to DEFAULT_PLANTER_NAME
+   * @param {boolean}  opts.renamable     whether tapping the plaque offers a rename
+   * @param {boolean}  opts.locked        start inert behind a price tag
+   * @param {string}   opts.lockLabel     text on the price tag
    * @param {number}   opts.growMs        server's growing time; defaults to GROW_MS
    * @param {number}   opts.timeOffset    server clock minus local clock, in ms
    * @param {Function} opts.onPlotClick   (plotIndex, screenPos) => void — empty plot tapped
@@ -162,15 +184,22 @@ export default class PlanterSystem {
    *                                      caller confirms with the server, then calls
    *                                      collect() or cancelHarvest()
    * @param {Function} opts.onRenameClick (screenPos, currentName) => void — plaque tapped
+   * @param {Function} opts.onUnlockClick (screenPos) => void — locked bed tapped
    */
   constructor(scene, {
-    centerX, centerY, name, growMs, timeOffset,
-    onPlotClick, onHarvest, onRenameClick,
+    centerX, centerY, lean = 0, vpY, plotOffset = 0,
+    name, renamable = true, locked = false, lockLabel = "Locked",
+    growMs, timeOffset,
+    onPlotClick, onHarvest, onRenameClick, onUnlockClick,
   }) {
     this.scene         = scene;
     this.onPlotClick   = onPlotClick;
     this.onHarvest     = onHarvest;
     this.onRenameClick = onRenameClick;
+    this.onUnlockClick = onUnlockClick;
+    this.plotOffset    = plotOffset;
+    this.renamable     = renamable;
+    this.locked        = locked;
     this.name          = sanitizePlanterName(name);
     this.growMs        = growMs || GROW_MS;
     // How far the server's clock is ahead of this machine's. Keeps a plot from
@@ -183,7 +212,8 @@ export default class PlanterSystem {
     this.cx     = centerX;
     this.yFront = centerY + BED_DEPTH / 2;
     this.yBack  = centerY - BED_DEPTH / 2;
-    this.yVP    = this.yFront - VP_RISE;
+    this.yVP    = vpY ?? this.yFront - VP_RISE;
+    this.vpX    = centerX + lean;
 
     // Soil surface sits inside the rim. The rim foreshortens too, so the back
     // strip is visibly thinner than the front one.
@@ -205,6 +235,7 @@ export default class PlanterSystem {
     );
     this._drawDynamic();
     this._buildPlaque(scene);
+    if (this.locked) this._buildLock(scene, lockLabel);
   }
 
   // ── Perspective projection ─────────────────────────────────────────
@@ -214,14 +245,22 @@ export default class PlanterSystem {
     return (y - this.yVP) / (this.yFront - this.yVP);
   }
 
-  /** Half-width of the soil surface at projected y. */
-  soilHalfAt(y) {
-    return (SOIL_FRONT_W * this.scaleAt(y)) / 2;
+  /**
+   * World x of a ground point that would sit at `xFront` on the front edge,
+   * pushed back to projected y — it slides toward the vanishing point.
+   */
+  project(xFront, y) {
+    return this.vpX + (xFront - this.vpX) * this.scaleAt(y);
   }
 
-  /** Half-width of the bed's outer edge at projected y. */
-  outerHalfAt(y) {
-    return (BED_FRONT_W * this.scaleAt(y)) / 2;
+  /** Left/right x of the soil surface at projected y. */
+  soilEdgesAt(y) {
+    return [this.project(this.cx - SOIL_FRONT_W / 2, y), this.project(this.cx + SOIL_FRONT_W / 2, y)];
+  }
+
+  /** Left/right x of the bed's outer edge at projected y. */
+  outerEdgesAt(y) {
+    return [this.project(this.cx - BED_FRONT_W / 2, y), this.project(this.cx + BED_FRONT_W / 2, y)];
   }
 
   /**
@@ -238,7 +277,7 @@ export default class PlanterSystem {
 
   /** World x of soil-space coordinate u (0 = left edge, 1 = right) at row y. */
   soilX(u, y) {
-    return this.cx + (u - 0.5) * SOIL_FRONT_W * this.scaleAt(y);
+    return this.project(this.cx + (u - 0.5) * SOIL_FRONT_W, y);
   }
 
   // ── Construction ───────────────────────────────────────────────────
@@ -270,7 +309,7 @@ export default class PlanterSystem {
           { x: this.soilX(u0, bottom) + gapFront, y: bottom },
         ];
 
-        this.plots.push(this._buildPlot(scene, row * COLS + col, row, points));
+        this.plots.push(this._buildPlot(scene, this.plotOffset + row * COLS + col, row, points));
       }
     }
   }
@@ -296,6 +335,7 @@ export default class PlanterSystem {
       Phaser.Geom.Polygon.Contains,
     );
     zone.input.cursor = "pointer";
+    zone.input.enabled = !this.locked;
 
     // Plants sort among themselves by row so nearer rows overlap further ones.
     const textDepth = this.baseDepth + 0.2 + row * 0.1;
@@ -303,15 +343,16 @@ export default class PlanterSystem {
     const hint = scene.add
       .text((points[0].x + points[2].x) / 2, (points[0].y + points[2].y) / 2, "+", {
         fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
-        fontSize: "32px",
+        fontSize: "20px",
         fontStyle: "bold",
         color: "#d9b183",
       })
       .setOrigin(0.5)
       .setAlpha(0.75)
-      .setStroke("#2a1809", 5)
+      .setStroke("#2a1809", 4)
       .setScale(pScale)
-      .setDepth(textDepth);
+      .setDepth(textDepth)
+      .setVisible(!this.locked);
 
     // Anchored to the plot's front edge so the plant "grows" up out of the soil.
     const plant = scene.add
@@ -325,9 +366,10 @@ export default class PlanterSystem {
     // The offset is fixed rather than tracking the current growth scale, so the
     // text doesn't creep upward as the plant grows.
     const label = scene.add
-      .text(frontCx, frontY - PLANT_PX * pScale - 8, "", {
+      .text(frontCx, frontY - PLANT_PX * pScale - 4, "", {
         fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
-        fontSize: "20px",
+        fontSize: "15px",
+        fontStyle: "bold",
         color: "#fff6dd",
       })
       .setOrigin(0.5, 1)
@@ -385,11 +427,11 @@ export default class PlanterSystem {
     const left = this.cx - PLAQUE_W / 2;
     const top  = y - PLAQUE_H / 2;
     g.fillStyle(WOOD_WALL_LO, 1);
-    g.fillRoundedRect(left, top, PLAQUE_W, PLAQUE_H, 8);
-    g.lineStyle(3, WOOD_EDGE, 0.75);
-    g.strokeRoundedRect(left, top, PLAQUE_W, PLAQUE_H, 8);
-    g.lineStyle(2, WOOD_SEAM, 0.6);
-    g.strokeRoundedRect(left + 5, top + 5, PLAQUE_W - 10, PLAQUE_H - 10, 5);
+    g.fillRoundedRect(left, top, PLAQUE_W, PLAQUE_H, 6);
+    g.lineStyle(2, WOOD_EDGE, 0.75);
+    g.strokeRoundedRect(left, top, PLAQUE_W, PLAQUE_H, 6);
+    g.lineStyle(1.5, WOOD_SEAM, 0.6);
+    g.strokeRoundedRect(left + 3, top + 3, PLAQUE_W - 6, PLAQUE_H - 6, 4);
   }
 
   /**
@@ -404,14 +446,17 @@ export default class PlanterSystem {
       scene.add
         .text(this.cx, y, this.name, {
           fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
-          fontSize: "22px",
+          fontSize: "14px",
           fontStyle: "bold",
           color: "#f4dcae",
         })
         .setOrigin(0.5)
-        .setStroke("#2a1809", 5)
+        .setStroke("#2a1809", 3)
         .setDepth(this.baseDepth + 0.15),
     );
+
+    this._fitName();
+    if (!this.renamable) return;
 
     const zone = this._track(scene.add.zone(this.cx, y, PLAQUE_W, PLAQUE_H));
     zone.setInteractive();
@@ -426,8 +471,97 @@ export default class PlanterSystem {
         this.name,
       );
     });
+  }
 
-    this._fitName();
+  /**
+   * Price tag over a locked bed: the soil is dimmed, the plots stay inert, and
+   * tapping anywhere on the bed asks the caller to sell it. unlock() removes
+   * all of it.
+   */
+  _buildLock(scene, label) {
+    const depth = this.baseDepth + 0.8;
+    const [ofl, ofr] = this.outerEdgesAt(this.yFront);
+    const [obl, obr] = this.outerEdgesAt(this.yBack);
+    const [ifl, ifr] = this.soilEdgesAt(this.soilFrontY);
+    const [ibl, ibr] = this.soilEdgesAt(this.soilBackY);
+
+    const shade = scene.add.graphics().setDepth(depth);
+    shade.fillStyle(0x120b05, 0.55);
+    shade.fillPoints([
+      { x: ibl, y: this.soilBackY },
+      { x: ibr, y: this.soilBackY },
+      { x: ifr, y: this.soilFrontY },
+      { x: ifl, y: this.soilFrontY },
+    ], true);
+
+    const midY = (this.soilBackY + this.soilFrontY) / 2;
+    const text = scene.add
+      .text(this.soilX(0.5, midY), midY, label, {
+        fontFamily: "Quicksand, Nunito, Poppins, sans-serif",
+        fontSize: "16px",
+        fontStyle: "bold",
+        color: "#f4dcae",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 0.02);
+
+    // Pill behind the label, sized to it.
+    const padX = 14, padY = 7;
+    const pillW = text.width + padX * 2;
+    const pillH = text.height + padY * 2;
+    const pill = scene.add.graphics().setDepth(depth + 0.01);
+    const drawPill = (hover) => {
+      pill.clear();
+      pill.fillStyle(0x2b2620, hover ? 0.95 : 0.85);
+      pill.fillRoundedRect(text.x - pillW / 2, text.y - pillH / 2, pillW, pillH, pillH / 2);
+      pill.lineStyle(1.5, 0xd8b26a, hover ? 1 : 0.7);
+      pill.strokeRoundedRect(text.x - pillW / 2, text.y - pillH / 2, pillW, pillH, pillH / 2);
+    };
+    drawPill(false);
+
+    // The whole bed, top and front face, is the button.
+    const outline = [
+      { x: obl, y: this.yBack },
+      { x: obr, y: this.yBack },
+      { x: ofr, y: this.yFront },
+      { x: ofr, y: this.yFront + WALL_H },
+      { x: ofl, y: this.yFront + WALL_H },
+      { x: ofl, y: this.yFront },
+    ];
+    const left = Math.min(...outline.map((p) => p.x));
+    const right = Math.max(...outline.map((p) => p.x));
+    const w = right - left;
+    const h = this.yFront + WALL_H - this.yBack;
+    const zone = scene.add.zone(left + w / 2, this.yBack + h / 2, w, h).setDepth(depth + 0.03);
+    zone.setInteractive(
+      new Phaser.Geom.Polygon(outline.map((p) => ({ x: p.x - left, y: p.y - this.yBack }))),
+      Phaser.Geom.Polygon.Contains,
+    );
+    zone.input.cursor = "pointer";
+    zone.on("pointerover", () => { drawPill(true); text.setColor("#ffffff"); });
+    zone.on("pointerout",  () => { drawPill(false); text.setColor("#f4dcae"); });
+    zone.on("pointerdown", (pointer) => {
+      if (pointer.button !== 0) return;
+      this.onUnlockClick?.({ clientX: pointer.event.clientX, clientY: pointer.event.clientY });
+    });
+
+    this.lockObjects = [shade, pill, text, zone];
+    for (const obj of this.lockObjects) this._track(obj);
+  }
+
+  /** Opens a locked bed: drops the price tag and wakes the plots up. */
+  unlock() {
+    if (!this.locked) return;
+    this.locked = false;
+    for (const obj of this.lockObjects ?? []) {
+      obj.destroy();
+      this.objects = this.objects.filter((o) => o !== obj);
+    }
+    this.lockObjects = null;
+    for (const plot of this.plots) {
+      plot.zone.input.enabled = true;
+      plot.hint.setVisible(plot.state === "empty");
+    }
   }
 
   /** Shrinks the name until it sits inside the plaque's inner margin. */
@@ -454,24 +588,33 @@ export default class PlanterSystem {
 
   /** World rectangle covering the bed, its front face and its ground shadow. */
   _artBounds() {
-    const halfW = (this.outerHalfAt(this.yFront) * 1.06) + 24;
-    const top    = this.yBack - 16;
-    const bottom = this.yFront + WALL_H + 44; // shadow ellipse plus margin
-    return { x: this.cx - halfW, y: top, width: halfW * 2, height: bottom - top };
+    const [fl, fr] = this.outerEdgesAt(this.yFront);
+    const [bl, br] = this.outerEdgesAt(this.yBack);
+    const margin = BED_FRONT_W * 0.03 + 16; // shadow ellipse overhang
+    const left   = Math.min(fl, bl) - margin;
+    const right  = Math.max(fr, br) + margin;
+    const top    = this.yBack - 12;
+    const bottom = this.yFront + WALL_H + 24; // shadow ellipse plus margin
+    return { x: left, y: top, width: right - left, height: bottom - top };
   }
 
   _drawStatic(g) {
-    const { cx, yFront, yBack, soilFrontY, soilBackY } = this;
-    const ofl = { x: cx - this.outerHalfAt(yFront), y: yFront };
-    const ofr = { x: cx + this.outerHalfAt(yFront), y: yFront };
-    const obl = { x: cx - this.outerHalfAt(yBack),  y: yBack  };
-    const obr = { x: cx + this.outerHalfAt(yBack),  y: yBack  };
-    const ifl = { x: cx - this.soilHalfAt(soilFrontY), y: soilFrontY };
-    const ifr = { x: cx + this.soilHalfAt(soilFrontY), y: soilFrontY };
-    const ibl = { x: cx - this.soilHalfAt(soilBackY),  y: soilBackY  };
-    const ibr = { x: cx + this.soilHalfAt(soilBackY),  y: soilBackY  };
+    const { yFront, yBack, soilFrontY, soilBackY } = this;
+    const [oflX, ofrX] = this.outerEdgesAt(yFront);
+    const [oblX, obrX] = this.outerEdgesAt(yBack);
+    const [iflX, ifrX] = this.soilEdgesAt(soilFrontY);
+    const [iblX, ibrX] = this.soilEdgesAt(soilBackY);
+    const ofl = { x: oflX, y: yFront };
+    const ofr = { x: ofrX, y: yFront };
+    const obl = { x: oblX, y: yBack  };
+    const obr = { x: obrX, y: yBack  };
+    const ifl = { x: iflX, y: soilFrontY };
+    const ifr = { x: ifrX, y: soilFrontY };
+    const ibl = { x: iblX, y: soilBackY  };
+    const ibr = { x: ibrX, y: soilBackY  };
 
     this._drawGroundShadow(g, ofl, ofr);
+    this._drawSideWall(g, ofl, ofr, obl, obr);
     this._drawFrontWall(g, ofl, ofr);
 
     // Rim, back to front so the near plank overlaps the side mitres.
@@ -485,7 +628,7 @@ export default class PlanterSystem {
     this._drawSoil(g, ifl, ifr, ibr, ibl);
 
     // Highlight along the rim's outer lip, where the timber catches the light.
-    g.lineStyle(3, WOOD_EDGE, 0.55);
+    g.lineStyle(2, WOOD_EDGE, 0.55);
     g.strokePoints([obl, obr, ofr, ofl], true);
     g.lineStyle(2, WOOD_SEAM, 0.5);
     g.strokePoints([ibl, ibr, ifr, ifl], true);
@@ -496,7 +639,40 @@ export default class PlanterSystem {
   _drawGroundShadow(g, ofl, ofr) {
     const w = (ofr.x - ofl.x) * 1.06;
     g.fillStyle(0x000000, 0.22);
-    g.fillEllipse(this.cx, ofl.y + WALL_H + 6, w, 46);
+    g.fillEllipse(this.cx, ofl.y + WALL_H + 3, w, 22);
+  }
+
+  /**
+   * The outer face on whichever side looks toward the vanishing point. A bed
+   * to the right of it shows its left wall, and vice versa; a bed straddling
+   * it shows neither. The wall's foot recedes with the ground, so it is
+   * shorter at the back than at the front.
+   */
+  _drawSideWall(g, ofl, ofr, obl, obr) {
+    let front, back;
+    if (ofl.x > this.vpX) [front, back] = [ofl, obl];
+    else if (ofr.x < this.vpX) [front, back] = [ofr, obr];
+    else return;
+
+    const backH = WALL_H * this.scaleAt(back.y);
+    const face = [
+      back,
+      front,
+      { x: front.x, y: front.y + WALL_H },
+      { x: back.x,  y: back.y + backH },
+    ];
+    this._quad(g, mix(WOOD_WALL, WOOD_WALL_LO, 0.55), face);
+
+    // A couple of board seams running back along the face.
+    g.lineStyle(1.5, WOOD_SEAM, 0.4);
+    for (const t of [1 / 3, 2 / 3]) {
+      g.lineBetween(
+        front.x, front.y + WALL_H * t,
+        back.x,  back.y + backH * t,
+      );
+    }
+    g.lineStyle(2, WOOD_SEAM, 0.7);
+    g.strokePoints(face, true);
   }
 
   _drawFrontWall(g, ofl, ofr) {
@@ -510,30 +686,28 @@ export default class PlanterSystem {
     g.fillStyle(WOOD_WALL_LO, 0.55);
     g.fillRect(ofl.x, yTop + WALL_H * 0.62, ofr.x - ofl.x, WALL_H * 0.38);
 
-    const boards = 11;
-    const step = (ofr.x - ofl.x) / boards;
-    g.lineStyle(2, WOOD_SEAM, 0.45);
-    for (let i = 1; i < boards; i++) {
+    const step = (ofr.x - ofl.x) / BOARDS;
+    g.lineStyle(1.5, WOOD_SEAM, 0.45);
+    for (let i = 1; i < BOARDS; i++) {
       const x = ofl.x + step * i;
-      g.lineBetween(x, yTop + 3, x, yBot - 3);
+      g.lineBetween(x, yTop + 2, x, yBot - 2);
     }
 
     // Corner posts.
     g.fillStyle(WOOD_BACK, 1);
-    g.fillRect(ofl.x, yTop, 16, WALL_H);
-    g.fillRect(ofr.x - 16, yTop, 16, WALL_H);
+    g.fillRect(ofl.x, yTop, POST_W, WALL_H);
+    g.fillRect(ofr.x - POST_W, yTop, POST_W, WALL_H);
 
-    g.lineStyle(3, WOOD_SEAM, 0.7);
+    g.lineStyle(2, WOOD_SEAM, 0.7);
     g.lineBetween(ofl.x, yBot, ofr.x, yBot);
   }
 
   _drawRimGrain(g, ofl, ofr, ifl, ifr) {
     // Plank seams across the front rim, spaced to match the front wall boards.
-    const boards = 11;
-    const stepOuter = (ofr.x - ofl.x) / boards;
-    const stepInner = (ifr.x - ifl.x) / boards;
-    g.lineStyle(2, WOOD_SEAM, 0.32);
-    for (let i = 1; i < boards; i++) {
+    const stepOuter = (ofr.x - ofl.x) / BOARDS;
+    const stepInner = (ifr.x - ifl.x) / BOARDS;
+    g.lineStyle(1.5, WOOD_SEAM, 0.32);
+    for (let i = 1; i < BOARDS; i++) {
       g.lineBetween(ifl.x + stepInner * i, ifl.y, ofl.x + stepOuter * i, ofl.y);
     }
   }
@@ -545,7 +719,7 @@ export default class PlanterSystem {
     // survives against the rim — reads as soil sitting below the timber.
     this._quad(g, SOIL_DEEP, perimeter);
 
-    const inset = 6;
+    const inset = 3;
     this._quad(g, SOIL_BASE, [
       { x: ibl.x + inset, y: ibl.y + inset },
       { x: ibr.x - inset, y: ibr.y + inset },
@@ -558,7 +732,7 @@ export default class PlanterSystem {
 
     // Ambient occlusion under the rim: a few progressively tighter strokes
     // around the soil perimeter, darkest right against the timber.
-    for (const [width, alpha] of [[26, 0.1], [16, 0.12], [8, 0.14]]) {
+    for (const [width, alpha] of [[12, 0.1], [8, 0.12], [4, 0.14]]) {
       g.lineStyle(width, SOIL_DEEP, alpha);
       g.strokePoints(perimeter, true);
     }
@@ -572,7 +746,8 @@ export default class PlanterSystem {
   _drawPlotBeds(g) {
     for (const plot of this.plots) {
       const [backL, backR, frontR, frontL] = plot.points;
-      const rand = mulberry32(0x9e37 + plot.index * 2654435761);
+      // Seeded by the plot's place in its own bed, so every bed's soil matches.
+      const rand = mulberry32(0x9e37 + (plot.index - this.plotOffset) * 2654435761);
 
       // Back rows read as further from the light, so shade them down.
       const depthShade = (1 - plot.pScale) * 1.5;
@@ -595,7 +770,7 @@ export default class PlanterSystem {
       );
 
       // Rear lip in shadow.
-      const lip = 6 * plot.pScale;
+      const lip = 3 * plot.pScale;
       g.fillStyle(SOIL_DARK, 0.55);
       g.fillPoints(
         [backL, backR, { x: backR.x, y: backR.y + lip }, { x: backL.x, y: backL.y + lip }],
@@ -640,18 +815,18 @@ export default class PlanterSystem {
 
     // Fine grit.
     const grit = [SOIL_DARK, SOIL_DUST, SOIL_LIGHT, SOIL_DEEP];
-    for (let i = 0; i < 2200; i++) {
+    for (let i = 0; i < 520; i++) {
       const { x, y, s } = pick();
-      const size = (0.9 + rand() * 2.2) * s;
+      const size = (0.6 + rand() * 1.4) * s;
       g.fillStyle(grit[(rand() * grit.length) | 0], 0.25 + rand() * 0.45);
       if (rand() < 0.4) g.fillCircle(x, y, size * 0.6);
       else g.fillRect(x, y, size, size * 0.85);
     }
 
     // Clods — bigger crumbs with a lit top edge and a cast shadow.
-    for (let i = 0; i < 340; i++) {
+    for (let i = 0; i < 90; i++) {
       const { x, y, s } = pick();
-      const r = (2.4 + rand() * 3.4) * s;
+      const r = (1.4 + rand() * 2) * s;
       g.fillStyle(SOIL_DARK, 0.5);
       g.fillEllipse(x, y + r * 0.5, r * 2.1, r * 1.1);
       g.fillStyle(mix(SOIL_LIGHT, SOIL_DUST, rand()), 0.75);
@@ -661,9 +836,9 @@ export default class PlanterSystem {
     }
 
     // The odd stone worked up out of the bed.
-    for (let i = 0; i < 38; i++) {
+    for (let i = 0; i < 12; i++) {
       const { x, y, s } = pick();
-      const r = (2.2 + rand() * 2.2) * s;
+      const r = (1.4 + rand() * 1.4) * s;
       g.fillStyle(SOIL_DEEP, 0.55);
       g.fillEllipse(x, y + r * 0.45, r * 2.2, r * 1.0);
       g.fillStyle(PEBBLE, 0.62);
@@ -723,7 +898,20 @@ export default class PlanterSystem {
     return Date.now() + this.timeOffset;
   }
 
-  /** Replaces the whole bed with the server's picture of it. */
+  /** This bed's plot for a farm-wide index, or undefined if it isn't ours. */
+  _plotAt(index) {
+    return this.plots[index - this.plotOffset];
+  }
+
+  /** Whether a farm-wide plot index falls in this bed. */
+  owns(index) {
+    return !!this._plotAt(index);
+  }
+
+  /**
+   * Replaces the whole bed with the server's picture of it. Takes the whole
+   * farm's plots — anything belonging to another bed is skipped.
+   */
   load(plots = []) {
     for (const plot of this.plots) this._clear(plot);
     for (const { plotIndex, seedId, plantedAt } of plots) {
@@ -738,7 +926,7 @@ export default class PlanterSystem {
    * server). No-op if the plot is already in use.
    */
   plant(index, seedId, plantedAt = this.now()) {
-    const plot = this.plots[index];
+    const plot = this._plotAt(index);
     if (!plot || plot.state !== "empty") return false;
 
     const seed = getSeed(seedId);
@@ -778,13 +966,13 @@ export default class PlanterSystem {
 
   /** The server banked the crop: pop the plant out and leave bare soil. */
   collect(index) {
-    const plot = this.plots[index];
+    const plot = this._plotAt(index);
     if (!plot || plot.state !== "harvesting") return;
 
     const restY = plot.frontY - 4;
     this.scene.tweens.add({
       targets: plot.plant,
-      y: restY - 60 * plot.pScale,
+      y: restY - 30 * plot.pScale,
       alpha: 0,
       duration: 380,
       ease: "Cubic.easeOut",
@@ -796,14 +984,14 @@ export default class PlanterSystem {
 
     plot.state  = "empty";
     plot.seedId = null;
-    plot.hint.setVisible(true);
+    plot.hint.setVisible(!this.locked);
     this._refreshLabel(plot);
     this.dynamicDirty = true;
   }
 
   /** The harvest was refused — hand the plant back to the plot. */
   cancelHarvest(index) {
-    const plot = this.plots[index];
+    const plot = this._plotAt(index);
     if (!plot || plot.state !== "harvesting") return;
     this._setReady(plot);
   }
@@ -816,7 +1004,7 @@ export default class PlanterSystem {
     plot.seedId = null;
     plot.plantedAt = 0;
     plot.plant.setVisible(false).setAlpha(1).setY(plot.frontY - 4).setScale(plot.pScale);
-    plot.hint.setVisible(true);
+    plot.hint.setVisible(!this.locked);
     this._refreshLabel(plot);
     this.dynamicDirty = true;
   }

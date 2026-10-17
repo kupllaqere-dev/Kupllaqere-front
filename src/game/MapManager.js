@@ -115,11 +115,11 @@ export const MAPS = {
     label:   "Farm",
     side:    "day",
     texture: "map-farm",
-    // No artwork yet. `path: null` makes createMap() paint the `scenery`
-    // colours instead of loading a background image.
-    path:    null,
-    scenery: { sky: 0x9fd9f6, horizon: 0x8ec97a, ground: 0x74bf63 },
-    width:   worldWidth(3000, 1440), // 2250 — same footprint as Ruins
+    path:    "/assets/maps/Farm/Farm.png",
+    // Where the painted meadow meets the treeline, as a fraction of the
+    // height. The planters take their vanishing point from it.
+    horizon: 0.4,
+    width:   worldWidth(3000, 1440), // 2250
     height:  WORLD_HEIGHT,
     colliders:    null,
     collidersKey: null,

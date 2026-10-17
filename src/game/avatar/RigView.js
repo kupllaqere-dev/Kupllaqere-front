@@ -5,15 +5,16 @@ import { CanvasRig, loadRig, ANIMATIONS } from "./CanvasRig.js";
 // canvas into view, and runs the walk cycle. Plain JS so the creator portal
 // and admin panel can both wrap it in their own React.
 
-let sharedRig = null;
+const sharedRigs = new Map(); // view -> Promise<rig>
 
-/** The in-game rig, loaded once per page. */
-export function getSharedRig() {
-  if (!sharedRig) {
-    sharedRig = loadRig();
-    sharedRig.catch(() => { sharedRig = null; });
+/** One view's in-game rig ("side", "front" or "back"), loaded once per page. */
+export function getSharedRig(view = "side") {
+  if (!sharedRigs.has(view)) {
+    const promise = loadRig(view);
+    promise.catch(() => sharedRigs.delete(view));
+    sharedRigs.set(view, promise);
   }
-  return sharedRig;
+  return sharedRigs.get(view);
 }
 
 const DEFAULTS = {
@@ -46,6 +47,13 @@ export class RigView {
     this.#resize = new ResizeObserver(() => { this.#dirty = true; });
     this.#resize.observe(canvas);
     this.#raf = requestAnimationFrame(this.#tick);
+  }
+
+  /** Swaps in another rig — another view of the avatar — keeping the options. */
+  setRig(rig) {
+    if (rig === this.#rig.rig) return;
+    this.#rig   = new CanvasRig(rig);
+    this.#dirty = true;
   }
 
   /** Updates any of the options; the next frame redraws. */
@@ -86,7 +94,7 @@ export class RigView {
 
     // Fit the whole 600x900 authoring canvas, so anything a creator painted
     // on it — a tall hat, a long skirt — stays in view.
-    const { aabb } = this.#rig.rig.armature;
+    const aabb = this.#rig.rig.canvas;
     const { bounds } = this.#rig.rig;
     const o = this.#opts;
     const scale = Math.min(w / aabb.width, h / aabb.height) * (1 - 2 * o.margin);

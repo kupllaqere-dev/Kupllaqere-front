@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { RigView, getSharedRig } from "@avatar/RigView.js";
+import { VIEWS, VIEW_LABELS } from "../lib/partFiles";
 
 const BACKGROUNDS = {
   dark:    "#121216",
@@ -10,38 +11,55 @@ const BACKGROUNDS = {
 };
 
 /**
- * The in-game avatar on a canvas, wearing `garments` ({ part, layer, piece }).
- * Fills its container; `overlay` renders over the stage (e.g. a notice).
+ * The in-game avatar on a canvas, wearing `garments` ({ view, part, layer,
+ * piece } — `view` defaults to side). Shows one view of the avatar at a time:
+ * pass `view` + `onViewChange` to control which, or leave them out and the
+ * stage keeps its own. Fills its container; `overlay` renders over the stage
+ * (e.g. a notice).
  */
-export default function RigStage({ garments = [], overlay = null, compact = false }) {
+export default function RigStage({ garments = [], overlay = null, compact = false, view: viewProp, onViewChange }) {
   const canvasRef = useRef(null);
-  const viewRef   = useRef(null);
+  const rigViewRef = useRef(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const [ownView, setOwnView]     = useState("side");
+  const view    = viewProp ?? ownView;
+  const setView = onViewChange ?? setOwnView;
 
   const [animation, setAnimation] = useState("idle");
   const [facing, setFacing]       = useState(1);
   const [fadeBody, setFadeBody]   = useState(false);
-  const [showBones, setShowBones] = useState(false);
   const [bg, setBg]               = useState("checker");
 
+  // The canvas view is made once, then handed whichever rig is shown.
   useEffect(() => {
-    let view = null;
     let cancelled = false;
-    getSharedRig()
+    getSharedRig(view)
       .then((rig) => {
         if (cancelled || !canvasRef.current) return;
-        view = new RigView(canvasRef.current, rig);
-        viewRef.current = view;
+        if (rigViewRef.current) rigViewRef.current.setRig(rig);
+        else rigViewRef.current = new RigView(canvasRef.current, rig);
+        setError(null);
         setReady(true);
       })
-      .catch((e) => setError(e.message));
-    return () => { cancelled = true; view?.destroy(); viewRef.current = null; };
-  }, []);
+      .catch((e) => { if (!cancelled) setError(e.message); });
+    return () => { cancelled = true; };
+  }, [view]);
 
+  useEffect(() => () => { rigViewRef.current?.destroy(); rigViewRef.current = null; }, []);
+
+  const shown = useMemo(() => garments.filter((g) => (g.view ?? "side") === view), [garments, view]);
+
+  // Only the side rig turns; front and back are drawn as authored.
   useEffect(() => {
-    viewRef.current?.set({ garments, animation, facing, bodyAlpha: fadeBody ? 0.35 : 1, showBones });
-  }, [ready, garments, animation, facing, fadeBody, showBones]);
+    rigViewRef.current?.set({
+      garments:  shown,
+      animation,
+      facing:    view === "side" ? facing : 1,
+      bodyAlpha: fadeBody ? 0.35 : 1,
+    });
+  }, [ready, shown, animation, facing, fadeBody, view]);
 
   return (
     <Wrap>
@@ -56,11 +74,17 @@ export default function RigStage({ garments = [], overlay = null, compact = fals
           <SegBtn $on={animation === "walk"} onClick={() => setAnimation("walk")}>Walk</SegBtn>
         </Seg>
         <Seg>
-          <SegBtn $on={facing === 1}  onClick={() => setFacing(1)}  title="Face left">◀</SegBtn>
-          <SegBtn $on={facing === -1} onClick={() => setFacing(-1)} title="Face right">▶</SegBtn>
+          {VIEWS.map((v) => (
+            <SegBtn key={v} $on={view === v} onClick={() => setView(v)} title={`${VIEW_LABELS[v]} view`}>{VIEW_LABELS[v]}</SegBtn>
+          ))}
         </Seg>
+        {view === "side" && (
+          <Seg>
+            <SegBtn $on={facing === 1}  onClick={() => setFacing(1)}  title="Face left">◀</SegBtn>
+            <SegBtn $on={facing === -1} onClick={() => setFacing(-1)} title="Face right">▶</SegBtn>
+          </Seg>
+        )}
         <Toggle $on={fadeBody} onClick={() => setFadeBody((v) => !v)} title="Fade the body to see the clothing on its own">Fade body</Toggle>
-        <Toggle $on={showBones} onClick={() => setShowBones((v) => !v)} title="Show the skeleton each piece is pinned to">Bones</Toggle>
         <Swatches>
           {Object.entries(BACKGROUNDS).map(([key, value]) => (
             <Swatch key={key} $on={bg === key} style={{ background: value }} onClick={() => setBg(key)} title={`${key} background`} />

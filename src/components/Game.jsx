@@ -12,22 +12,25 @@ import SocketManager from "../network/SocketManager";
 import MultiplayerHandler from "../game/MultiplayerHandler";
 import { createPhaserGame } from "../game/PhaserConfig";
 import { fetchOutfit, updateOutfit } from "../api/items";
-import { fetchFarm, plantSeed, harvestPlot, renameFarm } from "../api/farm";
+import { fetchFarm, plantSeed, harvestPlot, renameFarm, unlockPlanter } from "../api/farm";
 import ChatBox from "./ChatBox";
 import LoadingOverlay from "./LoadingOverlay";
 import PlayerProfile from "./PlayerProfile";
 import PlayerContextMenu from "./PlayerContextMenu";
 import PlantPicker from "./PlantPicker";
 import RenamePopup from "./RenamePopup";
+import UnlockPopup from "./UnlockPopup";
 import PlanterSystem, {
   SEEDS,
   GROW_MS,
   DEFAULT_PLANTER_NAME,
   PLANTER_NAME_MAX,
+  PLANTER_PRICES,
+  PLOT_COUNT,
+  BED_FRONT_W,
   getSeed,
 } from "../game/PlanterSystem";
 import SeedField from "../game/SeedField";
-import TreeSystem, { FRUITS, FRUIT_GROW_MS } from "../game/TreeSystem";
 import ShellSystem from "../game/ShellSystem";
 import RainSystem from "../game/RainSystem";
 import ShellMatchGame from "./ShellMatchGame";
@@ -72,17 +75,22 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const [teleportTo, setTeleportTo] = useState(null);
   const [teleportProgress, setTeleportProgress] = useState(1);
 
-  // Farm props (Farm map only). Each system owns its own plot/fruit state;
-  // React only renders the picker and the payout toast on top of them.
-  const planterRef = useRef(null);
-  const treeRef = useRef(null);
+  // Farm props (Farm map only): one PlanterSystem per bed, left to right. Each
+  // owns its own plot state; React only renders the picker and the payout
+  // toast on top of them.
+  const plantersRef = useRef([]);
+  // How many beds the player has opened, counting the free one.
+  const unlockedPlantersRef = useRef(1);
+  // { planter, price, x, y } while the unlock confirmation is open.
+  const [unlockTarget, setUnlockTarget] = useState(null);
+  const unlockRef = useRef(null);
   // Seeds lying on the ground, on maps that drop them (the Garden).
   const seedFieldRef = useRef(null);
   // Decorative shell on the Beach — clicking it opens the match-3 minigame.
   const shellRef = useRef(null);
   const rainRef = useRef(null);
   const [shellGameOpen, setShellGameOpen] = useState(false);
-  // { kind: "seed" | "fruit", index, x, y }
+  // { index, x, y } — the plot the seed picker is open for
   const [plantMenu, setPlantMenu] = useState(null);
   const plantMenuRef = useRef(null);
   // { x, y, value } while the planter's name board is being edited. The name is
@@ -114,13 +122,8 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     harvestToastTimerRef.current = setTimeout(() => setHarvestToast(null), 1800);
   }, []);
 
-  // The tree is still local-only, so its fruit pays into the in-memory balance.
-  // The planter's payouts come back from the server — see handleHarvestPlot.
-  const handleFruitHarvest = useCallback(({ type, amount }) => {
-    if (type === "xp") onXpEarnedRef.current?.(amount);
-    else onCoinsEarnedRef.current?.(amount);
-    showToast({ type, amount });
-  }, [showToast]);
+  /** The bed a farm-wide plot index belongs to. */
+  const planterFor = (plotIndex) => plantersRef.current[Math.floor(plotIndex / PLOT_COUNT)];
 
   // Sowing costs a seed from the bag. The server claims the plot and spends the
   // seed together, so a refused plant never costs a seed and a seed spent
@@ -129,7 +132,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     try {
       const { plot, count } = await plantSeed(plotIndex, seedId);
       onSeedCountChangeRef.current?.(seedId, count);
-      planterRef.current?.plant(plot.plotIndex, plot.seedId, plot.plantedAt);
+      planterFor(plot.plotIndex)?.plant(plot.plotIndex, plot.seedId, plot.plantedAt);
     } catch (err) {
       showToast({ text: err.message || "That seed wouldn't go in" });
     }
@@ -140,23 +143,40 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
   const handleHarvestPlot = useCallback(async (plotIndex) => {
     try {
       const result = await harvestPlot(plotIndex);
-      planterRef.current?.collect(plotIndex);
+      planterFor(plotIndex)?.collect(plotIndex);
       onBalancesChangedRef.current?.(result);
       if (result.reward) showToast({ type: result.reward.type, amount: result.reward.amount });
     } catch (err) {
-      planterRef.current?.cancelHarvest(plotIndex);
+      planterFor(plotIndex)?.cancelHarvest(plotIndex);
       showToast({ text: err.message || "That plant wouldn't come up" });
     }
   }, [showToast]);
 
+  // Opens every bed up to `count` that is still showing its price tag.
+  const applyUnlockedPlanters = (count) => {
+    unlockedPlantersRef.current = count;
+    plantersRef.current.forEach((p, i) => { if (i < count) p.unlock(); });
+  };
+
+  // Buying a bed is the server's call too — it takes the Lis and opens the bed
+  // in one step, so the bed only opens once that lands.
+  const handleUnlockPlanter = useCallback(async (planter) => {
+    try {
+      const result = await unlockPlanter(planter);
+      applyUnlockedPlanters(result.unlockedPlanters);
+      onBalancesChangedRef.current?.({ gems: result.gems, vial: result.vial });
+      showToast({ text: `Planter ${planter} unlocked!` });
+    } catch (err) {
+      showToast({ text: err.message || "Couldn't unlock that planter" });
+    }
+  }, [showToast]);
+
   // Rebuilds (or tears down) a map's props for whichever map just became
-  // active: the Farm's planter and tree, the Garden's seed drops, and the
-  // Beach's shell. Each one lives only as long as the map that declares it.
+  // active: the Farm's planters, the Garden's seed drops, and the Beach's
+  // shell. Each one lives only as long as the map that declares it.
   const mountMapProps = useCallback((scene, map) => {
-    planterRef.current?.destroy();
-    planterRef.current = null;
-    treeRef.current?.destroy();
-    treeRef.current = null;
+    plantersRef.current.forEach((p) => p.destroy());
+    plantersRef.current = [];
     seedFieldRef.current?.destroy();
     seedFieldRef.current = null;
     shellRef.current?.destroy();
@@ -166,6 +186,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     setShellGameOpen(false);
     setPlantMenu(null);
     setRenameTarget(null);
+    setUnlockTarget(null);
 
     // Seed drops. The server pushes the current ground state on join and on
     // every teleport, so a fresh field fills itself in; asking again covers a
@@ -191,45 +212,73 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
 
     if (!map.planter) return;
 
-    const planter = new PlanterSystem(scene, {
-      centerX: map.width / 2,
-      centerY: Math.round(map.height * 0.55),
-      name: planterNameRef.current,
-      timeOffset: serverOffsetRef.current,
-      onPlotClick: (index, pos) =>
-        setPlantMenu({ kind: "seed", index, x: pos.clientX, y: pos.clientY }),
-      onHarvest: handleHarvestPlot,
-      onRenameClick: (pos, currentName) =>
-        setRenameTarget({ x: pos.clientX, y: pos.clientY, value: currentName }),
+    // Three identical beds in a row, left of the painted tree. They differ only
+    // in where they stand: same size, same horizon, each seen straight on, so
+    // each is an exact copy of the first.
+    const spacing = BED_FRONT_W + 90;
+    const groupX  = Math.round(map.width * 0.42);
+    const vpY     = Math.round(map.height * (map.horizon ?? 0.4));
+    const centerY = Math.round(map.height * 0.65);
+    const unlocked = unlockedPlantersRef.current;
+    const planters = PLANTER_PRICES.map((price, i) => {
+      const centerX = Math.round(groupX + (i - (PLANTER_PRICES.length - 1) / 2) * spacing);
+      return new PlanterSystem(scene, {
+        centerX,
+        centerY,
+        vpY,
+        plotOffset: i * PLOT_COUNT,
+        // Only the first bed carries the farm's name, and only it can be renamed.
+        name: i === 0 ? planterNameRef.current : `PLANTER ${i + 1}`,
+        renamable: i === 0,
+        locked: i >= unlocked,
+        lockLabel: `🔒  Unlock for ${price} Lis`,
+        timeOffset: serverOffsetRef.current,
+        onPlotClick: (index, pos) =>
+          setPlantMenu({ index, x: pos.clientX, y: pos.clientY }),
+        onHarvest: handleHarvestPlot,
+        onRenameClick: (pos, currentName) =>
+          setRenameTarget({ x: pos.clientX, y: pos.clientY, value: currentName }),
+        onUnlockClick: (pos) => {
+          const next = unlockedPlantersRef.current + 1;
+          if (i + 1 > next) {
+            showToast({ text: `Unlock Planter ${next} first` });
+            return;
+          }
+          setUnlockTarget({ planter: i + 1, price, x: pos.clientX, y: pos.clientY });
+        },
+      });
     });
-    planterRef.current = planter;
+    plantersRef.current = planters;
 
-    // Fill the bed in from the server. Anything sown on a previous visit has
+    // Keep the player on the grass in front of the beds, so they can never
+    // wander in behind them.
+    const groundTop = Math.max(...planters.map((p) => p.baseDepth)) + 8;
+    worldRef.current.walkableZones = [[
+      [0, groundTop],
+      [map.width, groundTop],
+      [map.width, map.height],
+      [0, map.height],
+    ]];
+
+    // Fill the beds in from the server. Anything sown on a previous visit has
     // been growing in the meantime, so it comes back part-grown — or ripe.
     const askedAt = Date.now();
     fetchFarm()
-      .then(({ name, plots, growMs, now }) => {
-        if (planterRef.current !== planter || !planter.plots.length) return;
+      .then(({ name, plots, growMs, now, unlockedPlanters }) => {
+        if (plantersRef.current !== planters) return;
         // Blame half the round trip on each direction, so the offset doesn't
         // absorb the whole latency and start ripening plots early.
         serverOffsetRef.current = now - (askedAt + (Date.now() - askedAt) / 2);
-        planter.timeOffset = serverOffsetRef.current;
-        planter.growMs = growMs;
-        planterNameRef.current = planter.setName(name);
-        planter.load(plots);
+        for (const planter of planters) {
+          planter.timeOffset = serverOffsetRef.current;
+          planter.growMs = growMs;
+          planter.load(plots);
+        }
+        planterNameRef.current = planters[0].setName(name);
+        applyUnlockedPlanters(unlockedPlanters ?? 1);
       })
       .catch(() => showToast({ text: "Couldn't load your farm" }));
-
-    treeRef.current = new TreeSystem(scene, {
-      x: Math.round(map.width * 0.795),
-      baseY: Math.round(map.height * 0.86),
-      trunkLength: 150,
-      onTreeClick: (index, pos) =>
-        setPlantMenu({ kind: "fruit", index, x: pos.clientX, y: pos.clientY }),
-      onFull: () => showToast({ text: "The tree is full — pick some fruit first" }),
-      onHarvest: handleFruitHarvest,
-    });
-  }, [handleFruitHarvest, handleHarvestPlot, showToast]);
+  }, [handleHarvestPlot, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -362,6 +411,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           if (this.input.hitTestPointer(pointer).length > 0) return;
           setPlantMenu(null);
           setRenameTarget(null);
+          setUnlockTarget(null);
           movement.handleClick(this, pointer, worldRef.current.walkableZones);
         });
 
@@ -405,8 +455,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           updateLocalPlayer(localP, delta);
           mp.localChatBubble.updatePosition(localP.sprite);
           playerMgr.interpolate(delta);
-          planterRef.current?.update();
-          treeRef.current?.update();
+          for (const planter of plantersRef.current) planter.update();
         });
 
         assetsLoaded = true;
@@ -421,8 +470,7 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     return () => {
       cancelled = true;
       clearTimeout(harvestToastTimerRef.current);
-      planterRef.current = null;
-      treeRef.current = null;
+      plantersRef.current = [];
       seedFieldRef.current = null;
       shellRef.current = null;
       rainRef.current = null;
@@ -627,6 +675,17 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [renameTarget]);
+
+  useEffect(() => {
+    if (!unlockTarget) return;
+    const onDown = (e) => {
+      if (e.target?.tagName === "CANVAS") return;
+      if (unlockRef.current?.contains(e.target)) return;
+      setUnlockTarget(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [unlockTarget]);
 
   useEffect(() => {
     if (!plantMenu) return;
@@ -834,11 +893,11 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           onSave={(name) => {
             // Show the trimmed name straight away, then let the server's own
             // trimming have the last word when it answers.
-            const applied = planterRef.current?.setName(name);
+            const applied = plantersRef.current[0]?.setName(name);
             if (applied) planterNameRef.current = applied;
             renameFarm(name)
               .then(({ name: stored }) => {
-                planterNameRef.current = planterRef.current?.setName(stored) ?? stored;
+                planterNameRef.current = plantersRef.current[0]?.setName(stored) ?? stored;
               })
               .catch(() => showToast({ text: "Couldn't save that name" }));
           }}
@@ -851,24 +910,27 @@ export default function Game({ user, onEquippedChange, onOutfitChange, onSkinCol
           ref={plantMenuRef}
           x={plantMenu.x}
           y={plantMenu.y}
-          title={plantMenu.kind === "seed" ? "Plant a seed" : "Graft a fruit"}
-          items={plantMenu.kind === "seed" ? ownedSeeds : FRUITS}
-          empty={
-            plantMenu.kind === "seed"
-              ? "No seeds yet — they drop in the Garden."
-              : "Nothing to graft."
-          }
+          title="Plant a seed"
+          items={ownedSeeds}
+          empty="No seeds yet — they drop in the Garden."
           footer={`Ripens in ${Math.round(
-            (plantMenu.kind === "seed"
-              ? planterRef.current?.growMs ?? GROW_MS
-              : FRUIT_GROW_MS) / 1000,
+            (plantersRef.current[0]?.growMs ?? GROW_MS) / 1000,
           )}s`}
-          onPick={(id) =>
-            plantMenu.kind === "seed"
-              ? handleSowSeed(plantMenu.index, id)
-              : treeRef.current?.plantFruit(plantMenu.index, id)
-          }
+          onPick={(id) => handleSowSeed(plantMenu.index, id)}
           onClose={() => setPlantMenu(null)}
+        />,
+        document.body
+      )}
+      {unlockTarget && createPortal(
+        <UnlockPopup
+          ref={unlockRef}
+          x={unlockTarget.x}
+          y={unlockTarget.y}
+          title={`Unlock Planter ${unlockTarget.planter}`}
+          price={unlockTarget.price}
+          balance={user?.gems ?? 0}
+          onConfirm={() => handleUnlockPlanter(unlockTarget.planter)}
+          onClose={() => setUnlockTarget(null)}
         />,
         document.body
       )}

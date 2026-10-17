@@ -26,7 +26,7 @@ async function post(path, body) {
 export async function fetchFarm() {
   const res = await fetch(`${API}/api/farm`, { headers: authHeaders() });
   if (!res.ok) throw new Error("Failed to load your farm");
-  return res.json(); // { name, growMs, plotCount, now, plots }
+  return res.json(); // { name, growMs, plotCount, unlockedPlanters, planterPrices, now, plots }
 }
 
 /** Sows one seed from the bag. Resolves with { plot, seedId, count }. */
@@ -47,4 +47,12 @@ export function harvestPlot(plotIndex) {
 /** Renames the plaque. Resolves with the name the server actually stored. */
 export function renameFarm(name) {
   return post("/name", { name });
+}
+
+/**
+ * Buys bed `planter` (1-based) with Lis. Resolves with
+ * { unlockedPlanters, gems, vial? } — vial is set when the spend filled one.
+ */
+export function unlockPlanter(planter) {
+  return post("/unlock", { planter });
 }

@@ -1,0 +1,272 @@
+{
+	"textures": [
+		{
+			"image": "spritesheet.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 353,
+				"h": 353
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "Foot Left.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 259,
+						"y": 702,
+						"w": 36,
+						"h": 91
+					},
+					"frame": {
+						"x": 179,
+						"y": 201,
+						"w": 36,
+						"h": 91
+					}
+				},
+				{
+					"filename": "Foot Right.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 298,
+						"y": 702,
+						"w": 36,
+						"h": 91
+					},
+					"frame": {
+						"x": 217,
+						"y": 201,
+						"w": 36,
+						"h": 91
+					}
+				},
+				{
+					"filename": "Head.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 252,
+						"y": 108,
+						"w": 90,
+						"h": 113
+					},
+					"frame": {
+						"x": 1,
+						"y": 225,
+						"w": 90,
+						"h": 113
+					}
+				},
+				{
+					"filename": "Lower Arm Left.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 200,
+						"y": 320,
+						"w": 54,
+						"h": 164
+					},
+					"frame": {
+						"x": 243,
+						"y": 1,
+						"w": 54,
+						"h": 164
+					}
+				},
+				{
+					"filename": "Lower Arm Right.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 339,
+						"y": 320,
+						"w": 54,
+						"h": 164
+					},
+					"frame": {
+						"x": 255,
+						"y": 167,
+						"w": 54,
+						"h": 164
+					}
+				},
+				{
+					"filename": "Lower Leg Left.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 250,
+						"y": 566,
+						"w": 41,
+						"h": 159
+					},
+					"frame": {
+						"x": 299,
+						"y": 1,
+						"w": 41,
+						"h": 159
+					}
+				},
+				{
+					"filename": "Lower Leg Right.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 302,
+						"y": 566,
+						"w": 41,
+						"h": 159
+					},
+					"frame": {
+						"x": 311,
+						"y": 162,
+						"w": 41,
+						"h": 159
+					}
+				},
+				{
+					"filename": "Torso.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 238,
+						"y": 210,
+						"w": 114,
+						"h": 222
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 114,
+						"h": 222
+					}
+				},
+				{
+					"filename": "Upper Arm Left.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 227,
+						"y": 236,
+						"w": 41,
+						"h": 106
+					},
+					"frame": {
+						"x": 93,
+						"y": 225,
+						"w": 41,
+						"h": 106
+					}
+				},
+				{
+					"filename": "Upper Arm Right.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 325,
+						"y": 236,
+						"w": 41,
+						"h": 106
+					},
+					"frame": {
+						"x": 136,
+						"y": 201,
+						"w": 41,
+						"h": 106
+					}
+				},
+				{
+					"filename": "Upper Leg Left.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 235,
+						"y": 390,
+						"w": 61,
+						"h": 198
+					},
+					"frame": {
+						"x": 117,
+						"y": 1,
+						"w": 61,
+						"h": 198
+					}
+				},
+				{
+					"filename": "Upper Leg Right.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 600,
+						"h": 900
+					},
+					"spriteSourceSize": {
+						"x": 297,
+						"y": 390,
+						"w": 61,
+						"h": 198
+					},
+					"frame": {
+						"x": 180,
+						"y": 1,
+						"w": 61,
+						"h": 198
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:906ce1974db46bbb93da5d5abac9fa14:874dea677b8c153bf2d975b5290c8764:729adc6043343cfda41c447ce8f464d6$"
+	}
+}

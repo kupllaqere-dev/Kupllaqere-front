@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import RigStage from "../components/RigStage";
 import { loadItemAtlas, loadImage, rawPiece } from "@avatar/CanvasRig.js";
+import { parseGarmentFrame } from "@avatar/rigParts.js";
 import {
   getMySubmissions, getItemTypes, updateSubmission, uploadParts, deletePart, deleteSubmission,
 } from "../api/creator";
-import { labelOf, layerOf, expectedFileName } from "../lib/partFiles";
+import { labelOf, layerOf, expectedFileName, partsOfView, VIEWS, VIEW_LABELS } from "../lib/partFiles";
 import { categoryLabel, subcategoryLabel, typeLabel } from "../lib/labels";
 
 const STATUS_COLOR = { pending: "#f59e0b", approved: "#22c55e", declined: "#ef4444" };
@@ -34,9 +35,11 @@ function useGarments(subs, types) {
       const layer = layerOf(s.category, s.subcategory, types);
       if (s.atlasStatus === "ready" && s.atlasJsonUrl) {
         const { pieces } = await loadItemAtlas(s.atlasJsonUrl, s.atlasUrl);
-        return [...pieces].map(([part, piece]) => ({ part, layer, piece }));
+        return [...pieces].map(([name, piece]) => ({ ...parseGarmentFrame(name), layer, piece }));
       }
-      return Promise.all(s.parts.map(async (p) => ({ part: p.part, layer, piece: rawPiece(await loadImage(p.url)) })));
+      return Promise.all(s.parts.map(async (p) => ({
+        view: p.view || "side", part: p.part, layer, piece: rawPiece(await loadImage(p.url)),
+      })));
     }))
       .then((lists) => { if (!cancelled) setGarments(lists.flat()); })
       .catch((e) => { if (!cancelled) setLoadError(e.message); });
@@ -198,6 +201,7 @@ function Detail({ sub, types, onChanged, onDeleted }) {
   const [subcategory, setSubcategory] = useState(sub.subcategory);
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState(null);
+  const [view, setView]         = useState("side");
   const addRef = useRef(null);
 
   const locked = sub.status === "approved";
@@ -220,12 +224,13 @@ function Detail({ sub, types, onChanged, onDeleted }) {
   const upload = (fileList) => run(async () => {
     const fd = new FormData();
     for (const f of fileList) fd.append("files", f, f.name);
+    fd.append("view", view); // for files whose name doesn't say
     const res = await uploadParts(sub.id, fd);
     onChanged(res.submission);
   });
 
   const removePart = (part) => run(async () => {
-    const res = await deletePart(sub.id, part);
+    const res = await deletePart(sub.id, part, view);
     onChanged(res.submission);
   });
 
@@ -235,14 +240,18 @@ function Detail({ sub, types, onChanged, onDeleted }) {
     run(async () => { await deleteSubmission(sub.id); onDeleted(); });
   };
 
-  const byPart = new Map(sub.parts.map((p) => [p.part, p]));
-  // What's uploaded, then the parts this type usually also covers.
+  // What's uploaded for the view shown, then the parts this type usually also
+  // covers that the view has.
+  const viewParts = sub.parts.filter((p) => (p.view || "side") === view);
+  const byPart = new Map(viewParts.map((p) => [p.part, p]));
+  const exists = new Set(types ? partsOfView(types, view) : []);
   const rows = [
-    ...sub.parts.map((p) => ({ part: p.part, kind: "uploaded" })),
-    ...(rule ? [...rule.required, ...rule.optional] : [])
-      .filter((part) => !byPart.has(part))
+    ...viewParts.map((p) => ({ part: p.part, kind: "uploaded" })),
+    ...[...new Set(rule ? [...rule.required, ...rule.optional] : [])]
+      .filter((part) => exists.has(part) && !byPart.has(part))
       .map((part) => ({ part, kind: "suggested" })),
   ];
+  const count = (v) => sub.parts.filter((p) => (p.view || "side") === v).length;
 
   let overlay = null;
   if (!isRig) overlay = "Legacy spritesheet item — it can't be shown on the new avatar.";
@@ -252,7 +261,7 @@ function Detail({ sub, types, onChanged, onDeleted }) {
   return (
     <DetailBox>
       <DetailStage>
-        <RigStage garments={garments} overlay={overlay} compact />
+        <RigStage garments={garments} overlay={overlay} compact view={view} onViewChange={setView} />
       </DetailStage>
 
       <DetailSide>
@@ -310,12 +319,17 @@ function Detail({ sub, types, onChanged, onDeleted }) {
         {isRig && types && (
           <Block>
             <PartsHead>
-              <Label>Body parts</Label>
+              <Label>{VIEW_LABELS[view]} body parts</Label>
               {!locked && <LinkBtn onClick={() => addRef.current?.click()} disabled={busy}>Replace / add files</LinkBtn>}
               <input ref={addRef} type="file" accept=".png,image/png" multiple hidden
                 onChange={(e) => { if (e.target.files.length) upload([...e.target.files]); e.target.value = ""; }} />
             </PartsHead>
-            {!locked && <Dim>Upload files named <code>Name-body_part.png</code> — a part you already have is replaced.</Dim>}
+            <ViewTabs>
+              {VIEWS.map((v) => (
+                <ViewTab key={v} $on={v === view} onClick={() => setView(v)}>{VIEW_LABELS[v]} <Dim>{count(v)}</Dim></ViewTab>
+              ))}
+            </ViewTabs>
+            {!locked && <Dim>Upload files named <code>Name-body_part.png</code> for the {VIEW_LABELS[view].toLowerCase()} view — a part you already have is replaced.</Dim>}
             <Parts>
               {rows.map(({ part, kind }) => {
                 const p = byPart.get(part);
@@ -324,7 +338,7 @@ function Detail({ sub, types, onChanged, onDeleted }) {
                     <PartDot $state={p ? "ok" : "optional"} />
                     <PartText>
                       <PartName>{labelOf(part)}{kind === "suggested" && <Dim> · usually included</Dim>}</PartName>
-                      <PartFile>{p ? p.fileName : expectedFileName(sub.name, part)}</PartFile>
+                      <PartFile>{p ? p.fileName : expectedFileName(sub.name, part, view)}</PartFile>
                     </PartText>
                     {p && <a href={p.url} target="_blank" rel="noreferrer">view</a>}
                     {p && !locked && sub.parts.length > 1 && (
@@ -347,6 +361,15 @@ function Detail({ sub, types, onChanged, onDeleted }) {
 
 /* ── Styles ── */
 const ACCENT = "#68cfee";
+
+const ViewTabs = styled.div`display:flex;border:1px solid #ffffff15;border-radius:8px;overflow:hidden;`;
+const ViewTab = styled.button`
+  flex:1;padding:6px 8px;border:none;font-size:12px;font-weight:700;cursor:pointer;
+  background:${(p) => p.$on ? "rgba(104,207,238,0.15)" : "transparent"};
+  color:${(p) => p.$on ? "#a8e6f5" : "#888"};
+  & + &{border-left:1px solid #ffffff15;}
+  &:hover{color:#a8e6f5;}
+`;
 
 const Page = styled.div`padding:24px 28px;max-width:1100px;`;
 const Header = styled.div`display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap;`;
